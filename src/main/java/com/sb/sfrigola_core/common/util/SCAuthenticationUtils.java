@@ -6,6 +6,7 @@ import org.springframework.security.core.Authentication;
 import org.springframework.security.core.context.SecurityContextHolder;
 
 import java.util.Objects;
+import java.util.Optional;
 
 public class SCAuthenticationUtils {
 
@@ -30,12 +31,12 @@ public class SCAuthenticationUtils {
         return username;
     }
 
-    public static SCAuthUser getAuthUserByAuthentication(Authentication authentication) {
+    public static Optional<SCAuthUser> getAuthUserByAuthentication(Authentication authentication)  {
         Object principal = authentication.getPrincipal();
         if (principal instanceof SCAuthUser jobPortalUser) {
-            return jobPortalUser;
+            return Optional.of(jobPortalUser);
         }
-        return null;
+        return Optional.empty();
     }
 
 }
