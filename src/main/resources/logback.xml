@@ -1,0 +1,104 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<configuration>
+
+    <!-- ===================== -->
+    <!-- Log files path -->
+    <!-- ===================== -->
+    <property name="LOGS" value="./logs" />
+
+    <!-- ===================== -->
+    <!-- Console Appender -->
+    <!-- ===================== -->
+    <appender name="Console"
+              class="ch.qos.logback.core.ConsoleAppender">
+        <encoder>
+            <pattern>
+                %green(%d{HH:mm:ss.SSS}) %blue(%-5level) %red([%thread]) %yellow(%logger{15}) - %cyan(%msg%n)
+            </pattern>
+        </encoder>
+    </appender>
+
+    <!-- ===================== -->
+    <!-- Rolling File Appender -->
+    <!-- ===================== -->
+    <appender name="RollingFile"
+              class="ch.qos.logback.core.rolling.RollingFileAppender">
+
+        <file>${LOGS}/jobportal.log</file>
+
+        <encoder>
+            <pattern>
+                {"timestamp":"%d{yyyy-MM-dd HH:mm:ss}","level":"%p","logger":"%c","message":"%m"}
+            </pattern>
+        </encoder>
+
+        <!-- Modern rolling policy (size + time based) -->
+        <rollingPolicy class="ch.qos.logback.core.rolling.SizeAndTimeBasedRollingPolicy">
+            <fileNamePattern>
+                ${LOGS}/archived/jobportal-%d{yyyy-MM-dd}.%i.log
+            </fileNamePattern>
+            <maxFileSize>1MB</maxFileSize>
+            <maxHistory>30</maxHistory>
+            <totalSizeCap>1GB</totalSizeCap>
+        </rollingPolicy>
+    </appender>
+
+    <!-- ===================== -->
+    <!-- Root Logger (Spring, Hibernate, Libraries) -->
+    <!-- Scope: All external libraries (Spring Boot, Hibernate, Jackson, etc.) -->
+    <!-- Level: INFO = shows startup, errors, important messages only -->
+    <!-- ===================== -->
+    <root level="INFO">
+        <appender-ref ref="RollingFile"/>
+        <appender-ref ref="Console"/>
+    </root>
+
+    <!-- ===================== -->
+    <!-- Application-specific logs -->
+    <!-- Scope: ALL your code under com.sb.jobportal.** -->
+    <!-- Includes: controllers, services, repositories, config, security, etc. -->
+    <!-- Level: DEBUG = shows detailed application flow -->
+    <!-- ===================== -->
+    <logger name="com.sb.jobportal"
+            level="DEBUG"
+            additivity="false">
+        <appender-ref ref="RollingFile"/>
+        <appender-ref ref="Console"/>
+    </logger>
+
+    <!-- ===================== -->
+    <!-- Spring Security logs -->
+    <!-- Scope: Authentication, Authorization, Security filters -->
+    <!-- Level: DEBUG = shows security decisions, filter chains, auth attempts -->
+    <!-- ===================== -->
+    <logger name="org.springframework.security"
+            level="DEBUG"
+            additivity="false">
+        <appender-ref ref="Console"/>
+    </logger>
+
+    <!-- ===================== -->
+    <!-- Database / JPA logs -->
+    <!-- Scope: SQL queries executed by Hibernate -->
+    <!-- Level: DEBUG = shows formatted SQL statements -->
+    <!-- ===================== -->
+    <logger name="org.hibernate.SQL"
+            level="DEBUG"
+            additivity="false">
+        <appender-ref ref="Console"/>
+    </logger>
+
+    <!-- ===================== -->
+    <!-- SQL Parameter Binding -->
+    <!-- Scope: Values of ? parameters in SQL queries -->
+    <!-- Level: TRACE = shows actual values (e.g., WHERE id = 123) -->
+    <!-- Warning: Can expose sensitive data! Disable in production -->
+    <!-- ===================== -->
+
+    <logger name="org.hibernate.orm.jdbc.bind"
+            level="TRACE"
+            additivity="false">
+        <appender-ref ref="Console"/>
+    </logger>
+
+</configuration>
