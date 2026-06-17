@@ -1,4 +1,4 @@
-package com.sb.sfrigola_core.common.dto.response;
+package com.sb.sfrigola_core.common.dto.external.response;
 
 import java.io.Serializable;
 import java.util.List;
