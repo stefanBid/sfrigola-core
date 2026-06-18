@@ -7,10 +7,12 @@ public class SCGeneralConstants {
     }
 
     public static final String ALLOWED_ORIGINS = "ALLOWED_ORIGINS";
-    public static final String JWT_SECRET_KEY = "JWT_SECRET_KEY";
-    public static final String JWT_SECRET_KEY_DEFAULT = "mySecretKeyForJWTGenerationWhichShouldBeLongEnoughToBeSecure";
-    public static final String JWT_EXPIRATION_MS = "JWT_EXPIRATION_MS";
-    public static final String JWT_HEADER = "JWT_HEADER";
-    public static final String JWT_HEADER_DEFAULT = "Authorization";
     public static final String SYSTEM_USERNAME = "system";
+
+    // JWT TOKEN CONSTANTS
+    public static final String JWT_HEADER = "Authorization";
+    public static final String JWT_HEADER_PREFIX = "Bearer ";
+    public static final String JWT_SECRET_KEY_DEFAULT = "mySecretKeyForJWTGenerationWhichShouldBeLongEnoughToBeSecure";
+    public static final String JWT_SECRET_KEY = "JWT_SECRET_KEY";
+    public static final String JWT_EXPIRATION_MS = "JWT_EXPIRATION_MS";
 }

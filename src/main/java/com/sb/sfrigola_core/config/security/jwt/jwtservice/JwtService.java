@@ -1,4 +1,4 @@
-package com.sb.sfrigola_core.config.security.jwt;
+package com.sb.sfrigola_core.config.security.jwt.jwtservice;
 
 import com.sb.sfrigola_core.common.constant.SCGeneralConstants;
 import com.sb.sfrigola_core.common.util.SCAuthenticationUtils;
@@ -17,10 +17,11 @@ import java.util.stream.Collectors;
 
 @Service
 @RequiredArgsConstructor
-public class JwtService {
+public class JwtService implements IJWTService {
 
     private final Environment env;
 
+    @Override
     public String generateJWTToken(Authentication authentication) {
         String jwtToken;
         String secret = env.getProperty(SCGeneralConstants.JWT_SECRET_KEY, SCGeneralConstants.JWT_SECRET_KEY_DEFAULT);

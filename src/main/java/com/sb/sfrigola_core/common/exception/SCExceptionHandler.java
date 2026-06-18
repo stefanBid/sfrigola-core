@@ -17,8 +17,8 @@ import java.util.HashMap;
 import java.util.Map;
 import java.util.stream.Collectors;
 
-@RestControllerAdvice
-public class BaseExceptionHandler {
+    @RestControllerAdvice
+public class SCExceptionHandler {
 
     // 404 — Entity not found (e.g. company with non-existing id)
     @ExceptionHandler(EntityNotFoundException.class)
@@ -62,6 +62,11 @@ public class BaseExceptionHandler {
     @ExceptionHandler(HttpMessageNotReadableException.class)
     public ResponseEntity<SCGeneralResponseDto<Void, Void>> handleHttpMessageNotReadable(HttpMessageNotReadableException ex, WebRequest request) {
         return SCErrorDataBuilderUtils.build(HttpStatus.BAD_REQUEST, ex, ex.getMostSpecificCause().getMessage(), request);
+    }
+
+    @ExceptionHandler(SCGeneralException.class)
+    public ResponseEntity<SCGeneralResponseDto<Void, Void>> handleDataCorruptionException(SCGeneralException ex, WebRequest request) {
+        return SCErrorDataBuilderUtils.build(ex.getStatus(),ex.toErrorMap(), request);
     }
 
     // ========== GENERIC FALLBACK ==========
