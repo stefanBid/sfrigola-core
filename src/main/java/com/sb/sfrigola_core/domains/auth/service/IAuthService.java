@@ -1,12 +1,12 @@
 package com.sb.sfrigola_core.domains.auth.service;
 
-import com.sb.sfrigola_core.domains.auth.dto.LoggedUserDto;
-import com.sb.sfrigola_core.domains.users.dto.CreateSCUserBodyDto;
+import com.sb.sfrigola_core.domains.auth.dto.LoginResponseDto;
+import com.sb.sfrigola_core.domains.users.dto.CreateSCUserRequestDto;
 
 public interface IAuthService {
 
-    LoggedUserDto login(String username, String password);
+    LoginResponseDto login(String username, String password);
 
-    boolean registerUser(CreateSCUserBodyDto userToCreate );
+    boolean registerUser(CreateSCUserRequestDto userToCreate );
 
 }

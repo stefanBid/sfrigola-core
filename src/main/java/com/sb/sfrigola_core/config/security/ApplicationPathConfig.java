@@ -18,7 +18,8 @@ public class ApplicationPathConfig {
     @Bean("publicPath")
     public List<String> publicPath() {
         return List.of(
-                ""
+                "/api/auth/login",
+                "api/auth/register"
         );
     }
 

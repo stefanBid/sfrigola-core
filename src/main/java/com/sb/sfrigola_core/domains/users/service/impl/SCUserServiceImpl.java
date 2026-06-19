@@ -1,7 +1,7 @@
 package com.sb.sfrigola_core.domains.users.service.impl;
 
 import com.sb.sfrigola_core.common.exception.ex.DataCorruptionException;
-import com.sb.sfrigola_core.domains.users.dto.CreateSCUserBodyDto;
+import com.sb.sfrigola_core.domains.users.dto.CreateSCUserRequestDto;
 import com.sb.sfrigola_core.domains.users.dto.SCUserInternalDto;
 import com.sb.sfrigola_core.domains.users.entity.SCRole;
 import com.sb.sfrigola_core.domains.users.entity.SCUser;
@@ -37,10 +37,10 @@ public class SCUserServiceImpl implements ISCUserService {
 
     @Override
     @Transactional
-    public boolean createUser(CreateSCUserBodyDto userToCreate) {
+    public boolean createUser(CreateSCUserRequestDto userToCreate, String hashedPass) {
         SCRole defaultRole = roleRepository.findByName(SCUserRole.ROLE_USER.name())
                 .orElseThrow(() -> new DataCorruptionException(SCUserRole.ROLE_USER.name(), "role"));
-        SCUser user = convertToEntity(userToCreate, defaultRole);
+        SCUser user = convertToEntity(userToCreate, defaultRole, hashedPass);
         userRepository.save(user);
         return true;
     }
@@ -61,12 +61,12 @@ public class SCUserServiceImpl implements ISCUserService {
     }
 
 
-    private SCUser convertToEntity(CreateSCUserBodyDto userToCreate, SCRole role) {
+    private SCUser convertToEntity(CreateSCUserRequestDto userToCreate, SCRole role, String hashedPass) {
         SCUser user = new SCUser();
         user.setRole(role);
         user.setUsername(userToCreate.username());
         user.setEmail(userToCreate.email());
-        user.setPasswordHash(userToCreate.password());
+        user.setPasswordHash(hashedPass);
         user.setPreferredLang(userToCreate.preferredLang());
         user.setFirstName(userToCreate.firstName());
         user.setLastName(userToCreate.lastName());

@@ -2,14 +2,14 @@ package com.sb.sfrigola_core.domains.auth.service.impl;
 
 import com.sb.sfrigola_core.common.util.SCAuthenticationUtils;
 import com.sb.sfrigola_core.config.security.jwt.jwtservice.JwtService;
-import com.sb.sfrigola_core.domains.auth.dto.LoggedUserDto;
+import com.sb.sfrigola_core.domains.auth.dto.LoginResponseDto;
 import com.sb.sfrigola_core.domains.auth.dto.SCUserMinimalInfoDto;
 import com.sb.sfrigola_core.domains.auth.exception.SCAuthSecuritySystemException;
 import com.sb.sfrigola_core.domains.auth.exception.SCCompromisedPasswordException;
 import com.sb.sfrigola_core.domains.auth.exception.SCUserAlreadyExistsException;
 import com.sb.sfrigola_core.domains.auth.service.IAuthService;
 import com.sb.sfrigola_core.domains.languages.service.ILanguageService;
-import com.sb.sfrigola_core.domains.users.dto.CreateSCUserBodyDto;
+import com.sb.sfrigola_core.domains.users.dto.CreateSCUserRequestDto;
 import com.sb.sfrigola_core.domains.users.dto.SCUserInternalDto;
 import com.sb.sfrigola_core.domains.users.service.ISCUserService;
 import lombok.RequiredArgsConstructor;
@@ -41,7 +41,7 @@ public class AuthServiceImpl implements IAuthService {
     private final CompromisedPasswordChecker compromisedPasswordChecker;
 
     @Override
-    public LoggedUserDto login(String username, String password) {
+    public LoginResponseDto login(String username, String password) {
 
         var authResult = authenticationManager.authenticate(new UsernamePasswordAuthenticationToken(username, password));
 
@@ -53,11 +53,12 @@ public class AuthServiceImpl implements IAuthService {
 
         SCUserMinimalInfoDto userExternalDto = toMinimalDto(userAuth);
 
-        return new LoggedUserDto(userExternalDto, token, userAuth.role().getAuthority() );
+        return new LoginResponseDto(userExternalDto, token, userAuth.role().getAuthority() );
     }
 
     @Override
-    public boolean registerUser(CreateSCUserBodyDto userToCreate) {
+    @Transactional
+    public boolean registerUser(CreateSCUserRequestDto userToCreate) {
         // Check language code is correct
         if(!languageService.existsByCode(userToCreate.preferredLang())) {
             throw new SCAuthSecuritySystemException("Language code " + userToCreate.preferredLang() + " does not exist");
@@ -71,8 +72,8 @@ public class AuthServiceImpl implements IAuthService {
         if(decision.isCompromised()) {
             throw new SCCompromisedPasswordException("Please chose a strong password");
         }
-
-        return userService.createUser(userToCreate);
+        String hashedPass = passwordEncoder.encode(userToCreate.password());
+        return userService.createUser(userToCreate, hashedPass);
 
     }
 
