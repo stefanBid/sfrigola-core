@@ -33,18 +33,18 @@ public class SecurityConfig {
 
     // Inject Paths
     @Qualifier("publicPath")
-    private List<String> publicPaths;
+    private final List<String> publicPaths;
     @Qualifier("authPath")
-    private List<String> authPaths;
+    private final List<String> authPaths;
     @Qualifier("onlyAdminPath")
-    private List<String> onlyAdminPaths;
+    private final List<String> onlyAdminPaths;
     @Qualifier("onlyUserPath")
-    private List<String> onlyUserPaths;
+    private final List<String> onlyUserPaths;
     @Qualifier("onlyContributorPath")
-    private List<String> onlyContributorPaths;
+    private final List<String> onlyContributorPaths;
 
     @Qualifier("allowedOriginsPaths")
-    private List<String> allowedOriginsPaths;
+    private final List<String> allowedOriginsPaths;
 
     // Inject Auth Provider
     @Qualifier("scUsernamePwAuthenticationProvider")

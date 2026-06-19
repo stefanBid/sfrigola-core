@@ -49,30 +49,23 @@ public class JwtValidationFilter extends OncePerRequestFilter {
             return;
         }
 
-        // 1) Read env variable for token filter
-        String headerName = env.getProperty(SCGeneralConstants.JWT_HEADER);
         String secret = env.getProperty(SCGeneralConstants.JWT_SECRET_KEY, SCGeneralConstants.JWT_SECRET_KEY_DEFAULT);
+        String authHeader = request.getHeader(SCGeneralConstants.JWT_HEADER);
 
-
-        String authHeader = request.getHeader(headerName);
-
-        if(authHeader != null){
-            try{
-
+        if (authHeader != null) {
+            try {
                 var validator1S = validateJWTToken(authHeader);
-                if(!validator1S.isValid()) {
+                if (!validator1S.isValid()) {
                     SCErrorDataBuilderUtils.handleError(request, response, objectMapper, validator1S.error(), HttpStatus.UNAUTHORIZED);
                     return;
                 }
                 String jwt = validator1S.jwt();
-                assert  jwt != null;
+                assert jwt != null;
                 SecretKey secretKey = Keys.hmacShaKeyFor(secret.getBytes(StandardCharsets.UTF_8));
                 Claims claims = Jwts.parser().verifyWith(secretKey).build().parseSignedClaims(jwt).getPayload();
 
-
                 var validator2S = validateUsernameAndRoles(claims.get("username"), claims.get("roles"));
-
-                if(!validator2S.isValid()){
+                if (!validator2S.isValid()) {
                     SCErrorDataBuilderUtils.handleError(request, response, objectMapper, validator2S.error(), HttpStatus.UNAUTHORIZED);
                     return;
                 }
@@ -83,19 +76,16 @@ public class JwtValidationFilter extends OncePerRequestFilter {
                 assert username != null && roles != null;
                 Authentication authentication = new UsernamePasswordAuthenticationToken(username, null, AuthorityUtils.commaSeparatedStringToAuthorityList(roles));
                 SecurityContextHolder.getContext().setAuthentication(authentication);
-            }catch(ExpiredJwtException ex){
+            } catch (ExpiredJwtException ex) {
                 SCErrorDataBuilderUtils.handleError(request, response, objectMapper, Map.of(SecurityErrorCode.JWT_EXPIRED.code(), "JWT token has expired"), HttpStatus.UNAUTHORIZED);
                 return;
             } catch (Exception ex) {
                 SCErrorDataBuilderUtils.handleError(request, response, objectMapper, Map.of(SecurityErrorCode.JWT_VALIDATION_FAILED.code(), "JWT token validation failed: " + ex.getMessage()), HttpStatus.UNAUTHORIZED);
                 return;
             }
-
-            // After successful validation, continue the filter chain
-            filterChain.doFilter(request, response);
         }
 
-
+        filterChain.doFilter(request, response);
     }
 
     /**
@@ -105,7 +95,7 @@ public class JwtValidationFilter extends OncePerRequestFilter {
      */
     @Override
     protected boolean shouldNotFilter(HttpServletRequest request) {
-        String path = request.getRequestURI();
+        String path = request.getServletPath();
         return publicPaths.stream().anyMatch(publicPath -> pathMatcher.match(publicPath, path));
     }
 

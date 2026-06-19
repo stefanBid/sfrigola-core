@@ -53,7 +53,7 @@ public class AuthServiceImpl implements IAuthService {
 
         SCUserMinimalInfoDto userExternalDto = toMinimalDto(userAuth);
 
-        return new LoginResponseDto(userExternalDto, token, userAuth.role().getAuthority() );
+        return new LoginResponseDto(userExternalDto, userAuth.role().getAuthority(), token );
     }
 
     @Override

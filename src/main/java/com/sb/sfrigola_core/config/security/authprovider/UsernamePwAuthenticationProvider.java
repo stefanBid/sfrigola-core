@@ -33,17 +33,17 @@ public class UsernamePwAuthenticationProvider implements AuthenticationProvider 
 
         // STEP 2: Load UserDetails from DB (or any other source) using the username (email FILED)
         var user = userService.findByEmailWithRoleForInternalUse(username).orElseThrow(
-                () -> new SCBadCredentialException("Invalid credentials for user: ")
+                () -> new SCBadCredentialException("Invalid credentials")
         );
 
         // STEP 3: Extract User role and convert to Spring Security GrantedAuthority
         List<SimpleGrantedAuthority> authorities = List.of(new SimpleGrantedAuthority(user.role().getAuthority()));
 
         // STEP 4: Verify password using personal Password encoder Bean
-        if(passwordEncoder.matches(pwd, user.pHash())){
-            return new UsernamePasswordAuthenticationToken(username, null, authorities);
-        }else {
-            throw new SCBadCredentialException("Invalid credentials for user: ");
+        if (passwordEncoder.matches(pwd, user.pHash())) {
+            return new UsernamePasswordAuthenticationToken(user, null, authorities);
+        } else {
+            throw new SCBadCredentialException("Invalid credentials");
         }
 
 
