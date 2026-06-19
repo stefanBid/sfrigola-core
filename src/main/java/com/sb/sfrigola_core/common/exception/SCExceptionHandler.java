@@ -1,6 +1,8 @@
 package com.sb.sfrigola_core.common.exception;
 
 import com.sb.sfrigola_core.common.dto.external.response.SCGeneralResponseDto;
+import com.sb.sfrigola_core.common.enums.GeneralErrorCode;
+import com.sb.sfrigola_core.common.exception.ex.SCGeneralException;
 import com.sb.sfrigola_core.common.util.SCErrorDataBuilderUtils;
 import jakarta.persistence.EntityNotFoundException;
 import org.springframework.context.MessageSourceResolvable;
@@ -17,13 +19,13 @@ import java.util.HashMap;
 import java.util.Map;
 import java.util.stream.Collectors;
 
-@RestControllerAdvice
-public class BaseExceptionHandler {
+    @RestControllerAdvice
+public class SCExceptionHandler {
 
     // 404 — Entity not found (e.g. company with non-existing id)
     @ExceptionHandler(EntityNotFoundException.class)
     public ResponseEntity<SCGeneralResponseDto<Void, Void>> handleEntityNotFoundException(EntityNotFoundException ex, WebRequest request) {
-        return SCErrorDataBuilderUtils.build(HttpStatus.NOT_FOUND, ex, request);
+        return SCErrorDataBuilderUtils.build(HttpStatus.NOT_FOUND, Map.of(GeneralErrorCode.ENTITY_NOT_FOUND.code(), ex.getMessage()), request);
     }
 
 
@@ -44,7 +46,7 @@ public class BaseExceptionHandler {
     // 400 — Illegal argument
     @ExceptionHandler(IllegalArgumentException.class)
     public ResponseEntity<SCGeneralResponseDto<Void, Void>> handleIllegalArgument(IllegalArgumentException ex, WebRequest request) {
-        return SCErrorDataBuilderUtils.build(HttpStatus.BAD_REQUEST, ex, request);
+        return SCErrorDataBuilderUtils.build(HttpStatus.BAD_REQUEST, Map.of(GeneralErrorCode.ILLEGAL_ARGUMENT.code(), ex.getMessage()), request);
     }
 
     // ========== MUTATION ERRORS (POST, PUT, DELETE) ==========
@@ -61,7 +63,12 @@ public class BaseExceptionHandler {
     // 400 — Malformed JSON or invalid enums/type in request body
     @ExceptionHandler(HttpMessageNotReadableException.class)
     public ResponseEntity<SCGeneralResponseDto<Void, Void>> handleHttpMessageNotReadable(HttpMessageNotReadableException ex, WebRequest request) {
-        return SCErrorDataBuilderUtils.build(HttpStatus.BAD_REQUEST, ex, ex.getMostSpecificCause().getMessage(), request);
+        return SCErrorDataBuilderUtils.build(HttpStatus.BAD_REQUEST, Map.of(GeneralErrorCode.MALFORMED_JSON.code(), ex.getMostSpecificCause().getMessage()), request);
+    }
+
+    @ExceptionHandler(SCGeneralException.class)
+    public ResponseEntity<SCGeneralResponseDto<Void, Void>> handleDataCorruptionException(SCGeneralException ex, WebRequest request) {
+        return SCErrorDataBuilderUtils.build(ex.getStatus(),ex.toErrorMap(), request);
     }
 
     // ========== GENERIC FALLBACK ==========
@@ -70,6 +77,6 @@ public class BaseExceptionHandler {
     // NOTE: Controllers with Mutation endpoints should have their own Exception.class handler
     @ExceptionHandler(Exception.class)
     public ResponseEntity<SCGeneralResponseDto<Void, Void>> handleDefaultException(Exception ex, WebRequest request) {
-        return SCErrorDataBuilderUtils.build(HttpStatus.INTERNAL_SERVER_ERROR, ex, request);
+        return SCErrorDataBuilderUtils.build(HttpStatus.INTERNAL_SERVER_ERROR, Map.of(GeneralErrorCode.SERVER_ERROR.code(),ex.getMessage()), request);
     }
 }

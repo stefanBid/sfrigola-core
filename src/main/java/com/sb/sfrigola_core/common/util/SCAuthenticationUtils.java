@@ -1,11 +1,12 @@
 package com.sb.sfrigola_core.common.util;
 
 import com.sb.sfrigola_core.common.constant.SCGeneralConstants;
-import com.sb.sfrigola_core.common.dto.internal.SCAuthUser;
+import com.sb.sfrigola_core.domains.users.dto.SCUserInternalDto;
 import org.springframework.security.core.Authentication;
 import org.springframework.security.core.context.SecurityContextHolder;
 
 import java.util.Objects;
+import java.util.Optional;
 
 public class SCAuthenticationUtils {
 
@@ -22,20 +23,20 @@ public class SCAuthenticationUtils {
         }
         Object principal = authentication.getPrincipal();
         String username;
-        if (principal instanceof SCAuthUser jobPortalUser) {
-            username = jobPortalUser.email();
+        if (principal instanceof SCUserInternalDto scAuthUser) {
+            username = scAuthUser.email();
         } else {
             username = principal.toString(); // fallback
         }
         return username;
     }
 
-    public static SCAuthUser getAuthUserByAuthentication(Authentication authentication) {
+    public static Optional<SCUserInternalDto> getAuthUserByAuthentication(Authentication authentication)  {
         Object principal = authentication.getPrincipal();
-        if (principal instanceof SCAuthUser jobPortalUser) {
-            return jobPortalUser;
+        if (principal instanceof SCUserInternalDto scAuthUser) {
+            return Optional.of(scAuthUser);
         }
-        return null;
+        return Optional.empty();
     }
 
 }
