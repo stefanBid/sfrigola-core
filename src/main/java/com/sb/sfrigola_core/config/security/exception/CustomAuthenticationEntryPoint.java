@@ -24,7 +24,7 @@ public class CustomAuthenticationEntryPoint implements AuthenticationEntryPoint 
                          AuthenticationException authException) throws IOException {
         SCErrorDataBuilderUtils.handleError(
                 request, response, objectMapper,
-                Map.of("authentication", "Full authentication is required to access this resource"),
+                Map.of(SecurityErrorCode.NOT_AUTHORIZED.code(), "Full authentication is required to access this resource"),
                 HttpStatus.UNAUTHORIZED
         );
     }

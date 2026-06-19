@@ -24,7 +24,7 @@ public class CustomAccessDeniedHandler implements AccessDeniedHandler {
                        AccessDeniedException accessDeniedException) throws IOException {
         SCErrorDataBuilderUtils.handleError(
                 request, response, objectMapper,
-                Map.of("authorization", "You don't have permission to access this resource"),
+                Map.of(SecurityErrorCode.NOT_AUTHORIZED.code(), "You don't have permission to access this resource"),
                 HttpStatus.FORBIDDEN
         );
     }

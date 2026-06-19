@@ -2,6 +2,7 @@ package com.sb.sfrigola_core.config.security.jwt.jwtservice;
 
 import com.sb.sfrigola_core.common.constant.SCGeneralConstants;
 import com.sb.sfrigola_core.common.util.SCAuthenticationUtils;
+import com.sb.sfrigola_core.config.security.exception.ex.SCAuthenticatedUserNotFoundException;
 import io.jsonwebtoken.Jwts;
 import io.jsonwebtoken.security.Keys;
 import lombok.RequiredArgsConstructor;
@@ -27,11 +28,11 @@ public class JwtService implements IJWTService {
         String secret = env.getProperty(SCGeneralConstants.JWT_SECRET_KEY, SCGeneralConstants.JWT_SECRET_KEY_DEFAULT);
         SecretKey key = Keys.hmacShaKeyFor(secret.getBytes(StandardCharsets.UTF_8));
         var fetchedUser = SCAuthenticationUtils.getAuthUserByAuthentication(authentication).orElseThrow(
-            () -> new IllegalStateException("Authenticated user not found")
+            () -> new SCAuthenticatedUserNotFoundException("Authenticated user not found")
         );
         var tokenDates = getTokenDates();
 
-        jwtToken = Jwts.builder().issuer("SfrigolaP Core").subject("JWT Token")
+        jwtToken = Jwts.builder().issuer("Sfrigola Core").subject("JWT Token")
                 .claim("username", fetchedUser.username())
                 .claim("email", fetchedUser.email())
                 .claim("roles", authentication.getAuthorities().stream().map(GrantedAuthority::getAuthority).collect(Collectors.joining(",")))

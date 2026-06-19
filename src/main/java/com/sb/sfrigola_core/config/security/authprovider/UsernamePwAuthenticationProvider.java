@@ -1,16 +1,15 @@
 package com.sb.sfrigola_core.config.security.authprovider;
 
+import com.sb.sfrigola_core.config.security.exception.ex.SCBadCredentialException;
 import com.sb.sfrigola_core.domains.users.service.ISCUserService;
 import lombok.RequiredArgsConstructor;
 import org.jspecify.annotations.Nullable;
 import org.springframework.beans.factory.annotation.Qualifier;
 import org.springframework.security.authentication.AuthenticationProvider;
-import org.springframework.security.authentication.BadCredentialsException;
 import org.springframework.security.authentication.UsernamePasswordAuthenticationToken;
 import org.springframework.security.core.Authentication;
 import org.springframework.security.core.AuthenticationException;
 import org.springframework.security.core.authority.SimpleGrantedAuthority;
-import org.springframework.security.core.userdetails.UsernameNotFoundException;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.stereotype.Component;
 
@@ -34,7 +33,7 @@ public class UsernamePwAuthenticationProvider implements AuthenticationProvider 
 
         // STEP 2: Load UserDetails from DB (or any other source) using the username (email FILED)
         var user = userService.findByEmailWithRoleForInternalUse(username).orElseThrow(
-                () -> new UsernameNotFoundException("User with email: " + username + " not found")
+                () -> new SCBadCredentialException("Invalid credentials for user: ")
         );
 
         // STEP 3: Extract User role and convert to Spring Security GrantedAuthority
@@ -44,7 +43,7 @@ public class UsernamePwAuthenticationProvider implements AuthenticationProvider 
         if(passwordEncoder.matches(pwd, user.pHash())){
             return new UsernamePasswordAuthenticationToken(username, null, authorities);
         }else {
-            throw new BadCredentialsException("Invalid Password");
+            throw new SCBadCredentialException("Invalid credentials for user: ");
         }
 
 

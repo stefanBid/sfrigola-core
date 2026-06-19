@@ -1,5 +1,6 @@
-package com.sb.sfrigola_core.common.exception;
+package com.sb.sfrigola_core.common.exception.ex;
 
+import com.sb.sfrigola_core.common.exception.ISCErrorCode;
 import lombok.Getter;
 import org.springframework.http.HttpStatus;
 
@@ -9,18 +10,18 @@ public abstract class SCGeneralException extends RuntimeException {
 
     @Getter
     private final HttpStatus status;
-    private final String errorKey;
+    private final ISCErrorCode errorCode;
     private final String errorMessage;
 
-    protected SCGeneralException(HttpStatus status, String errorKey, String
+    protected SCGeneralException(HttpStatus status, ISCErrorCode errorCode, String
             errorMessage) {
         super(errorMessage);
         this.status = status;
-        this.errorKey = errorKey;
+        this.errorCode = errorCode;
         this.errorMessage = errorMessage;
     }
 
     public Map<String, String> toErrorMap() {
-        return Map.of(errorKey, errorMessage);
+        return Map.of(errorCode.code(), errorMessage);
     }
 }
