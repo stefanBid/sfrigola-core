@@ -13,4 +13,6 @@ public interface ISCUserService {
 
     boolean createUser(CreateSCUserRequestDto userToCreate, String hashedPass);
 
+    boolean updatePreferredLang(String newLangCode);
+
 }

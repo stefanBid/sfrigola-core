@@ -17,5 +17,8 @@ public record SCUserInternalDto(
         String lastName
 ) implements Serializable {
 
+    public static SCUserInternalDto anonymous() {
+        return new SCUserInternalDto(null, null, "anonymous", "anonymous", null, null, false, null, null);
+    }
 
 }

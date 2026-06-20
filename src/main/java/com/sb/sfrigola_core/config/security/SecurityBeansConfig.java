@@ -42,6 +42,7 @@ public class SecurityBeansConfig {
     @Bean("authPath")
     public List<String> authPath() {
         return List.of(
+                "/api/users/**"
         );
     }
 

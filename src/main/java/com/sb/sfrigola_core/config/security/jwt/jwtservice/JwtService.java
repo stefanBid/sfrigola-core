@@ -35,6 +35,8 @@ public class JwtService implements IJWTService {
         jwtToken = Jwts.builder().issuer("Sfrigola Core").subject("JWT Token")
                 .claim("username", fetchedUser.username())
                 .claim("email", fetchedUser.email())
+                .claim("id", fetchedUser.publicId())
+                .claim("preferredLang", fetchedUser.preferredLang())
                 .claim("roles", authentication.getAuthorities().stream().map(GrantedAuthority::getAuthority).collect(Collectors.joining(",")))
                 .issuedAt(tokenDates.issuedAt())
                 .expiration(tokenDates.expiration())

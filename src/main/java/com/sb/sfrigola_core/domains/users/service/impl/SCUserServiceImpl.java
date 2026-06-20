@@ -1,11 +1,15 @@
 package com.sb.sfrigola_core.domains.users.service.impl;
 
 import com.sb.sfrigola_core.common.exception.ex.DataCorruptionException;
+import com.sb.sfrigola_core.common.exception.ex.NoRowsAffectedException;
+import com.sb.sfrigola_core.common.util.SCAuthenticationUtils;
+import com.sb.sfrigola_core.domains.languages.service.ILanguageService;
 import com.sb.sfrigola_core.domains.users.dto.CreateSCUserRequestDto;
 import com.sb.sfrigola_core.domains.users.dto.SCUserInternalDto;
 import com.sb.sfrigola_core.domains.users.entity.SCRole;
 import com.sb.sfrigola_core.domains.users.entity.SCUser;
 import com.sb.sfrigola_core.domains.users.enums.SCUserRole;
+import com.sb.sfrigola_core.domains.users.exceptions.NoValidLangCodeToChange;
 import com.sb.sfrigola_core.domains.users.repository.ISCRoleRepository;
 import com.sb.sfrigola_core.domains.users.repository.ISCUserRepository;
 import com.sb.sfrigola_core.domains.users.service.ISCUserService;
@@ -13,6 +17,7 @@ import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
+import java.time.Instant;
 import java.util.Optional;
 
 
@@ -23,6 +28,7 @@ public class SCUserServiceImpl implements ISCUserService {
 
     private final ISCUserRepository userRepository;
     private final ISCRoleRepository roleRepository;
+    private final ILanguageService languageService;
 
     @Override
     public Optional<SCUserInternalDto> findByEmailWithRoleForInternalUse(String email) {
@@ -45,6 +51,24 @@ public class SCUserServiceImpl implements ISCUserService {
         return true;
     }
 
+    @Override
+    @Transactional
+    public boolean updatePreferredLang(String newLangCode) {
+        var result = languageService.existsByCode(newLangCode);
+        if(!result)
+            throw new NoValidLangCodeToChange("Language code " + newLangCode + " not available to set as preferred language");
+
+        var authUser = SCAuthenticationUtils.getAuthUserByContextHolder();
+        if(authUser.preferredLang().equals(newLangCode))
+            return true;
+
+        int updated = userRepository.updatePreferredLang(authUser.publicId(), newLangCode, Instant.now(), authUser.username());
+        if (updated == 0)
+            throw new NoRowsAffectedException("No rows were updated when trying to change preferred language for user with id " + authUser.publicId());
+        return true;
+    }
+
+    // PRIVATE HELPER FUNCTION
     private SCUserInternalDto convertToInternalDto(SCUser user) {
         // Implement the conversion logic here
         return new SCUserInternalDto(

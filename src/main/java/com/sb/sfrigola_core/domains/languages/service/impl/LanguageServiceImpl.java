@@ -19,12 +19,13 @@ public class LanguageServiceImpl implements ILanguageService {
 
     private final ILanguageRepository languageRepository;
 
+
     @Override
-    public SCPageableServiceResultDto<LanguageDto> getAllLanguages(SCFilterParamsServiceArgs filterArgs) {
-        var fetchedLanguages = languageRepository.findAllByIsActiveTrue(SCServiceUtils.getPageableByFilterParamsServiceArgs(filterArgs));
+    public SCPageableServiceResultDto<LanguageDto> getAllLanguages(SCFilterParamsServiceArgs filterArgs, boolean isActive) {
+        var fetchedLanguages = isActive ? languageRepository.findAllByIsActiveTrue(SCServiceUtils.getPageableByFilterParamsServiceArgs(filterArgs)) : languageRepository.findAll(SCServiceUtils.getPageableByFilterParamsServiceArgs(filterArgs));
 
         SCPageableOptionDto pageableOption = new SCPageableOptionDto(
-                fetchedLanguages.getNumber() +1,
+                fetchedLanguages.getNumber(),
                 fetchedLanguages.getSize(),
                 fetchedLanguages.getTotalElements(),
                 fetchedLanguages.getTotalPages(),
