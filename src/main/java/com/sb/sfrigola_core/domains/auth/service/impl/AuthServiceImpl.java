@@ -3,13 +3,13 @@ package com.sb.sfrigola_core.domains.auth.service.impl;
 import com.sb.sfrigola_core.common.util.SCAuthenticationUtils;
 import com.sb.sfrigola_core.config.security.jwt.jwtservice.JwtService;
 import com.sb.sfrigola_core.domains.auth.dto.LoginResponseDto;
-import com.sb.sfrigola_core.domains.auth.dto.SCUserMinimalInfoDto;
 import com.sb.sfrigola_core.domains.auth.exception.SCAuthSecuritySystemException;
 import com.sb.sfrigola_core.domains.auth.exception.SCCompromisedPasswordException;
 import com.sb.sfrigola_core.domains.auth.exception.SCUserAlreadyExistsException;
 import com.sb.sfrigola_core.domains.auth.service.IAuthService;
 import com.sb.sfrigola_core.domains.languages.service.ILanguageService;
 import com.sb.sfrigola_core.domains.users.dto.CreateSCUserRequestDto;
+import com.sb.sfrigola_core.domains.users.dto.SCUserExternalDto;
 import com.sb.sfrigola_core.domains.users.dto.SCUserInternalDto;
 import com.sb.sfrigola_core.domains.users.service.ISCUserService;
 import lombok.RequiredArgsConstructor;
@@ -51,9 +51,8 @@ public class AuthServiceImpl implements IAuthService {
                 () -> new SCAuthSecuritySystemException("Authenticated user not found in security context")
         );
 
-        SCUserMinimalInfoDto userExternalDto = toMinimalDto(userAuth);
 
-        return new LoginResponseDto(userExternalDto, userAuth.role().getAuthority(), token );
+        return new LoginResponseDto(toMinimalDto(userAuth), userAuth.role().getAuthority(), token );
     }
 
     @Override
@@ -77,8 +76,8 @@ public class AuthServiceImpl implements IAuthService {
 
     }
 
-    private SCUserMinimalInfoDto toMinimalDto(SCUserInternalDto internal) {
-        return new SCUserMinimalInfoDto(
+    private SCUserExternalDto toMinimalDto(SCUserInternalDto internal) {
+        return SCUserExternalDto.minimalInfo(
                 internal.publicId(),
                 internal.username(),
                 internal.email(),

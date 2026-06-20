@@ -13,6 +13,8 @@ public interface ISCUserRepository extends JpaRepository<SCUser, Long> {
 
     boolean existsByEmail(String email);
 
+    Optional<SCUser> findByPublicId(UUID publicId);
+
     @Query("SELECT u FROM SCUser u JOIN FETCH u.role WHERE u.email = :username")
     Optional<SCUser> findByEmailWithRole(String username);
 

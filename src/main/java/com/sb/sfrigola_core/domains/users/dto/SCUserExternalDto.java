@@ -14,6 +14,9 @@ public record SCUserExternalDto(
         String avatarUrl,
         String bio
 ) implements Serializable {
+    public static SCUserExternalDto minimalInfo(UUID publicId, String username, String email, String preferredLang, boolean isActive, String firstName, String lastName) {
+        return new SCUserExternalDto(publicId, username, email, preferredLang, isActive, firstName, lastName, null, null);
+    }
 
 
 }

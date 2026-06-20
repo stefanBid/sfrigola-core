@@ -5,7 +5,10 @@ import com.sb.sfrigola_core.common.exception.ex.NoRowsAffectedException;
 import com.sb.sfrigola_core.common.util.SCAuthenticationUtils;
 import com.sb.sfrigola_core.domains.languages.service.ILanguageService;
 import com.sb.sfrigola_core.domains.users.dto.CreateSCUserRequestDto;
+import com.sb.sfrigola_core.domains.users.dto.SCUserExternalDto;
 import com.sb.sfrigola_core.domains.users.dto.SCUserInternalDto;
+import com.sb.sfrigola_core.domains.users.dto.UpdateProfileDto;
+import jakarta.persistence.EntityNotFoundException;
 import com.sb.sfrigola_core.domains.users.entity.SCRole;
 import com.sb.sfrigola_core.domains.users.entity.SCUser;
 import com.sb.sfrigola_core.domains.users.enums.SCUserRole;
@@ -68,6 +71,22 @@ public class SCUserServiceImpl implements ISCUserService {
         return true;
     }
 
+    @Override
+    @Transactional
+    public SCUserExternalDto updateProfile(UpdateProfileDto dto) {
+        var authUser = SCAuthenticationUtils.getAuthUserByContextHolder();
+        SCUser user = userRepository.findByPublicId(authUser.publicId())
+                .orElseThrow(() -> new EntityNotFoundException("User not found: " + authUser.publicId()));
+        // Safe Update: only update fields that are not null and different from current values
+        if (dto.firstName() != null && !dto.firstName().equals(user.getFirstName())) user.setFirstName(dto.firstName());
+        if (dto.lastName()  != null && !dto.lastName().equals(user.getLastName())) user.setLastName(dto.lastName());
+        if (dto.avatarUrl() != null && !dto.avatarUrl().equals(user.getAvatarUrl())) user.setAvatarUrl(dto.avatarUrl());
+        if (dto.bio()       != null && !dto.bio().equals(user.getBio())) user.setBio(dto.bio());
+
+        //userRepository.save(user);
+        return convertToExternalDto(user);
+    }
+
     // PRIVATE HELPER FUNCTION
     private SCUserInternalDto convertToInternalDto(SCUser user) {
         // Implement the conversion logic here
@@ -84,6 +103,20 @@ public class SCUserServiceImpl implements ISCUserService {
         );
     }
 
+
+    private SCUserExternalDto convertToExternalDto(SCUser user) {
+        return new SCUserExternalDto(
+                user.getPublicId(),
+                user.getUsername(),
+                user.getEmail(),
+                user.getPreferredLang(),
+                user.isActive(),
+                user.getFirstName(),
+                user.getLastName(),
+                user.getAvatarUrl(),
+                user.getBio()
+        );
+    }
 
     private SCUser convertToEntity(CreateSCUserRequestDto userToCreate, SCRole role, String hashedPass) {
         SCUser user = new SCUser();

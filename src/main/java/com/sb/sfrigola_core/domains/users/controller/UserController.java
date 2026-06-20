@@ -1,7 +1,8 @@
 package com.sb.sfrigola_core.domains.users.controller;
 
 import com.sb.sfrigola_core.common.dto.external.response.SCGeneralResponseDto;
-import com.sb.sfrigola_core.domains.languages.service.ILanguageService;
+import com.sb.sfrigola_core.domains.users.dto.SCUserExternalDto;
+import com.sb.sfrigola_core.domains.users.dto.UpdateProfileDto;
 import com.sb.sfrigola_core.domains.users.service.ISCUserService;
 import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
@@ -20,6 +21,12 @@ public class UserController {
     public ResponseEntity<SCGeneralResponseDto<String, Void>> changePreferredLang(@PathVariable("newLangCode") String newLangCode) {
         userService.updatePreferredLang(newLangCode);
         return ResponseEntity.ok(SCGeneralResponseDto.successMutation("Preferred language changed successfully"));
+    }
+
+    @PatchMapping(value = "/profile/update", version = "1.0")
+    public ResponseEntity<SCGeneralResponseDto<SCUserExternalDto, Void>> updateProfile(@RequestBody @Valid UpdateProfileDto dto) {
+        SCUserExternalDto updated = userService.updateProfile(dto);
+        return ResponseEntity.ok(SCGeneralResponseDto.success(updated));
     }
 
 }
