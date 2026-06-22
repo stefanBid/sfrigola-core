@@ -1,5 +1,7 @@
 package com.sb.sfrigola_core.domains.users.service;
 
+import com.sb.sfrigola_core.common.dto.internal.SCFilterParamsServiceArgs;
+import com.sb.sfrigola_core.common.dto.internal.SCPageableServiceResultDto;
 import com.sb.sfrigola_core.domains.users.dto.SCUserExternalDto;
 import com.sb.sfrigola_core.domains.users.dto.UpdateProfileDto;
 
@@ -48,10 +50,16 @@ public interface ISCUserService {
 
     /**
      * Promotes the currently authenticated user to {@code ROLE_CONTRIBUTOR}.
+     * Returns {@code true} immediately if the user is already a contributor.
+     * Admins cannot downgrade their own role via this method.
      *
-     * @return {@code true} if the role was updated successfully
+     * @return {@code true} if the role was updated, or if the user was already a contributor
+     * @throws com.sb.sfrigola_core.domains.users.exceptions.NoChangeRoleToAdminException if the authenticated user has {@code ROLE_ADMIN}
      * @throws com.sb.sfrigola_core.common.exception.ex.SCNoRowsAffectedException if no rows were updated
      */
     boolean becomeContributor();
+
+
+    SCPageableServiceResultDto<SCUserExternalDto> getAllUsers(SCFilterParamsServiceArgs filterArgs);
 
 }

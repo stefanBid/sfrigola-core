@@ -1,16 +1,19 @@
 package com.sb.sfrigola_core.domains.users.service.impl;
 
+
+import com.sb.sfrigola_core.common.dto.external.option.SCPageableOptionDto;
+import com.sb.sfrigola_core.common.dto.internal.SCFilterParamsServiceArgs;
+import com.sb.sfrigola_core.common.dto.internal.SCPageableServiceResultDto;
 import com.sb.sfrigola_core.common.exception.ex.SCNoRowsAffectedException;
 import com.sb.sfrigola_core.common.util.SCAuthenticationUtils;
+import com.sb.sfrigola_core.common.util.SCServiceUtils;
 import com.sb.sfrigola_core.domains.languages.service.ILanguageService;
 import com.sb.sfrigola_core.domains.users.dto.SCUserExternalDto;
 import com.sb.sfrigola_core.domains.users.dto.UpdateProfileDto;
-import com.sb.sfrigola_core.domains.users.entity.SCRole;
 import com.sb.sfrigola_core.domains.users.entity.SCUser;
 import com.sb.sfrigola_core.domains.users.enums.SCUserRole;
 import com.sb.sfrigola_core.domains.users.exceptions.NoChangeRoleToAdminException;
 import com.sb.sfrigola_core.domains.users.exceptions.SCCanNotActiveOrDeactivateYourselfException;
-import com.sb.sfrigola_core.domains.users.repository.ISCRoleRepository;
 import com.sb.sfrigola_core.domains.users.repository.ISCUserRepository;
 import com.sb.sfrigola_core.domains.users.service.ISCUserService;
 import jakarta.persistence.EntityNotFoundException;
@@ -27,7 +30,6 @@ import java.util.UUID;
 public class SCUserServiceImpl implements ISCUserService {
 
     private final ISCUserRepository userRepository;
-    private final ISCRoleRepository roleRepository;
     private final ILanguageService languageService;
 
     @Override
@@ -61,6 +63,7 @@ public class SCUserServiceImpl implements ISCUserService {
         return true;
     }
 
+
     @Override
     @Transactional
     public boolean setUserActive(UUID publicId, boolean active) {
@@ -84,6 +87,7 @@ public class SCUserServiceImpl implements ISCUserService {
     }
 
     @Override
+    @Transactional
     public boolean becomeContributor() {
         var authUser = SCAuthenticationUtils.getAuthUserByContextHolder();
 
@@ -91,8 +95,9 @@ public class SCUserServiceImpl implements ISCUserService {
             return true;
         }
 
+        // Check if the user is admin, if so throw exception because admin cannot change their role to contributor
         if(authUser.role().isAdmin()) {
-            throw new NoChangeRoleToAdminException("Admin user cannot change their role to contributor.");
+            throw new NoChangeRoleToAdminException("Admin user cannot change is role to contributor.");
         }
 
         int updated = userRepository.updateRoleByPublicId(authUser.publicId(), SCUserRole.ROLE_CONTRIBUTOR.getAuthority(), Instant.now(), authUser.username());
@@ -100,6 +105,25 @@ public class SCUserServiceImpl implements ISCUserService {
             throw new SCNoRowsAffectedException("No rows were updated when trying to change role for user with id " + authUser.publicId());
         }
         return true;
+    }
+
+
+    @Override
+    public SCPageableServiceResultDto<SCUserExternalDto> getAllUsers(SCFilterParamsServiceArgs filterArgs) {
+        var fetchedUsers = userRepository.findAll(SCServiceUtils.getPageableByFilterParamsServiceArgs(filterArgs));
+
+        SCPageableOptionDto pageableOption = new SCPageableOptionDto(
+                fetchedUsers.getNumber(),
+                fetchedUsers.getSize(),
+                fetchedUsers.getTotalElements(),
+                fetchedUsers.getTotalPages(),
+                fetchedUsers.hasNext()
+        );
+
+        return new SCPageableServiceResultDto<>(
+                fetchedUsers.getContent().stream().map(this::convertToExternalDto).toList(),
+                pageableOption
+                );
     }
 
     // =========================================================

@@ -21,8 +21,8 @@ public class LanguagesController {
 
     @GetMapping(version = "1.0")
     public ResponseEntity<SCGeneralResponseDto<List<LanguageDto>, SCPageableOptionDto>> getLanguages(
-            @RequestParam(value="page", required = false, defaultValue = "0") String page,
-            @RequestParam(value="take", required = false, defaultValue = "10") String take,
+            @RequestParam(value="page", required = false, defaultValue = "0") int page,
+            @RequestParam(value="take", required = false, defaultValue = "10") int take,
             @RequestParam(value="sortBy", required = false, defaultValue = "name") String sortBy,
             @RequestParam(value="sort", required = false, defaultValue = "asc") String sort
     ) {

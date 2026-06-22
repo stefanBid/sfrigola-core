@@ -59,7 +59,8 @@ public class SecurityBeansConfig {
     @Bean("authPath")
     public List<String> authPath() {
         return List.of(
-                "/api/users/**",
+                "/api/users/settings/**",
+                "/api/users/profile/**",
                 "/api/auth/change-password",
                 "/api/auth/change-email"
         );

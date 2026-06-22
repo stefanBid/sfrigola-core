@@ -12,8 +12,6 @@ public class SCServiceUtils {
     public static Pageable getPageableByFilterParamsServiceArgs(SCFilterParamsServiceArgs filterParamsServiceArgs) {
         Sort.Direction direction = filterParamsServiceArgs.sort().isAsc() ? Sort.Direction.ASC : Sort.Direction.DESC;
         Sort sort = Sort.by(direction, filterParamsServiceArgs.sortBy());
-        int takeInt = Integer.parseInt(filterParamsServiceArgs.take());
-        int pageNumber = Integer.parseInt(filterParamsServiceArgs.page());
-        return PageRequest.of(pageNumber, takeInt, sort);
+        return PageRequest.of(filterParamsServiceArgs.page(), filterParamsServiceArgs.take(), sort);
     }
 }
