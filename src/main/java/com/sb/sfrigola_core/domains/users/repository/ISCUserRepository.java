@@ -28,7 +28,7 @@ public interface ISCUserRepository extends JpaRepository<SCUser, Long> {
     int updateEmail(@Param("publicId") UUID publicId, @Param("email") String email, @Param("updatedAt") java.time.Instant updatedAt, @Param("updatedBy") String updatedBy);
 
     @Modifying
-    @Query("UPDATE SCUser u SET u.pHash = :newHashedPassword, u.updatedAt = :updatedAt, u.updatedBy = :updatedBy WHERE u.publicId = :publicId")
+    @Query("UPDATE SCUser u SET u.passwordHash = :newHashedPassword, u.updatedAt = :updatedAt, u.updatedBy = :updatedBy WHERE u.publicId = :publicId")
     int updatePasswordByPublicId(@Param("publicId") UUID publicId, @Param("newHashedPassword") String newHashedPassword, @Param("updatedAt") java.time.Instant updatedAt, @Param("updatedBy") String updatedBy);
 
 }

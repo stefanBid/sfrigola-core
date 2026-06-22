@@ -22,6 +22,7 @@ public class UsernamePwAuthenticationProvider implements AuthenticationProvider 
 
     @Qualifier("scPasswordEncoder")
     private final PasswordEncoder passwordEncoder;
+
     private final ISCUserDomainBridgeService userDomainBridgeService;
 
     @Override
