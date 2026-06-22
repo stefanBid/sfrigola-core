@@ -1,6 +1,6 @@
 package com.sb.sfrigola_core.domains.users.enums;
 
-import com.sb.sfrigola_core.common.exception.ex.DataCorruptionException;
+import com.sb.sfrigola_core.common.exception.ex.SCDataCorruptionException;
 import com.sb.sfrigola_core.domains.users.exceptions.NoValidRoleFromExternalException;
 
 public enum SCUserRole {
@@ -16,7 +16,7 @@ public enum SCUserRole {
         try {
             return SCUserRole.valueOf(role.toUpperCase());
         } catch (Exception _) {
-            throw new DataCorruptionException(role, "role");
+            throw new SCDataCorruptionException(role, "role");
         }
     }
 

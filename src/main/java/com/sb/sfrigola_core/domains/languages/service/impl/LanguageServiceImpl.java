@@ -6,6 +6,7 @@ import com.sb.sfrigola_core.common.dto.internal.SCPageableServiceResultDto;
 import com.sb.sfrigola_core.common.util.SCServiceUtils;
 import com.sb.sfrigola_core.domains.languages.dto.LanguageDto;
 import com.sb.sfrigola_core.domains.languages.entity.Language;
+import com.sb.sfrigola_core.domains.languages.exception.NoValidLangCodeToChangeException;
 import com.sb.sfrigola_core.domains.languages.repository.ILanguageRepository;
 import com.sb.sfrigola_core.domains.languages.service.ILanguageService;
 import lombok.RequiredArgsConstructor;
@@ -39,8 +40,12 @@ public class LanguageServiceImpl implements ILanguageService {
     }
 
     @Override
-    public boolean existsByCode(String code) {
-        return languageRepository.existsByCode(code);
+    public boolean existsByCodeOrThrow(String code) {
+        var result = languageRepository.existsByCode(code);
+
+        if (!result)
+            throw new NoValidLangCodeToChangeException("Language code " + code + " not available to set as preferred language");
+        return true;
     }
 
     private LanguageDto toDto(Language language) {

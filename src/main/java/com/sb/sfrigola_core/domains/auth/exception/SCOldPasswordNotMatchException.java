@@ -5,11 +5,11 @@ import com.sb.sfrigola_core.domains.auth.enums.AuthErrorCode;
 import com.sb.sfrigola_core.domains.users.enums.UserErrorCode;
 import org.springframework.http.HttpStatus;
 
-public class SCUserAlreadyExistsException extends SCGeneralException {
-    public SCUserAlreadyExistsException(String message) {
+public class SCOldPasswordNotMatchException extends SCGeneralException {
+    public SCOldPasswordNotMatchException(String message) {
         super(
-                HttpStatus.CONFLICT,
-                AuthErrorCode.USER_ALREADY_EXISTS,
+                HttpStatus.BAD_REQUEST,
+                AuthErrorCode.OLD_PASSWORD_NOT_MATCH,
                 message
         );
     }

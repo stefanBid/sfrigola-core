@@ -1,18 +1,22 @@
 package com.sb.sfrigola_core.domains.users.dto;
 
+import com.sb.sfrigola_core.domains.users.constants.UserValidationCodeConstants;
+import jakarta.validation.constraints.NotBlank;
 import jakarta.validation.constraints.Size;
 
 public record UpdateProfileDto(
-        @Size(max = 100, message = "First name must not exceed 100 characters")
+        @NotBlank(message = UserValidationCodeConstants.FIRST_NAME_IS_REQUIRED)
+        @Size(max = 100, message = UserValidationCodeConstants.FIRST_NAME_TOO_LONG)
         String firstName,
 
-        @Size(max = 100, message = "Last name must not exceed 100 characters")
+        @NotBlank(message = UserValidationCodeConstants.LAST_NAME_IS_REQUIRED)
+        @Size(max = 100, message = UserValidationCodeConstants.LAST_NAME_TOO_LONG)
         String lastName,
 
-        @Size(max = 500, message = "Avatar URL must not exceed 500 characters")
+        @Size(max = 500, message = UserValidationCodeConstants.AVATAR_URL_TOO_LONG)
         String avatarUrl,
 
-        @Size(max = 1000, message = "Bio must not exceed 1000 characters")
+        @Size(max = 1000, message = UserValidationCodeConstants.BIO_TOO_LONG)
         String bio
 ) {
 }

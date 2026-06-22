@@ -12,7 +12,7 @@ import java.util.UUID;
 public interface ISCUserRepository extends JpaRepository<SCUser, Long> {
 
     boolean existsByEmail(String email);
-
+    boolean existsByUsername(String username);
     Optional<SCUser> findByPublicId(UUID publicId);
 
     @Query("SELECT u FROM SCUser u JOIN FETCH u.role WHERE u.email = :username")
@@ -21,5 +21,14 @@ public interface ISCUserRepository extends JpaRepository<SCUser, Long> {
     @Modifying
     @Query("UPDATE SCUser u SET u.preferredLang = :preferredLang, u.updatedAt = :updatedAt, u.updatedBy = :updatedBy WHERE u.publicId = :publicId")
     int updatePreferredLang(@Param("publicId") UUID publicId, @Param("preferredLang") String preferredLang, @Param("updatedAt") java.time.Instant updatedAt, @Param("updatedBy") String updatedBy);
+
+
+    @Modifying
+    @Query("UPDATE SCUser u SET u.email = :email, u.updatedAt = :updatedAt, u.updatedBy = :updatedBy WHERE u.publicId = :publicId")
+    int updateEmail(@Param("publicId") UUID publicId, @Param("email") String email, @Param("updatedAt") java.time.Instant updatedAt, @Param("updatedBy") String updatedBy);
+
+    @Modifying
+    @Query("UPDATE SCUser u SET u.pHash = :newHashedPassword, u.updatedAt = :updatedAt, u.updatedBy = :updatedBy WHERE u.publicId = :publicId")
+    int updatePasswordByPublicId(@Param("publicId") UUID publicId, @Param("newHashedPassword") String newHashedPassword, @Param("updatedAt") java.time.Instant updatedAt, @Param("updatedBy") String updatedBy);
 
 }
