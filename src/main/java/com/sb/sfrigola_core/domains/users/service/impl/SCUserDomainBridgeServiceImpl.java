@@ -43,8 +43,8 @@ public class SCUserDomainBridgeServiceImpl implements ISCUserDomainBridgeService
     @Override
     @Transactional
     public void createUserOrThrow(String username, String email, String hashedPass, String preferredLang, String firstName, String lastName) {
-        SCRole defaultRole = roleRepository.findByName(SCUserRole.ROLE_USER.name())
-                .orElseThrow(() -> new SCDataCorruptionException(SCUserRole.ROLE_USER.name(), "role"));
+        SCRole defaultRole = roleRepository.findByName(SCUserRole.ROLE_USER.getAuthority())
+                .orElseThrow(() -> new SCDataCorruptionException(SCUserRole.ROLE_USER.getAuthority(), "role"));
         userRepository.save(convertToEntity(username, email, hashedPass, preferredLang, firstName, lastName, defaultRole));
     }
 

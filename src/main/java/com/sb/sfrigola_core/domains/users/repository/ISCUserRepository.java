@@ -1,5 +1,6 @@
 package com.sb.sfrigola_core.domains.users.repository;
 
+import com.sb.sfrigola_core.domains.users.entity.SCRole;
 import com.sb.sfrigola_core.domains.users.entity.SCUser;
 import org.springframework.data.jpa.repository.JpaRepository;
 import org.springframework.data.jpa.repository.Modifying;
@@ -21,22 +22,46 @@ public interface ISCUserRepository extends JpaRepository<SCUser, Long> {
 
     @Modifying
     @Query("UPDATE SCUser u SET u.preferredLang = :preferredLang, u.updatedAt = :updatedAt, u.updatedBy = :updatedBy WHERE u.publicId = :publicId")
-    int updatePreferredLang(@Param("publicId") UUID publicId, @Param("preferredLang") String preferredLang, @Param("updatedAt") Instant updatedAt, @Param("updatedBy") String updatedBy);
+    int updatePreferredLang(@Param("publicId") UUID publicId,
+                            @Param("preferredLang") String preferredLang,
+                            @Param("updatedAt") Instant updatedAt,
+                            @Param("updatedBy") String updatedBy);
 
 
     @Modifying
     @Query("UPDATE SCUser u SET u.email = :email, u.updatedAt = :updatedAt, u.updatedBy = :updatedBy WHERE u.publicId = :publicId")
-    int updateEmail(@Param("publicId") UUID publicId, @Param("email") String email, @Param("updatedAt") Instant updatedAt, @Param("updatedBy") String updatedBy);
+    int updateEmail(@Param("publicId") UUID publicId,
+                    @Param("email") String email,
+                    @Param("updatedAt") Instant updatedAt,
+                    @Param("updatedBy") String updatedBy);
 
     @Modifying
     @Query("UPDATE SCUser u SET u.passwordHash = :newHashedPassword, u.updatedAt = :updatedAt, u.updatedBy = :updatedBy WHERE u.publicId = :publicId")
-    int updatePasswordByPublicId(@Param("publicId") UUID publicId, @Param("newHashedPassword") String newHashedPassword, @Param("updatedAt") Instant updatedAt, @Param("updatedBy") String updatedBy);
+    int updatePasswordByPublicId(@Param("publicId") UUID publicId,
+                                 @Param("newHashedPassword") String newHashedPassword,
+                                 @Param("updatedAt") Instant updatedAt,
+                                 @Param("updatedBy") String updatedBy);
 
     @Modifying
     @Query("UPDATE SCUser u SET u.isActive = :active, u.updatedAt = :updatedAt, u.updatedBy = :updatedBy WHERE u.publicId = :publicId")
-    int updateActiveByPublicId(@Param("publicId")
-                               UUID publicId, @Param("active") boolean active,
+    int updateActiveByPublicId(@Param("publicId") UUID publicId,
+                               @Param("active") boolean active,
                                @Param("updatedAt") Instant updatedAt,
                                @Param("updatedBy") String updatedBy);
+
+    @Modifying
+    @Query("""
+            UPDATE SCUser u SET u.role = (SELECT r FROM SCRole r WHERE r.name = :roleName),
+            u.updatedAt = :updatedAt, u.updatedBy = :updatedBy 
+            WHERE u.publicId = :publicId
+    """)
+    int updateRoleByPublicId(@Param("publicId")
+                             UUID publicId,
+                             @Param("roleName")
+                             String roleName,
+                             @Param("updatedAt")
+                             Instant updatedAt,
+                             @Param("updatedBy")
+                             String updatedBy);
 
 }

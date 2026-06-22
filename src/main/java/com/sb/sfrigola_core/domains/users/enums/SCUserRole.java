@@ -11,6 +11,16 @@ public enum SCUserRole {
     public String getAuthority() {
         return this.name();
     }
+    public boolean isAdmin() {
+        return this == ROLE_ADMIN;
+    }
+    public boolean isUser() {
+        return this == ROLE_USER;
+    }
+
+    public boolean isContributor() {
+        return this == ROLE_CONTRIBUTOR;
+    }
 
     public static SCUserRole fromDBString(String role) {
         try {

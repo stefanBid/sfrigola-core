@@ -1,7 +1,6 @@
 package com.sb.sfrigola_core.domains.auth.service.impl;
 
 import com.sb.sfrigola_core.common.util.SCAuthenticationUtils;
-import com.sb.sfrigola_core.config.security.exception.ex.SCUserInactiveException;
 import com.sb.sfrigola_core.config.security.jwt.jwtservice.JwtService;
 import com.sb.sfrigola_core.domains.auth.dto.ChangeEmailDto;
 import com.sb.sfrigola_core.domains.auth.dto.ChangePasswordDto;

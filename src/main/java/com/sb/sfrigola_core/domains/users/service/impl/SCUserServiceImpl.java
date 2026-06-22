@@ -5,8 +5,12 @@ import com.sb.sfrigola_core.common.util.SCAuthenticationUtils;
 import com.sb.sfrigola_core.domains.languages.service.ILanguageService;
 import com.sb.sfrigola_core.domains.users.dto.SCUserExternalDto;
 import com.sb.sfrigola_core.domains.users.dto.UpdateProfileDto;
+import com.sb.sfrigola_core.domains.users.entity.SCRole;
 import com.sb.sfrigola_core.domains.users.entity.SCUser;
+import com.sb.sfrigola_core.domains.users.enums.SCUserRole;
+import com.sb.sfrigola_core.domains.users.exceptions.NoChangeRoleToAdminException;
 import com.sb.sfrigola_core.domains.users.exceptions.SCCanNotActiveOrDeactivateYourselfException;
+import com.sb.sfrigola_core.domains.users.repository.ISCRoleRepository;
 import com.sb.sfrigola_core.domains.users.repository.ISCUserRepository;
 import com.sb.sfrigola_core.domains.users.service.ISCUserService;
 import jakarta.persistence.EntityNotFoundException;
@@ -23,6 +27,7 @@ import java.util.UUID;
 public class SCUserServiceImpl implements ISCUserService {
 
     private final ISCUserRepository userRepository;
+    private final ISCRoleRepository roleRepository;
     private final ILanguageService languageService;
 
     @Override
@@ -74,6 +79,25 @@ public class SCUserServiceImpl implements ISCUserService {
         int updated = userRepository.updateActiveByPublicId(publicId, active, Instant.now(), authUser.username());
         if (updated == 0) {
             throw new SCNoRowsAffectedException("No rows were updated when trying to change active status for user with id " + publicId);
+        }
+        return true;
+    }
+
+    @Override
+    public boolean becomeContributor() {
+        var authUser = SCAuthenticationUtils.getAuthUserByContextHolder();
+
+        if(authUser.role().isContributor()) {
+            return true;
+        }
+
+        if(authUser.role().isAdmin()) {
+            throw new NoChangeRoleToAdminException("Admin user cannot change their role to contributor.");
+        }
+
+        int updated = userRepository.updateRoleByPublicId(authUser.publicId(), SCUserRole.ROLE_CONTRIBUTOR.getAuthority(), Instant.now(), authUser.username());
+        if (updated == 0) {
+            throw new SCNoRowsAffectedException("No rows were updated when trying to change role for user with id " + authUser.publicId());
         }
         return true;
     }
