@@ -8,32 +8,50 @@ import java.util.UUID;
 /**
  * Controller-facing contract for user profile operations.
  * All methods read the authenticated user from the security context internally.
+ * Write methods follow the "succeed or throw" contract: return {@code true} on success,
+ * throw a specific exception if any step fails.
  */
 public interface ISCUserService {
 
     /**
      * Updates the profile of the currently authenticated user.
+     * Only non-null fields that differ from the current values are applied.
      *
      * @param dto DTO containing the fields to update (first name, last name, avatar, bio)
      * @return updated user data as {@link SCUserExternalDto}
+     * @throws jakarta.persistence.EntityNotFoundException if the authenticated user is not found in the database
      */
     SCUserExternalDto updateProfile(UpdateProfileDto dto);
 
     /**
      * Updates the preferred language of the currently authenticated user.
+     * If the new language code matches the current one, returns {@code true} immediately without writing.
      *
      * @param newLangCode ISO 639-1 language code (e.g. {@code "it"}, {@code "en"})
-     * @return {@code true} if update succeeded, {@code false} otherwise
+     * @return {@code true} if the update succeeded or the language was already set
+     * @throws com.sb.sfrigola_core.common.exception.ex.SCNoRowsAffectedException if no rows were updated
      */
     boolean updatePreferredLang(String newLangCode);
 
     /**
-     * Sets the active status of a user by their public ID.
+     * Sets the active status of a target user. Reserved for {@code ROLE_ADMIN}.
+     * An admin cannot change their own active status.
      *
-     * @param publicId the public ID of the user
-     * @param active the new active status
-     * @return {@code true} if the update succeeded, {@code false} otherwise
+     * @param publicId the public ID of the target user
+     * @param active   {@code true} to activate, {@code false} to deactivate
+     * @return {@code true} if the update succeeded
+     * @throws com.sb.sfrigola_core.domains.users.exceptions.SCCanNotActiveOrDeactivateYourselfException if the admin targets themselves
+     * @throws jakarta.persistence.EntityNotFoundException if no user with the given public ID exists
+     * @throws com.sb.sfrigola_core.common.exception.ex.SCNoRowsAffectedException if no rows were updated
      */
     boolean setUserActive(UUID publicId, boolean active);
+
+    /**
+     * Promotes the currently authenticated user to {@code ROLE_CONTRIBUTOR}.
+     *
+     * @return {@code true} if the role was updated successfully
+     * @throws com.sb.sfrigola_core.common.exception.ex.SCNoRowsAffectedException if no rows were updated
+     */
+    boolean becomeContributor();
 
 }
