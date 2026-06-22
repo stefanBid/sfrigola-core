@@ -6,6 +6,7 @@ import org.springframework.data.jpa.repository.Modifying;
 import org.springframework.data.jpa.repository.Query;
 import org.springframework.data.repository.query.Param;
 
+import java.time.Instant;
 import java.util.Optional;
 import java.util.UUID;
 
@@ -20,15 +21,22 @@ public interface ISCUserRepository extends JpaRepository<SCUser, Long> {
 
     @Modifying
     @Query("UPDATE SCUser u SET u.preferredLang = :preferredLang, u.updatedAt = :updatedAt, u.updatedBy = :updatedBy WHERE u.publicId = :publicId")
-    int updatePreferredLang(@Param("publicId") UUID publicId, @Param("preferredLang") String preferredLang, @Param("updatedAt") java.time.Instant updatedAt, @Param("updatedBy") String updatedBy);
+    int updatePreferredLang(@Param("publicId") UUID publicId, @Param("preferredLang") String preferredLang, @Param("updatedAt") Instant updatedAt, @Param("updatedBy") String updatedBy);
 
 
     @Modifying
     @Query("UPDATE SCUser u SET u.email = :email, u.updatedAt = :updatedAt, u.updatedBy = :updatedBy WHERE u.publicId = :publicId")
-    int updateEmail(@Param("publicId") UUID publicId, @Param("email") String email, @Param("updatedAt") java.time.Instant updatedAt, @Param("updatedBy") String updatedBy);
+    int updateEmail(@Param("publicId") UUID publicId, @Param("email") String email, @Param("updatedAt") Instant updatedAt, @Param("updatedBy") String updatedBy);
 
     @Modifying
     @Query("UPDATE SCUser u SET u.passwordHash = :newHashedPassword, u.updatedAt = :updatedAt, u.updatedBy = :updatedBy WHERE u.publicId = :publicId")
-    int updatePasswordByPublicId(@Param("publicId") UUID publicId, @Param("newHashedPassword") String newHashedPassword, @Param("updatedAt") java.time.Instant updatedAt, @Param("updatedBy") String updatedBy);
+    int updatePasswordByPublicId(@Param("publicId") UUID publicId, @Param("newHashedPassword") String newHashedPassword, @Param("updatedAt") Instant updatedAt, @Param("updatedBy") String updatedBy);
+
+    @Modifying
+    @Query("UPDATE SCUser u SET u.isActive = :active, u.updatedAt = :updatedAt, u.updatedBy = :updatedBy WHERE u.publicId = :publicId")
+    int updateActiveByPublicId(@Param("publicId")
+                               UUID publicId, @Param("active") boolean active,
+                               @Param("updatedAt") Instant updatedAt,
+                               @Param("updatedBy") String updatedBy);
 
 }

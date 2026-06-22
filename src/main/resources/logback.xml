@@ -59,7 +59,7 @@
     <!-- Includes: controllers, services, repositories, config, security, etc. -->
     <!-- Level: DEBUG = shows detailed application flow -->
     <!-- ===================== -->
-    <logger name="com.sb.jobportal"
+    <logger name="com.sb.sfrigola_core"
             level="DEBUG"
             additivity="false">
         <appender-ref ref="RollingFile"/>

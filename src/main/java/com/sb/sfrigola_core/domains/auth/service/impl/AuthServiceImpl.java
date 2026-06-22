@@ -1,6 +1,7 @@
 package com.sb.sfrigola_core.domains.auth.service.impl;
 
 import com.sb.sfrigola_core.common.util.SCAuthenticationUtils;
+import com.sb.sfrigola_core.config.security.exception.ex.SCUserInactiveException;
 import com.sb.sfrigola_core.config.security.jwt.jwtservice.JwtService;
 import com.sb.sfrigola_core.domains.auth.dto.ChangeEmailDto;
 import com.sb.sfrigola_core.domains.auth.dto.ChangePasswordDto;
@@ -13,6 +14,7 @@ import com.sb.sfrigola_core.domains.users.dto.SCUserExternalDto;
 import com.sb.sfrigola_core.domains.users.dto.SCUserInternalDto;
 import com.sb.sfrigola_core.domains.users.service.ISCUserDomainBridgeService;
 import lombok.RequiredArgsConstructor;
+import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Qualifier;
 import org.springframework.security.authentication.AuthenticationManager;
 import org.springframework.security.authentication.UsernamePasswordAuthenticationToken;
@@ -25,6 +27,7 @@ import org.springframework.transaction.annotation.Transactional;
 @Service
 @Transactional(readOnly = true)
 @RequiredArgsConstructor
+@Slf4j
 public class AuthServiceImpl implements IAuthService {
 
     private final ISCUserDomainBridgeService userDomainBridgeService;
@@ -50,7 +53,6 @@ public class AuthServiceImpl implements IAuthService {
         var userAuth = SCAuthenticationUtils.getAuthUserByAuthentication(authResult).orElseThrow(
                 () -> new SCAuthSecuritySystemException("Authenticated user not found in security context")
         );
-
 
         return new LoginResponseDto(toMinimalDto(userAuth), userAuth.role().getAuthority(), token );
     }
@@ -95,6 +97,7 @@ public class AuthServiceImpl implements IAuthService {
     }
 
     @Override
+    @Transactional
     public boolean changeRegistrationEmail(ChangeEmailDto changeEmailDto) {
         var authUser = SCAuthenticationUtils.getAuthUserByContextHolder();
         var newEmail = changeEmailDto.newEmail();
@@ -114,6 +117,7 @@ public class AuthServiceImpl implements IAuthService {
     }
 
     @Override
+    @Transactional
     public boolean changeAuthPassword(ChangePasswordDto changePasswordDto) {
         var authUser = SCAuthenticationUtils.getAuthUserByContextHolder();
 
@@ -121,7 +125,7 @@ public class AuthServiceImpl implements IAuthService {
                 .orElseThrow(() -> new SCAuthSecuritySystemException("Authenticated user not found in database"));
 
         // Check 1: Old Password is the same as in DB
-        if(passwordEncoder.matches(changePasswordDto.oldPassword(), authUserWithPass.pHash())){
+        if(!passwordEncoder.matches(changePasswordDto.oldPassword(), authUserWithPass.pHash())){
             throw new SCOldPasswordNotMatchException("Old password is incorrect");
         }
 
@@ -137,7 +141,7 @@ public class AuthServiceImpl implements IAuthService {
         }
 
         // Check 4: New Password and Confirm New Password doesn't match
-        if(changePasswordDto.newPassword().equals(changePasswordDto.confirmNewPassword())){
+        if(!changePasswordDto.newPassword().equals(changePasswordDto.confirmNewPassword())){
             throw new SCPasswordAndConfirmationPasswordDoesntMatchException("New password and confirmation password doesn't match");
         }
 

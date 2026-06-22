@@ -29,4 +29,7 @@ public class UserValidationCodeConstants {
     public static final String AVATAR_URL_TOO_LONG          = "AVATAR_URL_TOO_LONG";
     public static final String BIO_TOO_LONG                 = "BIO_TOO_LONG";
 
+
+    // --- ACTIVE STATUS ---
+    public static final String IS_ACTIVE_IS_REQUIRED        = "IS_ACTIVE_IS_REQUIRED";
 }

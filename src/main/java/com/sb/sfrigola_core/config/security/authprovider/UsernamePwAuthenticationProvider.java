@@ -1,6 +1,7 @@
 package com.sb.sfrigola_core.config.security.authprovider;
 
 import com.sb.sfrigola_core.config.security.exception.ex.SCBadCredentialException;
+import com.sb.sfrigola_core.config.security.exception.ex.SCUserInactiveException;
 import com.sb.sfrigola_core.domains.users.service.ISCUserDomainBridgeService;
 import lombok.RequiredArgsConstructor;
 import org.jspecify.annotations.Nullable;
@@ -36,10 +37,15 @@ public class UsernamePwAuthenticationProvider implements AuthenticationProvider 
                 () -> new SCBadCredentialException("Invalid credentials")
         );
 
-        // STEP 3: Extract User role and convert to Spring Security GrantedAuthority
+        // STEP 3: Check if user is active
+        if(!user.isActive()) {
+            throw new SCUserInactiveException("User is inactive");
+        }
+
+        // STEP 4: Extract User role and convert to Spring Security GrantedAuthority
         List<SimpleGrantedAuthority> authorities = List.of(new SimpleGrantedAuthority(user.role().getAuthority()));
 
-        // STEP 4: Verify password using personal Password encoder Bean
+        // STEP 5: Verify password using personal Password encoder Bean
         if (passwordEncoder.matches(pwd, user.pHash())) {
             return new UsernamePasswordAuthenticationToken(user, null, authorities);
         } else {

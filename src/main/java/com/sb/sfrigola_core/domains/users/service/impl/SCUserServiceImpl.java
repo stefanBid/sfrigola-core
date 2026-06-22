@@ -6,6 +6,7 @@ import com.sb.sfrigola_core.domains.languages.service.ILanguageService;
 import com.sb.sfrigola_core.domains.users.dto.SCUserExternalDto;
 import com.sb.sfrigola_core.domains.users.dto.UpdateProfileDto;
 import com.sb.sfrigola_core.domains.users.entity.SCUser;
+import com.sb.sfrigola_core.domains.users.exceptions.SCCanNotActiveOrDeactivateYourselfException;
 import com.sb.sfrigola_core.domains.users.repository.ISCUserRepository;
 import com.sb.sfrigola_core.domains.users.service.ISCUserService;
 import jakarta.persistence.EntityNotFoundException;
@@ -14,6 +15,7 @@ import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
 import java.time.Instant;
+import java.util.UUID;
 
 @Service
 @Transactional(readOnly = true)
@@ -34,6 +36,10 @@ public class SCUserServiceImpl implements ISCUserService {
         if (dto.lastName()  != null && !dto.lastName().equals(user.getLastName()))   user.setLastName(dto.lastName());
         if (dto.avatarUrl() != null && !dto.avatarUrl().equals(user.getAvatarUrl())) user.setAvatarUrl(dto.avatarUrl());
         if (dto.bio()       != null && !dto.bio().equals(user.getBio()))             user.setBio(dto.bio());
+
+        user.setUpdatedAt(Instant.now());
+        user.setUpdatedBy(authUser.username());
+
         return convertToExternalDto(user);
     }
 
@@ -47,6 +53,28 @@ public class SCUserServiceImpl implements ISCUserService {
         int updated = userRepository.updatePreferredLang(authUser.publicId(), newLangCode, Instant.now(), authUser.username());
         if (updated == 0)
             throw new SCNoRowsAffectedException("No rows were updated when trying to change preferred language for user with id " + authUser.publicId());
+        return true;
+    }
+
+    @Override
+    @Transactional
+    public boolean setUserActive(UUID publicId, boolean active) {
+        var authUser = SCAuthenticationUtils.getAuthUserByContextHolder();
+
+        // Check if publicId is not the admin auth publicId
+        if(authUser.publicId().equals(publicId)) {
+            throw new SCCanNotActiveOrDeactivateYourselfException("Admin user cannot change their own active status.");
+        }
+
+        var scUserByPublicId = userRepository.findByPublicId(publicId)
+                .orElseThrow(() -> new EntityNotFoundException("User not found with public ID: " + publicId));
+        if (scUserByPublicId.isActive() == active) {
+            return true;
+        }
+        int updated = userRepository.updateActiveByPublicId(publicId, active, Instant.now(), authUser.username());
+        if (updated == 0) {
+            throw new SCNoRowsAffectedException("No rows were updated when trying to change active status for user with id " + publicId);
+        }
         return true;
     }
 
