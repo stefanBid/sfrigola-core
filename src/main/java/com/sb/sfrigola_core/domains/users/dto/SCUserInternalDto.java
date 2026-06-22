@@ -1,5 +1,6 @@
 package com.sb.sfrigola_core.domains.users.dto;
 
+import com.sb.sfrigola_core.common.constant.SCGeneralConstants;
 import com.sb.sfrigola_core.domains.users.enums.SCUserRole;
 
 import java.io.Serializable;
@@ -19,6 +20,10 @@ public record SCUserInternalDto(
 
     public static SCUserInternalDto anonymous() {
         return new SCUserInternalDto(null, null, "anonymous", "anonymous", null, null, false, null, null);
+    }
+
+    public static SCUserInternalDto system() {
+        return new SCUserInternalDto(null, null, SCGeneralConstants.SYSTEM_USERNAME, SCGeneralConstants.SYSTEM_USERNAME, null, null, true, null, null);
     }
 
 }
