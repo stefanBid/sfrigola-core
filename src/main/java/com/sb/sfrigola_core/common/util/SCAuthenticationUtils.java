@@ -1,12 +1,11 @@
 package com.sb.sfrigola_core.common.util;
 
-import com.sb.sfrigola_core.domains.users.dto.SCUserInternalDto;
+import com.sb.sfrigola_core.common.models.context.SCAuthUser;
 import org.springframework.security.core.Authentication;
 import org.springframework.security.core.context.SecurityContextHolder;
 
 import java.util.Objects;
 import java.util.Optional;
-import java.util.UUID;
 
 public class SCAuthenticationUtils {
 
@@ -14,27 +13,27 @@ public class SCAuthenticationUtils {
         throw new AssertionError("Cannot instantiate SCAuthenticationUtils");
     }
 
-    public static SCUserInternalDto getAuthUserByContextHolder() {
+    public static SCAuthUser getAuthUserByContextHolder() {
         Authentication authentication = SecurityContextHolder.getContext().getAuthentication();
 
         if (authentication == null || !authentication.isAuthenticated() || Objects.equals(authentication.getPrincipal(), "anonymousUser")) {
-            return SCUserInternalDto.anonymous();
+            return SCAuthUser.anonymous();
         }
         Object principal = authentication.getPrincipal();
 
-        if (principal instanceof SCUserInternalDto scAuthUser) {
+        if (principal instanceof SCAuthUser scAuthUser) {
             return scAuthUser;
         }
-        return SCUserInternalDto.anonymous();
+        return SCAuthUser.anonymous();
     }
 
     public static String getAuthUser() {
         return getAuthUserByContextHolder().username();
     }
 
-    public static Optional<SCUserInternalDto> getAuthUserByAuthentication(Authentication authentication) {
+    public static Optional<SCAuthUser> getAuthUserByAuthentication(Authentication authentication) {
         Object principal = authentication.getPrincipal();
-        if (principal instanceof SCUserInternalDto scAuthUser) {
+        if (principal instanceof SCAuthUser scAuthUser) {
             return Optional.of(scAuthUser);
         }
         return Optional.empty();

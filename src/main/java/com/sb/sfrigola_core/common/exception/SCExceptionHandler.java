@@ -1,6 +1,6 @@
 package com.sb.sfrigola_core.common.exception;
 
-import com.sb.sfrigola_core.common.dto.external.response.SCGeneralResponseDto;
+import com.sb.sfrigola_core.common.dto.response.SCGeneralResponseDto;
 import com.sb.sfrigola_core.common.enums.GeneralErrorCode;
 import com.sb.sfrigola_core.common.exception.ex.SCGeneralException;
 import com.sb.sfrigola_core.common.util.SCErrorDataBuilderUtils;

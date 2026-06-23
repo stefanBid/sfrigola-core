@@ -1,4 +1,4 @@
-package com.sb.sfrigola_core.common.dto.external.option;
+package com.sb.sfrigola_core.common.dto.option;
 
 import java.io.Serializable;
 

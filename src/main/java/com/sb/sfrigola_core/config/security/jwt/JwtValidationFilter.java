@@ -4,8 +4,8 @@ import com.sb.sfrigola_core.common.constant.SCGeneralConstants;
 import com.sb.sfrigola_core.common.enums.GeneralErrorCode;
 import com.sb.sfrigola_core.common.util.SCErrorDataBuilderUtils;
 import com.sb.sfrigola_core.config.security.exception.SecurityErrorCode;
-import com.sb.sfrigola_core.domains.users.dto.SCUserInternalDto;
-import com.sb.sfrigola_core.domains.users.enums.SCUserRole;
+import com.sb.sfrigola_core.common.models.context.SCAuthUser;
+import com.sb.sfrigola_core.common.enums.SCUserRole;
 import io.jsonwebtoken.Claims;
 import io.jsonwebtoken.ExpiredJwtException;
 import io.jsonwebtoken.Jwts;
@@ -81,7 +81,7 @@ public class JwtValidationFilter extends OncePerRequestFilter {
 
                 assert username != null && publicId != null && roles != null;
                 Authentication authentication = new UsernamePasswordAuthenticationToken(
-                        new SCUserInternalDto(
+                        new SCAuthUser(
                                 UUID.fromString(publicId),
                                 SCUserRole.fromDBString(roles.split(",")[0].trim()),
                                 username,

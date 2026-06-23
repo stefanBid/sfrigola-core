@@ -1,11 +1,11 @@
 package com.sb.sfrigola_core.domains.auth.dto;
 
-import com.sb.sfrigola_core.domains.users.dto.SCUserExternalDto;
+import com.sb.sfrigola_core.domains.users.dto.SCUserDto;
 
 import java.io.Serializable;
 
 public record LoginResponseDto(
-        SCUserExternalDto user,
+        SCUserDto user,
         String role,
         String token
 ) implements Serializable {

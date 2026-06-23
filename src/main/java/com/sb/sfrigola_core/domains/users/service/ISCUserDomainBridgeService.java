@@ -1,6 +1,6 @@
 package com.sb.sfrigola_core.domains.users.service;
 
-import com.sb.sfrigola_core.domains.users.dto.SCUserInternalDto;
+import com.sb.sfrigola_core.common.models.context.SCAuthUser;
 
 import java.util.Optional;
 import java.util.UUID;
@@ -16,9 +16,9 @@ public interface ISCUserDomainBridgeService {
      * Finds a user by email and loads their role — intended for auth pipeline only.
      *
      * @param email the user's email address
-     * @return {@link Optional} containing {@link SCUserInternalDto} if found, empty otherwise
+     * @return {@link Optional} containing {@link SCAuthUser} if found, empty otherwise
      */
-    Optional<SCUserInternalDto> findByEmailWithRole(String email);
+    Optional<SCAuthUser> findByEmailWithRole(String email);
 
     /**
      * Checks whether a user with the given email already exists.

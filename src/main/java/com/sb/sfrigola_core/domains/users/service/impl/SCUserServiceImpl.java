@@ -1,21 +1,22 @@
 package com.sb.sfrigola_core.domains.users.service.impl;
 
 
-import com.sb.sfrigola_core.common.dto.external.option.SCPageableOptionDto;
-import com.sb.sfrigola_core.common.dto.internal.SCFilterParamsServiceArgs;
-import com.sb.sfrigola_core.common.dto.internal.SCPageableServiceResultDto;
+import com.sb.sfrigola_core.common.dto.option.SCPagedOptionDto;
+import com.sb.sfrigola_core.common.models.contracts.SCFilterQuery;
+import com.sb.sfrigola_core.common.models.contracts.SCPagedResult;
 import com.sb.sfrigola_core.common.exception.ex.SCNoRowsAffectedException;
 import com.sb.sfrigola_core.common.util.SCAuthenticationUtils;
-import com.sb.sfrigola_core.common.util.SCServiceUtils;
+import com.sb.sfrigola_core.common.util.SCPaginationUtils;
 import com.sb.sfrigola_core.domains.languages.service.ILanguageService;
-import com.sb.sfrigola_core.domains.users.dto.SCUserExternalDto;
+import com.sb.sfrigola_core.domains.users.dto.SCUserDto;
 import com.sb.sfrigola_core.domains.users.dto.UpdateProfileDto;
 import com.sb.sfrigola_core.domains.users.entity.SCUser;
-import com.sb.sfrigola_core.domains.users.enums.SCUserRole;
+import com.sb.sfrigola_core.common.enums.SCUserRole;
 import com.sb.sfrigola_core.domains.users.exceptions.NoChangeRoleToAdminException;
 import com.sb.sfrigola_core.domains.users.exceptions.SCCanNotActiveOrDeactivateYourselfException;
 import com.sb.sfrigola_core.domains.users.repository.ISCUserRepository;
 import com.sb.sfrigola_core.domains.users.service.ISCUserService;
+import jakarta.annotation.Nullable;
 import jakarta.persistence.EntityNotFoundException;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
@@ -34,7 +35,7 @@ public class SCUserServiceImpl implements ISCUserService {
 
     @Override
     @Transactional
-    public SCUserExternalDto updateProfile(UpdateProfileDto dto) {
+    public SCUserDto updateProfile(UpdateProfileDto dto) {
         var authUser = SCAuthenticationUtils.getAuthUserByContextHolder();
         SCUser user = userRepository.findByPublicId(authUser.publicId())
                 .orElseThrow(() -> new EntityNotFoundException("User not found: " + authUser.publicId()));
@@ -109,29 +110,24 @@ public class SCUserServiceImpl implements ISCUserService {
 
 
     @Override
-    public SCPageableServiceResultDto<SCUserExternalDto> getAllUsers(SCFilterParamsServiceArgs filterArgs) {
-        var fetchedUsers = userRepository.findAll(SCServiceUtils.getPageableByFilterParamsServiceArgs(filterArgs));
+    public SCPagedResult<SCUserDto> getAllUsers(SCFilterQuery<Void> filterQuery, @Nullable Boolean active) {
+        var pageable = SCPaginationUtils.toPageable(filterQuery);
+        var fetchedUsers = userRepository.findAllUsersByParams(pageable, filterQuery.searchKey(), active);
 
-        SCPageableOptionDto pageableOption = new SCPageableOptionDto(
-                fetchedUsers.getNumber(),
-                fetchedUsers.getSize(),
-                fetchedUsers.getTotalElements(),
-                fetchedUsers.getTotalPages(),
-                fetchedUsers.hasNext()
-        );
+        SCPagedOptionDto pageableOption = SCPaginationUtils.toPagedOption(fetchedUsers);
 
-        return new SCPageableServiceResultDto<>(
+        return new SCPagedResult<>(
                 fetchedUsers.getContent().stream().map(this::convertToExternalDto).toList(),
                 pageableOption
-                );
+        );
     }
 
     // =========================================================
     // PRIVATE
     // =========================================================
 
-    private SCUserExternalDto convertToExternalDto(SCUser user) {
-        return new SCUserExternalDto(
+    private SCUserDto convertToExternalDto(SCUser user) {
+        return new SCUserDto(
                 user.getPublicId(),
                 user.getUsername(),
                 user.getEmail(),

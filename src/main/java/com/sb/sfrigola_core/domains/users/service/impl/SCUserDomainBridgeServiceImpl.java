@@ -2,10 +2,10 @@ package com.sb.sfrigola_core.domains.users.service.impl;
 
 import com.sb.sfrigola_core.common.exception.ex.SCDataCorruptionException;
 import com.sb.sfrigola_core.common.exception.ex.SCNoRowsAffectedException;
-import com.sb.sfrigola_core.domains.users.dto.SCUserInternalDto;
+import com.sb.sfrigola_core.common.models.context.SCAuthUser;
 import com.sb.sfrigola_core.domains.users.entity.SCRole;
 import com.sb.sfrigola_core.domains.users.entity.SCUser;
-import com.sb.sfrigola_core.domains.users.enums.SCUserRole;
+import com.sb.sfrigola_core.common.enums.SCUserRole;
 import com.sb.sfrigola_core.domains.users.repository.ISCRoleRepository;
 import com.sb.sfrigola_core.domains.users.repository.ISCUserRepository;
 import com.sb.sfrigola_core.domains.users.service.ISCUserDomainBridgeService;
@@ -26,7 +26,7 @@ public class SCUserDomainBridgeServiceImpl implements ISCUserDomainBridgeService
     private final ISCRoleRepository roleRepository;
 
     @Override
-    public Optional<SCUserInternalDto> findByEmailWithRole(String email) {
+    public Optional<SCAuthUser> findByEmailWithRole(String email) {
         return userRepository.findByEmailWithRole(email).map(this::convertToInternalDto);
     }
 
@@ -68,8 +68,8 @@ public class SCUserDomainBridgeServiceImpl implements ISCUserDomainBridgeService
     // PRIVATE
     // =========================================================
 
-    private SCUserInternalDto convertToInternalDto(SCUser user) {
-        return new SCUserInternalDto(
+    private SCAuthUser convertToInternalDto(SCUser user) {
+        return new SCAuthUser(
                 user.getPublicId(),
                 SCUserRole.fromDBString(user.getRole().getName()),
                 user.getUsername(),

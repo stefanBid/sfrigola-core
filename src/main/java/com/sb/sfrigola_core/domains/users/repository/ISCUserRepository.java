@@ -1,7 +1,8 @@
 package com.sb.sfrigola_core.domains.users.repository;
 
-import com.sb.sfrigola_core.domains.users.entity.SCRole;
 import com.sb.sfrigola_core.domains.users.entity.SCUser;
+import org.springframework.data.domain.Page;
+import org.springframework.data.domain.Pageable;
 import org.springframework.data.jpa.repository.JpaRepository;
 import org.springframework.data.jpa.repository.Modifying;
 import org.springframework.data.jpa.repository.Query;
@@ -16,6 +17,20 @@ public interface ISCUserRepository extends JpaRepository<SCUser, Long> {
     boolean existsByEmail(String email);
     boolean existsByUsername(String username);
     Optional<SCUser> findByPublicId(UUID publicId);
+
+    @Query("""
+            SELECT u FROM SCUser u
+            WHERE (:searchKey IS NULL OR LOWER(u.username)  LIKE LOWER(CONCAT('%', :searchKey, '%'))
+                                     OR LOWER(u.firstName) LIKE LOWER(CONCAT('%', :searchKey, '%'))
+                                     OR LOWER(u.lastName)  LIKE LOWER(CONCAT('%', :searchKey, '%'))
+                                     OR LOWER(u.email)     LIKE LOWER(CONCAT('%', :searchKey, '%')))
+            AND   (:active IS NULL OR u.isActive = :active)
+    """)
+    Page<SCUser> findAllUsersByParams(
+            Pageable pageable,
+            @Param("searchKey") String searchKey,
+            @Param("active") Boolean active
+    );
 
     @Query("SELECT u FROM SCUser u JOIN FETCH u.role WHERE u.email = :username")
     Optional<SCUser> findByEmailWithRole(String username);
@@ -52,7 +67,7 @@ public interface ISCUserRepository extends JpaRepository<SCUser, Long> {
     @Modifying
     @Query("""
             UPDATE SCUser u SET u.role = (SELECT r FROM SCRole r WHERE r.name = :roleName),
-            u.updatedAt = :updatedAt, u.updatedBy = :updatedBy 
+            u.updatedAt = :updatedAt, u.updatedBy = :updatedBy
             WHERE u.publicId = :publicId
     """)
     int updateRoleByPublicId(@Param("publicId")

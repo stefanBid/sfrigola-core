@@ -1,6 +1,6 @@
 package com.sb.sfrigola_core.domains.auth.controller;
 
-import com.sb.sfrigola_core.common.dto.external.response.SCGeneralResponseDto;
+import com.sb.sfrigola_core.common.dto.response.SCGeneralResponseDto;
 import com.sb.sfrigola_core.domains.auth.dto.*;
 import com.sb.sfrigola_core.domains.auth.service.IAuthService;
 import jakarta.validation.Valid;

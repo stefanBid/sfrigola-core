@@ -9,8 +9,8 @@ import com.sb.sfrigola_core.domains.auth.dto.RegisterUserDto;
 import com.sb.sfrigola_core.domains.auth.exception.*;
 import com.sb.sfrigola_core.domains.auth.service.IAuthService;
 import com.sb.sfrigola_core.domains.languages.service.ILanguageService;
-import com.sb.sfrigola_core.domains.users.dto.SCUserExternalDto;
-import com.sb.sfrigola_core.domains.users.dto.SCUserInternalDto;
+import com.sb.sfrigola_core.domains.users.dto.SCUserDto;
+import com.sb.sfrigola_core.common.models.context.SCAuthUser;
 import com.sb.sfrigola_core.domains.users.service.ISCUserDomainBridgeService;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
@@ -149,8 +149,8 @@ public class AuthServiceImpl implements IAuthService {
         return true;
     }
 
-    private SCUserExternalDto toMinimalDto(SCUserInternalDto internal) {
-        return SCUserExternalDto.minimalInfo(
+    private SCUserDto toMinimalDto(SCAuthUser internal) {
+        return SCUserDto.minimalInfo(
                 internal.publicId(),
                 internal.username(),
                 internal.email(),

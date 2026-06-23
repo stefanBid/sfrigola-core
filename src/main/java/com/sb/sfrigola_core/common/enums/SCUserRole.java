@@ -1,4 +1,4 @@
-package com.sb.sfrigola_core.domains.users.enums;
+package com.sb.sfrigola_core.common.enums;
 
 import com.sb.sfrigola_core.common.exception.ex.SCDataCorruptionException;
 import com.sb.sfrigola_core.domains.users.exceptions.NoValidRoleFromExternalException;

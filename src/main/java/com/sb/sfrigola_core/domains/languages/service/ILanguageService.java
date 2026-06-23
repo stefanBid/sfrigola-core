@@ -1,7 +1,7 @@
 package com.sb.sfrigola_core.domains.languages.service;
 
-import com.sb.sfrigola_core.common.dto.internal.SCFilterParamsServiceArgs;
-import com.sb.sfrigola_core.common.dto.internal.SCPageableServiceResultDto;
+import com.sb.sfrigola_core.common.models.contracts.SCFilterQuery;
+import com.sb.sfrigola_core.common.models.contracts.SCPagedResult;
 import com.sb.sfrigola_core.domains.languages.dto.LanguageDto;
 
 /**
@@ -14,11 +14,11 @@ public interface ILanguageService {
     /**
      * Returns a paginated list of languages, optionally filtered by active status.
      *
-     * @param filterArgs pagination and sorting parameters
-     * @param isActive   {@code true} to return only active languages, {@code false} for inactive ones
+     * @param filterQuery pagination and sorting parameters
+     * @param isActive    {@code true} to return only active languages, {@code false} or {@code null} to return all languages regardless of status
      * @return paginated result wrapping a list of {@link LanguageDto}
      */
-    SCPageableServiceResultDto<LanguageDto> getAllLanguages(SCFilterParamsServiceArgs filterArgs, boolean isActive);
+    SCPagedResult<LanguageDto> getAllLanguages(SCFilterQuery<Void> filterQuery, Boolean isActive);
 
     /**
      * Verifies that a language with the given ISO code exists and is valid, or throws.

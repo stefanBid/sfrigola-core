@@ -1,9 +1,10 @@
 package com.sb.sfrigola_core.domains.users.service;
 
-import com.sb.sfrigola_core.common.dto.internal.SCFilterParamsServiceArgs;
-import com.sb.sfrigola_core.common.dto.internal.SCPageableServiceResultDto;
-import com.sb.sfrigola_core.domains.users.dto.SCUserExternalDto;
+import com.sb.sfrigola_core.common.models.contracts.SCFilterQuery;
+import com.sb.sfrigola_core.common.models.contracts.SCPagedResult;
+import com.sb.sfrigola_core.domains.users.dto.SCUserDto;
 import com.sb.sfrigola_core.domains.users.dto.UpdateProfileDto;
+import jakarta.annotation.Nullable;
 
 import java.util.UUID;
 
@@ -20,10 +21,10 @@ public interface ISCUserService {
      * Only non-null fields that differ from the current values are applied.
      *
      * @param dto DTO containing the fields to update (first name, last name, avatar, bio)
-     * @return updated user data as {@link SCUserExternalDto}
+     * @return updated user data as {@link SCUserDto}
      * @throws jakarta.persistence.EntityNotFoundException if the authenticated user is not found in the database
      */
-    SCUserExternalDto updateProfile(UpdateProfileDto dto);
+    SCUserDto updateProfile(UpdateProfileDto dto);
 
     /**
      * Updates the preferred language of the currently authenticated user.
@@ -60,6 +61,13 @@ public interface ISCUserService {
     boolean becomeContributor();
 
 
-    SCPageableServiceResultDto<SCUserExternalDto> getAllUsers(SCFilterParamsServiceArgs filterArgs);
+    /**
+     * Returns a paginated list of all users. Reserved for {@code ROLE_ADMIN}.
+     * No active-status filter is applied — all users are returned regardless of their status.
+     *
+     * @param filterQuery pagination and sorting parameters
+     * @return paginated result wrapping a list of {@link SCUserDto}
+     */
+    SCPagedResult<SCUserDto> getAllUsers(SCFilterQuery<Void> filterQuery, @Nullable Boolean active);
 
 }
