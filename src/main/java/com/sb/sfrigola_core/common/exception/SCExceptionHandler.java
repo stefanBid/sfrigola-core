@@ -5,6 +5,7 @@ import com.sb.sfrigola_core.common.enums.GeneralErrorCode;
 import com.sb.sfrigola_core.common.exception.ex.SCGeneralException;
 import com.sb.sfrigola_core.common.util.SCErrorDataBuilderUtils;
 import jakarta.persistence.EntityNotFoundException;
+import jakarta.validation.ConstraintViolationException;
 import org.springframework.context.MessageSourceResolvable;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
@@ -29,7 +30,7 @@ public class SCExceptionHandler {
     }
 
 
-    // 400 — Validation failed (@Validated on controller method parameters - for Query params)
+    // 400 — Validation failed (@Validated on controller method parameters - for Query params) Spring 6.1+
     @ExceptionHandler(HandlerMethodValidationException.class)
     public ResponseEntity<SCGeneralResponseDto<Void, Void>> handleValidationParamException(HandlerMethodValidationException ex, WebRequest request) {
         Map<String, String> formattedErrorMap = new HashMap<>();
@@ -39,6 +40,18 @@ public class SCExceptionHandler {
                     .map(MessageSourceResolvable::getDefaultMessage)
                     .collect(Collectors.joining(", "));
             formattedErrorMap.put(paramName, errors);
+        });
+        return SCErrorDataBuilderUtils.build(HttpStatus.BAD_REQUEST, formattedErrorMap, request);
+    }
+
+    // 400 — Validation failed (@Validated on controller class - ConstraintViolationException fallback)
+    @ExceptionHandler(ConstraintViolationException.class)
+    public ResponseEntity<SCGeneralResponseDto<Void, Void>> handleConstraintViolation(ConstraintViolationException ex, WebRequest request) {
+        Map<String, String> formattedErrorMap = new HashMap<>();
+        ex.getConstraintViolations().forEach(violation -> {
+            String path = violation.getPropertyPath().toString();
+            String paramName = path.contains(".") ? path.substring(path.lastIndexOf('.') + 1) : path;
+            formattedErrorMap.put(paramName, violation.getMessage());
         });
         return SCErrorDataBuilderUtils.build(HttpStatus.BAD_REQUEST, formattedErrorMap, request);
     }
