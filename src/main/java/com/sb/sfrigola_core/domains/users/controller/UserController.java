@@ -69,7 +69,7 @@ public class UserController {
         var filterParams =  SCFilterQuery.essentialWithSearch(searchKey, sortBy, SortDirection.fromString(sort), take, page);
 
         var serviceResult = userService.getAllUsers(filterParams, isActive);
-        return ResponseEntity.ok(SCGeneralResponseDto.success(serviceResult.content(), serviceResult.pageableOption()));
+        return ResponseEntity.ok(SCGeneralResponseDto.success(serviceResult.content(), serviceResult.pagedOptionDto()));
     }
 
 

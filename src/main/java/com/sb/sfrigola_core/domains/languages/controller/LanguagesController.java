@@ -39,6 +39,6 @@ public class LanguagesController {
 
         var filterParams = SCFilterQuery.essential(sortBy, SortDirection.fromString(sort), take, page);
         var languagesPagedResult = languageService.getAllLanguages(filterParams, isActive);
-        return ResponseEntity.ok( SCGeneralResponseDto.success(languagesPagedResult.content(), languagesPagedResult.pageableOption()));
+        return ResponseEntity.ok( SCGeneralResponseDto.success(languagesPagedResult.content(), languagesPagedResult.pagedOptionDto()));
     }
 }

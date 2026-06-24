@@ -6,6 +6,6 @@ import java.util.List;
 
 public record SCPagedResult<T>(
     List<T> content,
-    SCPagedOptionDto pageableOption
+    SCPagedOptionDto pagedOptionDto
 ) {
 }
