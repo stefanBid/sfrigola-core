@@ -4,14 +4,22 @@ on:
   pull_request:
     branches: [ "main", "master", "develop" ]
     types: [ opened, synchronize, reopened, ready_for_review ]
+  push:
+    branches: [ "main", "master", "develop" ]
+
+# If a new commit arrives while a previous run (on the same branch/PR)
+# is still in progress, cancel the older run: only the latest code matters.
+concurrency:
+  group: build-check-${{ github.workflow }}-${{ github.event.pull_request.number || github.ref }}
+  cancel-in-progress: true
 
 jobs:
   build:
     runs-on: ubuntu-latest
     # Skip the job while the PR is still a draft, to save CI minutes.
-    # The job will run once the PR is marked "Ready for review"
-    # (or on any push if it's already non-draft).
-    if: github.event.pull_request.draft == false
+    # This condition only applies to pull_request events; for push events
+    # github.event.pull_request is null, so the check evaluates to true.
+    if: github.event.pull_request.draft != true
 
     steps:
       # Checkout repository code
