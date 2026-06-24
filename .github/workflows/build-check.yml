@@ -20,7 +20,7 @@ jobs:
 
       # Install JDK 25 (matches java.version in pom.xml)
       - name: Setup JDK 25
-        uses: actions/setup-java@v4
+        uses: actions/setup-java@v5
         with:
           java-version: '25'
           distribution: 'temurin'
