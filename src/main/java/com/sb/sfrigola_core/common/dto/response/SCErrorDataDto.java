@@ -1,4 +1,4 @@
-package com.sb.sfrigola_core.common.dto.external.response;
+package com.sb.sfrigola_core.common.dto.response;
 
 import org.springframework.http.HttpStatus;
 

@@ -581,3 +581,29 @@ INSERT INTO tag_translations (tag_id, locale, label) VALUES
     (33, 'en', 'All year'),     (34, 'en', 'High protein'),
     (35, 'en', 'Low carb'),     (36, 'en', 'Low fat'),
     (37, 'en', 'Dairy free'),   (38, 'en', 'Nut free');
+
+-- Admin user
+INSERT INTO users (
+    role_id,
+    username,
+    email,
+    password_hash,
+    preferred_lang,
+    is_active,
+    first_name,
+    last_name,
+    created_by,
+    updated_by
+)
+VALUES (
+    (SELECT id FROM roles WHERE name = 'ROLE_ADMIN'),
+    'admin',
+    'admin@sfrigola.com',
+    '$2a$12$CzGNXHYb3JW.uaXImbUDZeq/9O0M/5V.JYibrrZ87OwcYB/YmpFRe',
+    'en',
+    TRUE,
+    'Admin',
+    'Sfrigola',
+    'system',
+    'system'
+);

@@ -1,6 +1,6 @@
 package com.sb.sfrigola_core.config.security;
 
-import com.sb.sfrigola_core.domains.users.enums.SCUserRole;
+import com.sb.sfrigola_core.common.enums.SCUserRole;
 import com.sb.sfrigola_core.config.security.exception.CustomAccessDeniedHandler;
 import com.sb.sfrigola_core.config.security.exception.CustomAuthenticationEntryPoint;
 import com.sb.sfrigola_core.config.security.jwt.JwtValidationFilter;
@@ -59,7 +59,7 @@ public class SecurityConfig {
 
 
     @Bean(name="scSecurityFilterChain")
-    public SecurityFilterChain securityFilterChain(HttpSecurity http) throws Exception {
+    public SecurityFilterChain securityFilterChain(HttpSecurity http) {
         return http.csrf(AbstractHttpConfigurer::disable)
                 .cors(corsConfig -> corsConfig.configurationSource(corsConfigurationSource()))
                 .authorizeHttpRequests(request -> {

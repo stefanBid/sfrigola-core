@@ -4,6 +4,8 @@ import com.sb.sfrigola_core.common.constant.SCGeneralConstants;
 import com.sb.sfrigola_core.common.enums.GeneralErrorCode;
 import com.sb.sfrigola_core.common.util.SCErrorDataBuilderUtils;
 import com.sb.sfrigola_core.config.security.exception.SecurityErrorCode;
+import com.sb.sfrigola_core.common.models.context.SCAuthUser;
+import com.sb.sfrigola_core.common.enums.SCUserRole;
 import io.jsonwebtoken.Claims;
 import io.jsonwebtoken.ExpiredJwtException;
 import io.jsonwebtoken.Jwts;
@@ -31,6 +33,7 @@ import java.nio.charset.StandardCharsets;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.UUID;
 
 @RequiredArgsConstructor
 public class JwtValidationFilter extends OncePerRequestFilter {
@@ -64,17 +67,33 @@ public class JwtValidationFilter extends OncePerRequestFilter {
                 SecretKey secretKey = Keys.hmacShaKeyFor(secret.getBytes(StandardCharsets.UTF_8));
                 Claims claims = Jwts.parser().verifyWith(secretKey).build().parseSignedClaims(jwt).getPayload();
 
-                var validator2S = validateUsernameAndRoles(claims.get("username"), claims.get("roles"));
+                var validator2S = validateClaims(claims.get("username"), claims.get("email"), claims.get("id"), claims.get("preferredLang"), claims.get("roles"));
                 if (!validator2S.isValid()) {
                     SCErrorDataBuilderUtils.handleError(request, response, objectMapper, validator2S.error(), HttpStatus.UNAUTHORIZED);
                     return;
                 }
 
                 String username = validator2S.username();
+                String email = validator2S.email();
+                String publicId = validator2S.publicId();
+                String preferredLang = validator2S.preferredLang();
                 String roles = validator2S.roles();
 
-                assert username != null && roles != null;
-                Authentication authentication = new UsernamePasswordAuthenticationToken(username, null, AuthorityUtils.commaSeparatedStringToAuthorityList(roles));
+                assert username != null && publicId != null && roles != null;
+                Authentication authentication = new UsernamePasswordAuthenticationToken(
+                        new SCAuthUser(
+                                UUID.fromString(publicId),
+                                SCUserRole.fromDBString(roles.split(",")[0].trim()),
+                                username,
+                                email,
+                                null,
+                                preferredLang,
+                                true,
+                                null,
+                                null
+                        ), null,
+                        AuthorityUtils.commaSeparatedStringToAuthorityList(roles)
+                );
                 SecurityContextHolder.getContext().setAuthentication(authentication);
             } catch (ExpiredJwtException ex) {
                 SCErrorDataBuilderUtils.handleError(request, response, objectMapper, Map.of(SecurityErrorCode.JWT_EXPIRED.code(), "JWT token has expired"), HttpStatus.UNAUTHORIZED);
@@ -111,7 +130,7 @@ public class JwtValidationFilter extends OncePerRequestFilter {
     private record TokenValidationResult(boolean isValid, Map<String, String> error, String jwt) {}
 
 
-    private record UsernameAndRoleValidationResult(boolean isValid, Map<String, String> error, String username, String roles) { }
+    private record ClaimsValidationResult(boolean isValid, Map<String, String> error, String username, String email, String publicId, String preferredLang, String roles) { }
 
 
     /**
@@ -140,23 +159,42 @@ public class JwtValidationFilter extends OncePerRequestFilter {
      * @param rolesObj the roles claim from the JWT
      * @return UsernameAndRoleValidationResult containing the validation result, any error messages, and the extracted username and roles if valid
      */
-    private UsernameAndRoleValidationResult validateUsernameAndRoles (Object usernameObj, Object rolesObj) {
+    private ClaimsValidationResult validateClaims(Object usernameObj, Object emailObj, Object idObj, Object preferredLangObj, Object rolesObj) {
         Map<String, String> er = new HashMap<>();
         String username = null;
+        String email = null;
+        String publicId = null;
+        String preferredLang = null;
         String roles = null;
 
-        if(usernameObj == null || usernameObj.toString().isBlank()){
+        if (usernameObj == null || usernameObj.toString().isBlank()) {
             er.put(SecurityErrorCode.JWT_NO_CLAIM_PARAM.code(), "Username claim is missing or empty");
         } else {
             username = usernameObj.toString();
         }
 
-        if(rolesObj == null || rolesObj.toString().isBlank()){
+        if (emailObj == null || emailObj.toString().isBlank()) {
+            er.put(SecurityErrorCode.JWT_NO_CLAIM_PARAM.code(), "Email claim is missing or empty");
+        } else {
+            email = emailObj.toString();
+        }
+
+        if (idObj == null || idObj.toString().isBlank()) {
+            er.put(SecurityErrorCode.JWT_NO_CLAIM_PARAM.code(), "Id claim is missing or empty");
+        } else {
+            publicId = idObj.toString();
+        }
+
+        if (preferredLangObj != null && !preferredLangObj.toString().isBlank()) {
+            preferredLang = preferredLangObj.toString();
+        }
+
+        if (rolesObj == null || rolesObj.toString().isBlank()) {
             er.put(SecurityErrorCode.JWT_NO_CLAIM_PARAM.code(), "Roles claim is missing or empty");
         } else {
             roles = rolesObj.toString();
         }
 
-        return new UsernameAndRoleValidationResult(er.isEmpty(), er, username, roles);
+        return new ClaimsValidationResult(er.isEmpty(), er, username, email, publicId, preferredLang, roles);
     }
 }

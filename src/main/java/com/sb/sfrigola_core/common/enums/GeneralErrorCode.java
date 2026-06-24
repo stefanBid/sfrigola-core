@@ -4,6 +4,7 @@ import com.sb.sfrigola_core.common.exception.ISCErrorCode;
 
 public enum GeneralErrorCode implements ISCErrorCode {
     DATA_CORRUPTED,
+    NO_ROWS_AFFECTED,
     ENTITY_NOT_FOUND,
     ENV_NOT_AVAILABLE,
     ILLEGAL_ARGUMENT,

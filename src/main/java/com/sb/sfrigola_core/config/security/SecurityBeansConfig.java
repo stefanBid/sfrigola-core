@@ -39,15 +39,11 @@ public class SecurityBeansConfig {
         );
     }
 
-    @Bean("authPath")
-    public List<String> authPath() {
-        return List.of(
-        );
-    }
-
     @Bean("onlyAdminPath")
     public List<String> adminPath() {
-        return List.of();
+        return List.of(
+                "/api/users/admin/**"
+        );
     }
 
     @Bean("onlyUserPath")
@@ -58,6 +54,16 @@ public class SecurityBeansConfig {
     @Bean("onlyContributorPath")
     public List<String> contributorPath() {
         return List.of();
+    }
+
+    @Bean("authPath")
+    public List<String> authPath() {
+        return List.of(
+                "/api/users/settings/**",
+                "/api/users/profile/**",
+                "/api/auth/change-password",
+                "/api/auth/change-email"
+        );
     }
 
     @Bean(name="allowedOriginsPaths")

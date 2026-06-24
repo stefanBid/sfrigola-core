@@ -1,7 +1,8 @@
 package com.sb.sfrigola_core.config.security.authprovider;
 
 import com.sb.sfrigola_core.config.security.exception.ex.SCBadCredentialException;
-import com.sb.sfrigola_core.domains.users.service.ISCUserService;
+import com.sb.sfrigola_core.config.security.exception.ex.SCUserInactiveException;
+import com.sb.sfrigola_core.domains.users.service.ISCUserDomainBridgeService;
 import lombok.RequiredArgsConstructor;
 import org.jspecify.annotations.Nullable;
 import org.springframework.beans.factory.annotation.Qualifier;
@@ -23,7 +24,7 @@ public class UsernamePwAuthenticationProvider implements AuthenticationProvider 
     @Qualifier("scPasswordEncoder")
     private final PasswordEncoder passwordEncoder;
 
-    private final ISCUserService userService;
+    private final ISCUserDomainBridgeService userDomainBridgeService;
 
     @Override
     public @Nullable Authentication authenticate(Authentication authentication) throws AuthenticationException {
@@ -32,14 +33,19 @@ public class UsernamePwAuthenticationProvider implements AuthenticationProvider 
         String pwd = Objects.requireNonNull(authentication.getCredentials()).toString();
 
         // STEP 2: Load UserDetails from DB (or any other source) using the username (email FILED)
-        var user = userService.findByEmailWithRoleForInternalUse(username).orElseThrow(
+        var user = userDomainBridgeService.findByEmailWithRole(username).orElseThrow(
                 () -> new SCBadCredentialException("Invalid credentials")
         );
 
-        // STEP 3: Extract User role and convert to Spring Security GrantedAuthority
+        // STEP 3: Check if user is active
+        if(!user.isActive()) {
+            throw new SCUserInactiveException("User is inactive");
+        }
+
+        // STEP 4: Extract User role and convert to Spring Security GrantedAuthority
         List<SimpleGrantedAuthority> authorities = List.of(new SimpleGrantedAuthority(user.role().getAuthority()));
 
-        // STEP 4: Verify password using personal Password encoder Bean
+        // STEP 5: Verify password using personal Password encoder Bean
         if (passwordEncoder.matches(pwd, user.pHash())) {
             return new UsernamePasswordAuthenticationToken(user, null, authorities);
         } else {

@@ -217,6 +217,36 @@ public interface UserRepository extends JpaRepository<User, Long> {
 }
 ```
 
+### Interfacce Service
+
+Ogni interfaccia service deve essere completamente documentata con Javadoc seguendo queste regole:
+
+- **Javadoc di classe**: descrivere il contratto generale dell'interfaccia, specificare se i metodi leggono il security context internamente o ricevono dati esplicitamente, e dichiarare il contratto "succeed or throw" se applicabile.
+- **Javadoc di metodo**: ogni metodo deve avere descrizione, `@param` per ogni parametro, `@return` che descrive il valore restituito, e `@throws` per ogni eccezione che può essere lanciata.
+- **Contratto "succeed or throw"**: i metodi write che non hanno un caso legittimo di fallimento silenzioso devono dichiararlo esplicitamente nel Javadoc di classe. Usare `@return {@code true} on success` — mai scrivere `{@code false} otherwise` se il metodo lancia eccezione invece di tornare false.
+- **`@throws` inline**: usare sempre il fully-qualified name direttamente nel tag `@throws` — nessun import aggiuntivo in cima al file solo per la documentazione.
+- **Distinzione di contratto**: separare chiaramente le interfacce controller-facing (leggono security context) da quelle internal bridge (ricevono dati grezzi). Documentare questa distinzione nel Javadoc di classe.
+
+```java
+/**
+ * Controller-facing contract for X operations.
+ * All methods read the authenticated user from the security context internally.
+ * Write methods follow the "succeed or throw" contract: return {@code true} on success,
+ * throw a specific exception if any step fails.
+ */
+public interface IXService {
+
+    /**
+     * Does something for the authenticated user.
+     *
+     * @param param description
+     * @return {@code true} if the operation succeeded
+     * @throws SpecificException if the specific condition occurs
+     */
+    boolean doSomething(String param);
+}
+```
+
 ### Gestione Eccezioni
 
 - Usare un **handler globale** con `@RestControllerAdvice`.

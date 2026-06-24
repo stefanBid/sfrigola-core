@@ -1,7 +1,7 @@
 package com.sb.sfrigola_core.common.util;
 
-import com.sb.sfrigola_core.common.dto.external.response.SCErrorDataDto;
-import com.sb.sfrigola_core.common.dto.external.response.SCGeneralResponseDto;
+import com.sb.sfrigola_core.common.dto.response.SCErrorDataDto;
+import com.sb.sfrigola_core.common.dto.response.SCGeneralResponseDto;
 import jakarta.servlet.http.HttpServletRequest;
 import jakarta.servlet.http.HttpServletResponse;
 import org.springframework.http.HttpStatus;

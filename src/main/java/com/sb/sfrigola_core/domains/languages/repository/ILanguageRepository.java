@@ -8,6 +8,5 @@ import org.springframework.data.jpa.repository.JpaRepository;
 public interface ILanguageRepository extends JpaRepository<Language, Long> {
 
     Page<Language> findAllByIsActiveTrue(Pageable pageable);
-
     boolean existsByCode(String code);
 }

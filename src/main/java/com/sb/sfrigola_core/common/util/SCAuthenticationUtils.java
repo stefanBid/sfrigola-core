@@ -1,7 +1,6 @@
 package com.sb.sfrigola_core.common.util;
 
-import com.sb.sfrigola_core.common.constant.SCGeneralConstants;
-import com.sb.sfrigola_core.domains.users.dto.SCUserInternalDto;
+import com.sb.sfrigola_core.common.models.context.SCAuthUser;
 import org.springframework.security.core.Authentication;
 import org.springframework.security.core.context.SecurityContextHolder;
 
@@ -14,26 +13,27 @@ public class SCAuthenticationUtils {
         throw new AssertionError("Cannot instantiate SCAuthenticationUtils");
     }
 
-    public static String getAuthUser() {
+    public static SCAuthUser getAuthUserByContextHolder() {
         Authentication authentication = SecurityContextHolder.getContext().getAuthentication();
 
-        if (authentication == null || !authentication.isAuthenticated() ||
-                Objects.equals(authentication.getPrincipal(), "anonymousUser")) {
-            return SCGeneralConstants.SYSTEM_USERNAME;
+        if (authentication == null || !authentication.isAuthenticated() || Objects.equals(authentication.getPrincipal(), "anonymousUser")) {
+            return SCAuthUser.anonymous();
         }
         Object principal = authentication.getPrincipal();
-        String username;
-        if (principal instanceof SCUserInternalDto scAuthUser) {
-            username = scAuthUser.email();
-        } else {
-            username = principal.toString(); // fallback
+
+        if (principal instanceof SCAuthUser scAuthUser) {
+            return scAuthUser;
         }
-        return username;
+        return SCAuthUser.anonymous();
     }
 
-    public static Optional<SCUserInternalDto> getAuthUserByAuthentication(Authentication authentication)  {
+    public static String getAuthUser() {
+        return getAuthUserByContextHolder().username();
+    }
+
+    public static Optional<SCAuthUser> getAuthUserByAuthentication(Authentication authentication) {
         Object principal = authentication.getPrincipal();
-        if (principal instanceof SCUserInternalDto scAuthUser) {
+        if (principal instanceof SCAuthUser scAuthUser) {
             return Optional.of(scAuthUser);
         }
         return Optional.empty();

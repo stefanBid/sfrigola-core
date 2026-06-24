@@ -1,23 +1,16 @@
 package com.sb.sfrigola_core.domains.auth.controller;
 
-import com.sb.sfrigola_core.common.dto.external.response.SCGeneralResponseDto;
-import com.sb.sfrigola_core.domains.auth.dto.LoginRequestDto;
-import com.sb.sfrigola_core.domains.auth.dto.LoginResponseDto;
+import com.sb.sfrigola_core.common.dto.response.SCGeneralResponseDto;
+import com.sb.sfrigola_core.domains.auth.dto.*;
 import com.sb.sfrigola_core.domains.auth.service.IAuthService;
-import com.sb.sfrigola_core.domains.users.dto.CreateSCUserRequestDto;
 import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
-import lombok.extern.slf4j.Slf4j;
 import org.springframework.http.ResponseEntity;
-import org.springframework.web.bind.annotation.PostMapping;
-import org.springframework.web.bind.annotation.RequestBody;
-import org.springframework.web.bind.annotation.RequestMapping;
-import org.springframework.web.bind.annotation.RestController;
+import org.springframework.web.bind.annotation.*;
 
 @RestController
 @RequestMapping("/auth")
 @RequiredArgsConstructor
-@Slf4j
 public class AuthController {
 
     private final IAuthService authService;
@@ -29,10 +22,21 @@ public class AuthController {
     }
 
     @PostMapping(value = "/register", version = "1.0")
-    public ResponseEntity<SCGeneralResponseDto<String, Void>> register(@RequestBody @Valid CreateSCUserRequestDto createUserRequest) {
-        log.debug("Registering user: {}", createUserRequest.username());
-        authService.registerUser(createUserRequest);
+    public ResponseEntity<SCGeneralResponseDto<String, Void>> register(@RequestBody @Valid RegisterUserDto registerUserDto) {
+        authService.registerUser(registerUserDto);
         return ResponseEntity.ok(SCGeneralResponseDto.successMutation("User registered successfully"));
+    }
+
+    @PatchMapping(value = "/change-email", version = "1.0")
+    public ResponseEntity<SCGeneralResponseDto<String, Void>> changeEmail(@RequestBody @Valid ChangeEmailDto changeEmailDto) {
+        authService.changeRegistrationEmail(changeEmailDto);
+        return ResponseEntity.ok(SCGeneralResponseDto.successMutation("Email changed successfully"));
+    }
+
+    @PatchMapping(value="/change-password", version = "1.0")
+    public ResponseEntity<SCGeneralResponseDto<String, Void>> changePassword(@RequestBody @Valid ChangePasswordDto changePasswordDto) {
+        authService.changeAuthPassword(changePasswordDto);
+        return ResponseEntity.ok(SCGeneralResponseDto.successMutation("Password changed successfully"));
     }
 
 }
