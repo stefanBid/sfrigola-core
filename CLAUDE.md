@@ -1,34 +1,37 @@
-# CLAUDE.md — Contesto di Progetto
+# CLAUDE.md — Project Context
 
-> Questo file viene letto automaticamente da Claude Code all'avvio.
-> Aggiornalo man mano che il progetto evolve.
+> This file is automatically loaded by Claude Code at startup.
+> Update it as the project evolves.
 
 ---
 
-## Identità del Progetto
+## Project Identity
 
 - **GroupId:** `com.sb`
 - **ArtifactId:** `sfrigola-core`
-- **Versione:** `0.0.1-SNAPSHOT`
-- **Package base:** `com.sb.sfrigola_core`
+- **Version:** `0.0.1-SNAPSHOT`
+- **Base package:** `com.sb.sfrigola_core`
+- **Context path:** `/sfrigola-core`
+- **Port:** configured via env `SERVER_PORT`
 
 ---
 
-## Stack Tecnologico
+## Tech Stack
 
 - **Framework:** Spring Boot 4.1.0
-- **Linguaggio:** Java 25
+- **Language:** Java 25
 - **Build tool:** Maven
 - **Database:** PostgreSQL (driver `org.postgresql`)
-- **ORM:** Spring Data JPA (Hibernate)
-- **Sicurezza:** Spring Security
-- **Validazione:** Spring Validation (Jakarta)
+- **ORM:** Spring Data JPA (Hibernate) — `ddl-auto=none` (schema managed manually via SQL)
+- **Security:** Spring Security + JWT stateless (jjwt 0.13.0)
+- **Validation:** Spring Validation (Jakarta)
 - **Web:** Spring MVC (`spring-boot-starter-webmvc`)
-- **Utilità:** Lombok
-- **Docker:** Spring Boot Docker Compose (avvio automatico dei container in dev)
+- **Utilities:** Lombok
+- **Docker:** Spring Boot Docker Compose (auto-starts containers in dev)
 - **Dev tools:** Spring Boot DevTools (hot reload)
+- **Auditing:** Spring Data JPA Auditing (`@EnableJpaAuditing`)
 
-### Dipendenze di Test
+### Test Dependencies
 
 - `spring-boot-starter-data-jpa-test`
 - `spring-boot-starter-security-test`
@@ -37,397 +40,601 @@
 
 ---
 
-## Best Practice — Spring Boot
-
-### Struttura del Progetto
-
-Il progetto segue una **struttura a feature** (package-by-feature), non a layer.
-Ogni feature è un package autonomo che contiene tutto ciò che la riguarda.
+## Actual Project Structure
 
 ```
-src/
-└── main/
-    └── java/com/sb/sfrigola_core/
-        ├── auth/            # Registrazione, login, JWT, Spring Security, ruoli
-        ├── language/        # CRUD lingue supportate, is_default, is_active
-        ├── tag/             # Vocabulary controllato, traduzioni, flusso approvazione
-        ├── category/        # Gerarchia categorie (self-referential), traduzioni
-        ├── ingredient/      # Catalogo ingredienti, traduzioni, tag associati
-        ├── recipe/          # Core feature: creazione, pubblicazione, ingredienti, tag
-        ├── favorite/        # Utente salva/rimuove ricette, lista preferiti
-        ├── rating/          # Voto 1-5 con commento opzionale, un voto per ricetta
-        ├── stats/           # Aggregati pre-calcolati (NO controller — service interno)
-        └── shared/          # Codice trasversale (eccezioni globali, config Spring)
+com.sb.sfrigola_core/
+├── SfrigolaCoreApplication.java
+│
+├── common/                          # Cross-cutting reusable code
+│   ├── constant/
+│   │   ├── SCGeneralConstants.java
+│   │   └── SCRequestParamValidationCodeConstants.java   # messages for @Min/@Max/@Pattern
+│   ├── dto/
+│   │   ├── option/
+│   │   │   ├── SCPagedOptionDto.java        # currentPage, pageSize, totalElements, totalPages, hasMore
+│   │   │   └── SCCounterOptionDto.java
+│   │   └── response/
+│   │       ├── SCGeneralResponseDto.java    # universal API envelope: data + option + errorData
+│   │       └── SCErrorDataDto.java
+│   ├── entity/
+│   │   └── BaseEntity.java                 # @MappedSuperclass: createdAt, updatedAt, createdBy, updatedBy
+│   ├── enums/
+│   │   ├── GeneralErrorCode.java            # ENTITY_NOT_FOUND, ILLEGAL_ARGUMENT, MALFORMED_JSON, SERVER_ERROR
+│   │   ├── SCUserRole.java                  # ROLE_ADMIN, ROLE_USER, ROLE_CONTRIBUTOR
+│   │   └── SortDirection.java
+│   ├── exception/
+│   │   ├── ISCErrorCode.java                # interface: String code()
+│   │   ├── SCExceptionHandler.java          # global @RestControllerAdvice
+│   │   └── ex/
+│   │       ├── SCGeneralException.java      # abstract base: status + errorCode + message → toErrorMap()
+│   │       ├── SCDataCorruptionException.java
+│   │       └── SCNoRowsAffectedException.java
+│   ├── models/
+│   │   ├── context/
+│   │   │   └── SCAuthUser.java              # principal in the security context
+│   │   └── contracts/
+│   │       ├── SCFilterQuery.java           # searchKey, sortBy, sort, take, page, other (generic)
+│   │       └── SCPagedResult.java           # content (List<T>) + pagedOptionDto
+│   └── util/
+│       ├── SCAuthenticationUtils.java
+│       ├── SCErrorDataBuilderUtils.java      # builds ResponseEntity<SCGeneralResponseDto<Void,Void>>
+│       └── SCPaginationUtils.java
+│
+├── config/                                  # Spring configuration (not a domain)
+│   ├── auditor/
+│   │   ├── AuditorAwareConfig.java
+│   │   └── AuditorAwareImpl.java
+│   ├── security/
+│   │   ├── SecurityConfig.java              # SecurityFilterChain, CORS, path-based authorization
+│   │   ├── SecurityBeansConfig.java         # beans: publicPath, authPath, onlyAdminPath, onlyUserPath, onlyContributorPath, allowedOriginsPaths
+│   │   ├── authprovider/
+│   │   │   └── UsernamePwAuthenticationProvider.java
+│   │   ├── exception/
+│   │   │   ├── CustomAccessDeniedHandler.java
+│   │   │   ├── CustomAuthenticationEntryPoint.java
+│   │   │   ├── SecurityErrorCode.java
+│   │   │   └── ex/
+│   │   │       ├── SCAuthenticatedUserNotFoundException.java
+│   │   │       ├── SCBadCredentialException.java
+│   │   │       └── SCUserInactiveException.java
+│   │   └── jwt/
+│   │       ├── JwtValidationFilter.java     # OncePerRequestFilter before BasicAuthenticationFilter
+│   │       └── jwtservice/
+│   │           ├── IJWTService.java
+│   │           └── JwtService.java
+│   └── web/
+│       └── WebConfig.java
+│
+└── domains/                                 # Features organized by domain
+    ├── auth/
+    ├── languages/
+    ├── users/
+    └── categories/                          # entity only — no service/controller yet
 ```
-
-**Regole:**
-- Ogni package di feature è **coeso e autonomo**: nessun layer orizzontale globale (no `/controller`, no `/service`, ecc.).
-- Le classi interne a una feature possono avere visibilità **package-private** se non servono all'esterno.
-- Solo il codice realmente condiviso tra più feature va in `shared/`.
 
 ---
 
-## Feature del Progetto
+## Internal Structure of Each Domain
 
-### 1. `auth`
-- **Tabelle:** `users`, `roles`
-- Registrazione, login, autenticazione JWT
-- Ruoli: `ROLE_USER`, `ROLE_ADMIN`, `ROLE_CHEF`
-- Integrazione con Spring Security
+```
+domains/<feature>/
+├── annotations/        # (only if the feature has custom annotations/validators)
+├── constants/          # domain-specific validation constants
+├── controller/         # thin controller, HTTP wiring only
+├── dto/                # Java records for API input/output
+├── entity/             # @Entity JPA
+├── enums/              # ErrorCode enum (implements ISCErrorCode)
+├── exception/          # custom exceptions extending SCGeneralException
+│   └── ex/
+├── repository/         # JPA Repository interfaces
+└── service/
+    ├── IXService.java                   # controller-facing contract (reads security context)
+    ├── IXDomainBridgeService.java       # internal bridge contract (does NOT read security context)
+    └── impl/
+        ├── XServiceImpl.java
+        └── XDomainBridgeServiceImpl.java
+```
 
-### 2. `language`
-- **Tabelle:** `languages`
-- CRUD lingue supportate dall'applicazione
-- Gestione `is_default` e `is_active`
+---
 
-### 3. `tag`
-- **Tabelle:** `tags`, `tag_translations`
-- Vocabulary controllato con traduzioni per lingua
-- Flusso di approvazione: `pending → approved / rejected`
-- Operazioni di approvazione/rifiuto riservate ad `ROLE_ADMIN`
+## Database Schema
 
-### 4. `category`
-- **Tabelle:** `categories`, `category_translations`
-- Gerarchia self-referential tramite `parent_id`
-- Traduzioni per lingua, navigazione ad albero
+PostgreSQL schema managed manually via `src/main/resources/sql/createSfrigolaDB.sql`.
+Hibernate does not generate or alter tables (`ddl-auto=none`).
 
-### 5. `ingredient`
-- **Tabelle:** `ingredients`, `ingredient_translations`, `ingredient_tags`
-- Catalogo globale degli ingredienti
-- Traduzioni per lingua
-- Tag flavor / texture / season associati
+**Source of truth:** always read the SQL file directly. This section is a faithful transcription — if they diverge, the SQL file wins.
 
-### 6. `recipe` _(core feature)_
-- **Tabelle:** `recipes`, `recipe_translations`, `recipe_ingredients`, `recipe_tags`
-- Creazione e pubblicazione ricette
-- Ingredienti con quantità, tag associati
-- Traduzioni per lingua
+### Column conventions (applies to all standard tables)
 
-### 7. `favorite`
-- **Tabella:** `favorites`
-- L'utente salva o rimuove ricette dai preferiti
-- Lista preferiti personale per utente
-- Al salvataggio/rimozione aggiorna `stats`
+Every standard table (non-bridge) has:
+- `id BIGSERIAL PRIMARY KEY` — internal, never exposed in APIs
+- `public_id UUID NOT NULL UNIQUE DEFAULT gen_random_uuid()` — exposed in APIs
+- audit: `created_at TIMESTAMP NOT NULL DEFAULT NOW()`, `updated_at TIMESTAMP NOT NULL DEFAULT NOW()`, `created_by VARCHAR(50) NOT NULL DEFAULT 'system'`, `updated_by VARCHAR(50) NOT NULL DEFAULT 'system'`
 
-### 8. `rating`
-- **Tabella:** `ratings`
-- Voto da 1 a 5 con commento opzionale
-- Un solo voto per utente per ricetta
-- Al salvataggio aggiorna `stats`
+**Exceptions:**
+- Bridge tables (`ingredient_tags`, `recipe_tags`): no `id`, no `public_id`, no `updated_*` — only `created_at` + `created_by`
+- `recipe_stats`: no `public_id`, no audit columns — only stats columns
 
-### 9. `stats` _(service interno)_
-- **Tabella:** `recipe_stats`
-- Aggregati pre-calcolati (media voti, conteggio preferiti, popolarità)
-- **Nessun controller REST** — viene chiamato internamente da `rating` e `favorite`
-- Usato da `recipe` per ordinamento per popolarità
+### PostgreSQL ENUMs
+
+```
+difficulty_level  → easy | medium | hard
+meal_type         → breakfast | lunch | dinner | snack | dessert | appetizer
+season_type       → spring | summer | autumn | winter | all_year
+tag_type          → recipe | flavor | texture | season | dietary
+tag_scope         → recipe | ingredient | both
+tag_status        → approved | pending | rejected
+```
+
+### Tables
+
+#### `languages`
+- `id` BIGSERIAL PK
+- `public_id` UUID NOT NULL UNIQUE
+- `code` VARCHAR(10) NOT NULL UNIQUE — BCP-47: 'en', 'it'
+- `name` VARCHAR(50) NOT NULL — native name
+- `is_default` BOOLEAN NOT NULL DEFAULT FALSE — max 1 TRUE (unique partial index)
+- `is_active` BOOLEAN NOT NULL DEFAULT TRUE
+- audit columns
+
+#### `roles`
+- `id` BIGSERIAL PK
+- `public_id` UUID NOT NULL UNIQUE
+- `name` VARCHAR(50) NOT NULL UNIQUE — ROLE_ADMIN / ROLE_USER / ROLE_CONTRIBUTOR
+- `description` VARCHAR(200) nullable
+- audit columns
+
+#### `users`
+- `id` BIGSERIAL PK
+- `public_id` UUID NOT NULL UNIQUE
+- `role_id` BIGINT NOT NULL FK → roles(id)
+- `username` VARCHAR(50) NOT NULL UNIQUE
+- `email` VARCHAR(150) NOT NULL UNIQUE
+- `password_hash` VARCHAR(255) NOT NULL — BCrypt
+- `preferred_lang` VARCHAR(10) NOT NULL DEFAULT 'en' FK → languages(code)
+- `is_active` BOOLEAN NOT NULL DEFAULT TRUE
+- `first_name` VARCHAR(100) nullable
+- `last_name` VARCHAR(100) nullable
+- `avatar_url` VARCHAR(500) nullable
+- `bio` TEXT nullable
+- audit columns
+
+#### `tags`
+- `id` BIGSERIAL PK
+- `public_id` UUID NOT NULL UNIQUE
+- `slug` VARCHAR(100) NOT NULL UNIQUE — universal English key
+- `type` tag_type NOT NULL
+- `scope` tag_scope NOT NULL DEFAULT 'both'
+- `status` tag_status NOT NULL DEFAULT 'approved'
+- audit columns
+
+#### `tag_translations`
+- `id` BIGSERIAL PK
+- `public_id` UUID NOT NULL UNIQUE
+- `tag_id` BIGINT NOT NULL FK → tags(id) ON DELETE CASCADE
+- `locale` VARCHAR(10) NOT NULL FK → languages(code) ON DELETE CASCADE
+- `label` VARCHAR(100) NOT NULL
+- UNIQUE (tag_id, locale)
+- audit columns
+
+#### `categories`
+- `id` BIGSERIAL PK
+- `public_id` UUID NOT NULL UNIQUE
+- `slug` VARCHAR(100) NOT NULL UNIQUE — URL-safe English key
+- `parent_id` BIGINT nullable FK → categories(id) ON DELETE SET NULL — self-referential
+- `sort_order` SMALLINT NOT NULL DEFAULT 0
+- `is_active` BOOLEAN NOT NULL DEFAULT TRUE
+- audit columns
+
+Seed hierarchy (11 categories):
+- Root: appetizers, first-courses, main-courses, side-dishes, desserts, beverages
+- Children of first-courses: pasta, risotto, soups
+- Children of main-courses: fish, meat
+
+#### `category_translations`
+- `id` BIGSERIAL PK
+- `public_id` UUID NOT NULL UNIQUE
+- `category_id` BIGINT NOT NULL FK → categories(id) ON DELETE CASCADE
+- `locale` VARCHAR(10) NOT NULL FK → languages(code) ON DELETE CASCADE
+- `name` VARCHAR(100) NOT NULL
+- `description` TEXT nullable
+- UNIQUE (category_id, locale)
+- audit columns
+
+#### `ingredients`
+- `id` BIGSERIAL PK
+- `public_id` UUID NOT NULL UNIQUE
+- `slug` VARCHAR(150) NOT NULL UNIQUE
+- `category` VARCHAR(100) nullable — free text: 'vegetable'/'dairy'/'protein'/'grain'
+- `calories_per_100g` NUMERIC(7,2) nullable
+- `allergens` TEXT[] nullable — GIN index
+- `is_vegetarian` BOOLEAN NOT NULL DEFAULT FALSE
+- `is_vegan` BOOLEAN NOT NULL DEFAULT FALSE
+- `is_gluten_free` BOOLEAN NOT NULL DEFAULT FALSE
+- audit columns
+
+#### `ingredient_translations`
+- `id` BIGSERIAL PK
+- `public_id` UUID NOT NULL UNIQUE
+- `ingredient_id` BIGINT NOT NULL FK → ingredients(id) ON DELETE CASCADE
+- `locale` VARCHAR(10) NOT NULL FK → languages(code) ON DELETE CASCADE
+- `name` VARCHAR(150) NOT NULL
+- UNIQUE (ingredient_id, locale)
+- audit columns
+
+#### `ingredient_tags`
+Bridge ingredient ↔ tag (scope='ingredient' or 'both' only).
+- `ingredient_id` BIGINT NOT NULL FK → ingredients(id) ON DELETE CASCADE
+- `tag_id` BIGINT NOT NULL FK → tags(id) ON DELETE CASCADE
+- PRIMARY KEY (ingredient_id, tag_id)
+- `created_at` TIMESTAMP NOT NULL DEFAULT NOW()
+- `created_by` VARCHAR(50) NOT NULL DEFAULT 'system'
+- **No** `id`, `public_id`, `updated_at`, `updated_by`
+
+#### `recipes`
+- `id` BIGSERIAL PK
+- `public_id` UUID NOT NULL UNIQUE
+- `author_id` BIGINT NOT NULL FK → users(id)
+- `category_id` BIGINT nullable FK → categories(id) ON DELETE SET NULL
+- `difficulty` difficulty_level NOT NULL DEFAULT 'medium'
+- `meal_type` meal_type nullable
+- `season` season_type NOT NULL DEFAULT 'all_year'
+- `prep_time_min` INT nullable CHECK (>= 0)
+- `cook_time_min` INT nullable CHECK (>= 0)
+- `servings` SMALLINT nullable CHECK (> 0)
+- `is_vegetarian` BOOLEAN NOT NULL DEFAULT FALSE
+- `is_vegan` BOOLEAN NOT NULL DEFAULT FALSE
+- `is_gluten_free` BOOLEAN NOT NULL DEFAULT FALSE
+- `is_published` BOOLEAN NOT NULL DEFAULT FALSE
+- audit columns
+
+#### `recipe_translations`
+- `id` BIGSERIAL PK
+- `public_id` UUID NOT NULL UNIQUE
+- `recipe_id` BIGINT NOT NULL FK → recipes(id) ON DELETE CASCADE
+- `locale` VARCHAR(10) NOT NULL FK → languages(code) ON DELETE CASCADE
+- `title` VARCHAR(200) NOT NULL
+- `description` TEXT nullable
+- `instructions` TEXT NOT NULL
+- UNIQUE (recipe_id, locale)
+- audit columns
+
+#### `recipe_tags`
+Bridge recipe ↔ tag (scope='recipe' or 'both' only).
+- `recipe_id` BIGINT NOT NULL FK → recipes(id) ON DELETE CASCADE
+- `tag_id` BIGINT NOT NULL FK → tags(id) ON DELETE CASCADE
+- PRIMARY KEY (recipe_id, tag_id)
+- `created_at` TIMESTAMP NOT NULL DEFAULT NOW()
+- `created_by` VARCHAR(50) NOT NULL DEFAULT 'system'
+- **No** `id`, `public_id`, `updated_at`, `updated_by`
+
+#### `recipe_ingredients`
+- `id` BIGSERIAL PK
+- `public_id` UUID NOT NULL UNIQUE
+- `recipe_id` BIGINT NOT NULL FK → recipes(id) ON DELETE CASCADE
+- `ingredient_id` BIGINT NOT NULL FK → ingredients(id)
+- `quantity` NUMERIC(8,2) nullable
+- `unit` VARCHAR(50) nullable — 'g', 'ml', 'tbsp', 'cup', 'to taste'
+- `preparation_note` VARCHAR(200) nullable — 'finely chopped'
+- `sort_order` SMALLINT NOT NULL DEFAULT 0
+- UNIQUE (recipe_id, ingredient_id)
+- audit columns
+
+#### `favorites`
+- `id` BIGSERIAL PK
+- `public_id` UUID NOT NULL UNIQUE
+- `user_id` BIGINT NOT NULL FK → users(id) ON DELETE CASCADE
+- `recipe_id` BIGINT NOT NULL FK → recipes(id) ON DELETE CASCADE
+- UNIQUE (user_id, recipe_id)
+- audit columns
+- Updates `recipe_stats` via service layer (no DB trigger)
+
+#### `ratings`
+- `id` BIGSERIAL PK
+- `public_id` UUID NOT NULL UNIQUE
+- `user_id` BIGINT NOT NULL FK → users(id) ON DELETE CASCADE
+- `recipe_id` BIGINT NOT NULL FK → recipes(id) ON DELETE CASCADE
+- `score` SMALLINT NOT NULL CHECK (score BETWEEN 1 AND 5)
+- `comment` TEXT nullable
+- UNIQUE (user_id, recipe_id)
+- audit columns
+- Updates `recipe_stats` via service layer (no DB trigger)
+
+#### `recipe_stats`
+1:1 with recipes. `recipe_id` is both PK and FK.
+- `recipe_id` BIGINT PK FK → recipes(id) ON DELETE CASCADE
+- `avg_rating` NUMERIC(3,2) NOT NULL DEFAULT 0.00
+- `ratings_count` INT NOT NULL DEFAULT 0
+- `favorites_count` INT NOT NULL DEFAULT 0
+- `views_count` INT NOT NULL DEFAULT 0
+- `last_computed` TIMESTAMP NOT NULL DEFAULT NOW()
+- **No** `public_id`, **no** audit columns
+- No REST controller — internal service called by `ratings` and `favorites`
+
+### Indexes
+
+```sql
+-- Users
+idx_users_role               ON users (role_id)
+
+-- Categories
+idx_categories_parent        ON categories (parent_id)
+
+-- Ingredients
+idx_ingredients_allergens    ON ingredients USING GIN (allergens)
+
+-- Tags
+idx_tags_type_scope_status   ON tags (type, scope, status)
+
+-- Bridge reverse lookups
+idx_recipe_tags_tag          ON recipe_tags (tag_id)
+idx_ingredient_tags_tag      ON ingredient_tags (tag_id)
+
+-- Recipes
+idx_recipes_author           ON recipes (author_id)
+idx_recipes_category         ON recipes (category_id)
+idx_recipes_published        ON recipes (id) WHERE is_published = TRUE
+idx_recipes_season           ON recipes (season)
+idx_recipes_meal_type        ON recipes (meal_type)
+idx_recipes_dietary          ON recipes (is_vegetarian, is_vegan, is_gluten_free)
+
+-- Stats
+idx_recipe_stats_rating      ON recipe_stats (avg_rating DESC)
+idx_recipe_stats_favs        ON recipe_stats (favorites_count DESC)
+
+-- Ratings / Favorites
+idx_ratings_recipe           ON ratings (recipe_id)
+idx_favorites_user           ON favorites (user_id)
+```
+
+---
+
+## Implementation Status (Sprint 1)
+
+| Domain      | Entity | Repository | Service | Controller | Notes |
+|-------------|--------|------------|---------|------------|-------|
+| `auth`      | SCUser/SCRole (in users) | — | done | done | login, register, change-email, change-password |
+| `languages` | done | done | done | done | GET paginated |
+| `users`     | done | done | done | done | update-profile, change-lang, become-contributor, admin CRUD |
+| `categories`| done | missing | missing | missing | entity only |
+| `tags`      | missing | missing | missing | missing | not started |
+| `ingredients` | missing | missing | missing | missing | not started |
+| `recipes`   | missing | missing | missing | missing | not started |
+| `favorites` | missing | missing | missing | missing | not started |
+| `ratings`   | missing | missing | missing | missing | not started |
+| `stats`     | missing | missing | missing | no controller by design | not started |
+
+---
+
+## Implemented API Endpoints
+
+Base path: `/sfrigola-core`
+
+### Auth — `/auth`
+
+| Method | Path | Access | Notes |
+|--------|------|--------|-------|
+| POST | `/auth/login` | public | returns JWT |
+| POST | `/auth/register` | public | |
+| PATCH | `/auth/change-email` | authenticated | |
+| PATCH | `/auth/change-password` | authenticated | |
+
+### Languages — `/languages`
+
+| Method | Path | Access | Notes |
+|--------|------|--------|-------|
+| GET | `/languages` | authenticated | paginated, isActive filter |
+
+### Users — `/users`
+
+| Method | Path | Access | Notes |
+|--------|------|--------|-------|
+| PATCH | `/users/settings/change-preferred-lang/{code}` | authenticated | |
+| PATCH | `/users/profile/update` | authenticated | |
+| PATCH | `/users/profile/became-contributor` | authenticated | promotes to ROLE_CONTRIBUTOR |
+| GET | `/users/admin` | ROLE_ADMIN | paginated, sort/search/isActive filters |
+| PATCH | `/users/admin/{publicId}/status` | ROLE_ADMIN | activate/deactivate user |
+
+---
+
+## Architectural Patterns
+
+### Universal Response Envelope
+
+Every endpoint returns `SCGeneralResponseDto<T, K>`:
+```java
+SCGeneralResponseDto.success(data)                    // single item
+SCGeneralResponseDto.success(list, pagedOptionDto)    // paginated list
+SCGeneralResponseDto.successMutation("Done")          // mutation (string message)
+SCGeneralResponseDto.error(errorData)                 // error (handled by SCExceptionHandler)
+```
+
+### Pagination
+
+Always use `SCFilterQuery` + `SCPagedResult` + `SCPagedOptionDto`:
+```java
+// Controller
+SCFilterQuery.essential(sortBy, SortDirection.fromString(sort), take, page);
+SCFilterQuery.essentialWithSearch(searchKey, sortBy, sort, take, page);
+SCFilterQuery.powerful(searchKey, sortBy, sort, take, page, customFilter);
+
+// Service returns
+SCPagedResult<XDto>   // { content: List<XDto>, pagedOptionDto: SCPagedOptionDto }
+```
+
+### Custom Exceptions
+
+All extend `SCGeneralException`:
+```java
+protected SCGeneralException(HttpStatus status, ISCErrorCode errorCode, String errorMessage)
+// → toErrorMap() = Map.of(errorCode.code(), errorMessage)
+```
+
+Each domain has its own `XErrorCode enum implements ISCErrorCode`.
+
+### Endpoint Versioning
+
+Spring Boot 4.x feature — `version = "1.0"` on mapping annotations:
+```java
+@GetMapping(version = "1.0")
+@PostMapping(value = "/login", version = "1.0")
+```
+
+### Security: path-based via @Qualifier beans
+
+Paths configured as `List<String>` beans in `SecurityBeansConfig`:
+- `publicPath` — no auth required
+- `authPath` — any authenticated role
+- `onlyAdminPath` — ROLE_ADMIN only
+- `onlyUserPath` — ROLE_USER only
+- `onlyContributorPath` — ROLE_CONTRIBUTOR only
+- `allowedOriginsPaths` — CORS allowed origins
+
+Every new API endpoint must be registered in the correct bean in `SecurityBeansConfig`.
+
+### Dual Service Contract
+
+1. **`IXService`** — controller-facing: reads security context internally
+2. **`IXDomainBridgeService`** — internal bridge: receives data explicitly, does NOT read security context
+
+Example: `ISCUserService` (controller-facing) vs `ISCUserDomainBridgeService` (bridge used by auth).
+
+### BaseEntity
+
+`@MappedSuperclass` with automatic auditing via Spring Data JPA Auditing:
+- `createdAt` / `updatedAt` — `Instant`
+- `createdBy` / `updatedBy` — `String` (actor's username)
+
+All entities must extend `BaseEntity`.
+
+### Entity Convention
+
+```java
+@Id @GeneratedValue(strategy = GenerationType.IDENTITY)
+private Long id;                           // internal PK, never exposed in APIs
+
+@Column(name = "public_id", nullable = false, unique = true, updatable = false)
+private UUID publicId = UUID.randomUUID(); // exposed in APIs
+```
+
+### Boolean fields in entities
+
+Always use `boolean` primitive (NOT `Boolean` wrapper) for NOT NULL boolean columns:
+
+```java
+// CORRECT — column is NOT NULL
+@Column(name = "is_active", nullable = false)
+private boolean isActive = true;
+
+// WRONG — wrapper implies nullable, Lombok generates getIsActive() not isActive()
+@Column(name = "is_active", nullable = false)
+private Boolean isActive = true;
+```
+
+Use `Boolean` wrapper only when the DB column is genuinely nullable.
+
+---
+
+## Best Practices
+
+### Project Structure
+
+Package-by-feature under `domains/`. No global horizontal layers (`/controller`, `/service`, etc.).
+Cross-cutting config goes in `config/`. Reusable cross-domain code goes in `common/`.
 
 ### Dependency Injection
 
-- Preferire **constructor injection** rispetto a `@Autowired` su field.
-- Usare `final` sui campi iniettati.
-- Con Lombok, usare `@RequiredArgsConstructor` per semplicità.
-
-```java
-// ✅ Corretto
-@Service
-@RequiredArgsConstructor
-public class UserService {
-    private final UserRepository userRepository;
-}
-
-// ❌ Evitare
-@Service
-public class UserService {
-    @Autowired
-    private UserRepository userRepository;
-}
-```
+Always constructor injection with `@RequiredArgsConstructor` + `final`.
 
 ### REST Controller
 
-- Restituire sempre **DTO**, mai entità JPA direttamente.
-- Usare `ResponseEntity<T>` per controllo esplicito degli status HTTP.
-- Annotare con `@Validated` per la validazione degli input.
-- Mantenere i controller **sottili**: nessuna logica di business.
-
-```java
-@RestController
-@RequestMapping("/api/v1/users")
-@RequiredArgsConstructor
-public class UserController {
-
-    private final UserService userService;
-
-    @GetMapping("/{id}")
-    public ResponseEntity<UserDto> getUser(@PathVariable Long id) {
-        return ResponseEntity.ok(userService.findById(id));
-    }
-
-    @PostMapping
-    public ResponseEntity<UserDto> createUser(@RequestBody @Valid CreateUserRequest request) {
-        return ResponseEntity.status(HttpStatus.CREATED)
-                .body(userService.create(request));
-    }
-}
-```
+- Always return DTOs, never JPA entities.
+- `ResponseEntity<SCGeneralResponseDto<T, K>>` using the record factory methods.
+- `@Validated` on the class to validate `@RequestParam`/`@PathVariable`.
+- `@Valid` on `@RequestBody` to validate DTOs.
+- Thin controllers: zero business logic.
 
 ### Service Layer
 
-- Tutta la **business logic** vive nel service.
-- Usare `@Transactional` a livello di metodo (non di classe).
-- Separare chiaramente lettura (`@Transactional(readOnly = true)`) da scrittura.
-
-```java
-@Service
-@RequiredArgsConstructor
-public class UserService {
-
-    private final UserRepository userRepository;
-    private final UserMapper userMapper;
-
-    @Transactional(readOnly = true)
-    public UserDto findById(Long id) {
-        return userRepository.findById(id)
-                .map(userMapper::toDto)
-                .orElseThrow(() -> new ResourceNotFoundException("User", id));
-    }
-
-    @Transactional
-    public UserDto create(CreateUserRequest request) {
-        User user = userMapper.toEntity(request);
-        return userMapper.toDto(userRepository.save(user));
-    }
-}
-```
+- `@Transactional(readOnly = true)` for reads.
+- `@Transactional` for writes.
+- All business logic in the service, never in the controller.
 
 ### Repository
 
-- Estendere `JpaRepository<Entity, ID>` o `CrudRepository`.
-- Usare **query derivate** per query semplici.
-- Usare `@Query` con JPQL o native query per query complesse.
-- Evitare query N+1: usare `JOIN FETCH` o `@EntityGraph`.
+- `JpaRepository<Entity, Long>` as base.
+- Derived queries for simple cases.
+- `@Query` JPQL for complex queries.
+- Avoid N+1: use `JOIN FETCH` or `@EntityGraph`.
 
-```java
-public interface UserRepository extends JpaRepository<User, Long> {
+### Service Interfaces (Javadoc)
 
-    Optional<User> findByEmail(String email);
+Mandatory Javadoc on every interface:
+- Class: general contract, whether it reads security context or receives explicit data, "succeed or throw" contract if applicable.
+- Method: `@param`, `@return`, `@throws` with fully-qualified names (no extra imports just for docs).
 
-    @Query("SELECT u FROM User u JOIN FETCH u.roles WHERE u.id = :id")
-    Optional<User> findByIdWithRoles(@Param("id") Long id);
-}
-```
+### Exception Handling
 
-### Interfacce Service
+Global handler: `SCExceptionHandler` (`@RestControllerAdvice` in `common/exception/`).
+Custom exceptions extend `SCGeneralException`. Do not add handlers at controller level.
 
-Ogni interfaccia service deve essere completamente documentata con Javadoc seguendo queste regole:
+### Input Validation
 
-- **Javadoc di classe**: descrivere il contratto generale dell'interfaccia, specificare se i metodi leggono il security context internamente o ricevono dati esplicitamente, e dichiarare il contratto "succeed or throw" se applicabile.
-- **Javadoc di metodo**: ogni metodo deve avere descrizione, `@param` per ogni parametro, `@return` che descrive il valore restituito, e `@throws` per ogni eccezione che può essere lanciata.
-- **Contratto "succeed or throw"**: i metodi write che non hanno un caso legittimo di fallimento silenzioso devono dichiararlo esplicitamente nel Javadoc di classe. Usare `@return {@code true} on success` — mai scrivere `{@code false} otherwise` se il metodo lancia eccezione invece di tornare false.
-- **`@throws` inline**: usare sempre il fully-qualified name direttamente nel tag `@throws` — nessun import aggiuntivo in cima al file solo per la documentazione.
-- **Distinzione di contratto**: separare chiaramente le interfacce controller-facing (leggono security context) da quelle internal bridge (ricevono dati grezzi). Documentare questa distinzione nel Javadoc di classe.
+Jakarta Validation on DTOs. Message constants in `SCRequestParamValidationCodeConstants`.
 
-```java
-/**
- * Controller-facing contract for X operations.
- * All methods read the authenticated user from the security context internally.
- * Write methods follow the "succeed or throw" contract: return {@code true} on success,
- * throw a specific exception if any step fails.
- */
-public interface IXService {
+### Configuration
 
-    /**
-     * Does something for the authenticated user.
-     *
-     * @param param description
-     * @return {@code true} if the operation succeeded
-     * @throws SpecificException if the specific condition occurs
-     */
-    boolean doSomething(String param);
-}
-```
-
-### Gestione Eccezioni
-
-- Usare un **handler globale** con `@RestControllerAdvice`.
-- Definire eccezioni custom che estendono `RuntimeException`.
-- Restituire sempre un body strutturato negli errori.
-
-```java
-@RestControllerAdvice
-public class GlobalExceptionHandler {
-
-    @ExceptionHandler(ResourceNotFoundException.class)
-    public ResponseEntity<ErrorResponse> handleNotFound(ResourceNotFoundException ex) {
-        return ResponseEntity.status(HttpStatus.NOT_FOUND)
-                .body(new ErrorResponse(ex.getMessage()));
-    }
-
-    @ExceptionHandler(MethodArgumentNotValidException.class)
-    public ResponseEntity<ErrorResponse> handleValidation(MethodArgumentNotValidException ex) {
-        List<String> errors = ex.getBindingResult().getFieldErrors().stream()
-                .map(e -> e.getField() + ": " + e.getDefaultMessage())
-                .toList();
-        return ResponseEntity.status(HttpStatus.BAD_REQUEST)
-                .body(new ErrorResponse("Validation failed", errors));
-    }
-}
-```
-
-### Configurazione
-
-- Non scrivere mai **secrets o password** in `application.properties`.
-- Usare **profili** per separare gli ambienti: `dev`, `staging`, `prod`.
-- Esternalizzare la configurazione sensibile con variabili d'ambiente o secrets manager.
-
-```yaml
-# application.yml
-spring:
-  profiles:
-    active: ${SPRING_PROFILE:dev}
-
-# application-dev.yml
-spring:
-  datasource:
-    url: jdbc:postgresql://localhost:5432/sfrigola
-    username: ${DB_USER}
-    password: ${DB_PASSWORD}
-```
-
-### Validazione Input
-
-- Usare le annotazioni di **Jakarta Validation** sui DTO.
-- Attivare la validazione con `@Valid` o `@Validated` nei controller.
-
-```java
-public record CreateUserRequest(
-    @NotBlank(message = "Il nome è obbligatorio")
-    String name,
-
-    @Email(message = "Email non valida")
-    @NotBlank
-    String email,
-
-    @Size(min = 8, message = "La password deve avere almeno 8 caratteri")
-    String password
-) {}
-```
-
-### Sicurezza
-
-- **Spring Security è già incluso** nel progetto — ogni endpoint è protetto per default.
-- Configurare una `SecurityFilterChain` esplicita in `config/SecurityConfig.java`.
-- Usare JWT o OAuth2 per autenticazione stateless nelle API REST.
-- Non esporre stack trace nelle risposte di errore in produzione.
-- Abilitare HTTPS in produzione.
-- Configurare CORS esplicitamente, non usare wildcard `*` in produzione.
-
-### Docker Compose (Sviluppo Locale)
-
-- Il progetto include `spring-boot-docker-compose`: Spring Boot avvia automaticamente i container definiti in `compose.yaml` al lancio dell'app in dev.
-- Definire PostgreSQL in `compose.yaml`:
-
-```yaml
-services:
-  postgres:
-    image: postgres:16
-    environment:
-      POSTGRES_DB: sfrigola
-      POSTGRES_USER: ${DB_USER:-sfrigola}
-      POSTGRES_PASSWORD: ${DB_PASSWORD:-secret}
-    ports:
-      - "5432:5432"
-```
+- Secrets always via env vars (`${DB_URL}`, `${DB_USERNAME}`, `${DB_PASSWORD}`, `${SERVER_PORT}`).
+- `application.properties` contains no sensitive values.
+- DB schema managed via `src/main/resources/sql/createSfrigolaDB.sql`, not by Hibernate.
 
 ### Logging
 
-- Usare **SLF4J** (non `System.out.println`).
-- Con Lombok: `@Slf4j` sulla classe.
-- Livelli: `DEBUG` in sviluppo, `INFO/WARN` in produzione.
-- Non loggare mai dati sensibili (password, token, dati personali).
-
-```java
-@Slf4j
-@Service
-public class UserService {
-    public UserDto findById(Long id) {
-        log.debug("Ricerca utente con id: {}", id);
-        // ...
-    }
-}
-```
-
-### Testing
-
-- **Unit test** su service e componenti con JUnit 5 + Mockito.
-- **Integration test** con `@SpringBootTest` + Testcontainers per il DB.
-- **Controller test** con `@WebMvcTest` + MockMvc.
-- Mirare a coverage significativa sulla business logic, non al numero.
-
-```java
-@ExtendWith(MockitoExtension.class)
-class UserServiceTest {
-
-    @Mock
-    private UserRepository userRepository;
-
-    @InjectMocks
-    private UserService userService;
-
-    @Test
-    void shouldThrowWhenUserNotFound() {
-        when(userRepository.findById(99L)).thenReturn(Optional.empty());
-        assertThrows(ResourceNotFoundException.class, () -> userService.findById(99L));
-    }
-}
-```
-
-### Performance
-
-- Usare **paginazione** (`Pageable`) per liste potenzialmente grandi.
-- Abilitare il **caching** con `@Cacheable` dove appropriato.
-- Monitorare le query SQL lente in sviluppo con `spring.jpa.show-sql=true`.
-- In produzione usare strumenti come **Actuator + Micrometer**.
+`@Slf4j` + SLF4J. Never log passwords, tokens, or personal data.
 
 ---
 
-## Convenzioni di Codice
+## Code Conventions
 
-- Nomi classi: `PascalCase`
-- Nomi metodi e variabili: `camelCase`
-- Costanti: `UPPER_SNAKE_CASE`
-- Package: `lowercase`
-- Commit: conventional commits in inglese (`feat:`, `fix:`, `refactor:`, ecc.)
-- Ogni PR deve avere almeno un test associato
+- Classes: `PascalCase`
+- Methods/variables: `camelCase`
+- Constants: `UPPER_SNAKE_CASE`
+- Packages: `lowercase`
+- Cross-domain class prefix: `SC` (e.g. `SCUser`, `SCRole`, `SCGeneralException`)
+- Commits: conventional commits in English (`feat:`, `fix:`, `refactor:`, etc.)
+- Every PR must have at least one associated test
 
 ---
 
-## Comandi Utili
+## Useful Commands
 
 ```bash
-# Avvio in locale
-./mvnw spring-boot:run -Dspring-boot.run.profiles=dev
+# Run locally
+./mvnw spring-boot:run
 
 # Build
 ./mvnw clean package -DskipTests
 
-# Test
-./mvnw test
+# Compile only (check for errors)
+./mvnw compile
 
-# Test con profilo specifico
-./mvnw test -Dspring.profiles.active=test
+# Run tests
+./mvnw test
 ```
 
 ---
 
-## Note per Claude
+## Notes for Claude
 
-- Seguire sempre la **struttura a feature**: ogni nuova funzionalità va nel proprio package, non in layer globali.
-- Non creare cartelle `/controller`, `/service`, `/repository` a livello root — tutto dentro la feature.
-- Non inserire logica di business nei controller.
-- Restituire sempre DTO nelle API, mai entità JPA.
-- Preferire record Java per DTO e request immutabili.
-- `stats` non ha controller: è un service interno chiamato da `rating` e `favorite`, mai esposto via REST.
-- Il flusso di approvazione dei `tag` (`pending → approved/rejected`) è riservato a `ROLE_ADMIN`.
-- Le traduzioni (tag, category, ingredient, recipe) sono sempre associate a una lingua definita in `language`.
-- Segnalare se una richiesta viola queste convenzioni prima di procedere.
+- Actual domain package: `com.sb.sfrigola_core.domains.<feature>` — not `shared/` as in older versions.
+- Translation entities (e.g. `CategoryTranslation`, `TagTranslation`) live in the same domain as their parent entity (`domains/categories/entity/`), never in a separate `translations` domain.
+- Security, auditing, web config: in `config/`, never inside a domain.
+- Cross-cutting reusable code: in `common/`, not in a domain.
+- `stats` has no controller: internal service called by `rating` and `favorite`.
+- Every new API path must be registered in the correct bean in `SecurityBeansConfig`.
+- `public_id` (UUID) is what gets exposed in APIs; `id` (Long) is internal DB only.
+- `preferred_lang` in `SCUser` is a `String` (FK to `languages.code`), not a referenced entity.
+- `ddl-auto=none` — any schema change requires updating the SQL file.
+- Tag approval flow (`pending → approved/rejected`) is ROLE_ADMIN only.
+- Flag any request that violates these conventions before proceeding.

@@ -12,4 +12,8 @@ public record SCPagedOptionDto(
     public static SCPagedOptionDto of(Integer currentPage, Integer pageSize, Long totalElements, Integer totalPages, Boolean hasMore) {
         return new SCPagedOptionDto(currentPage, pageSize, totalElements, totalPages, hasMore);
     }
+
+    public static SCPagedOptionDto noItems(){
+        return new SCPagedOptionDto(0, 0, 0L, 0, false);
+    }
 }

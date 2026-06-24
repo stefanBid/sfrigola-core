@@ -15,4 +15,7 @@ public class SCRequestParamValidationCodeConstants {
 
     // --- SORT ---
     public static final String SORT_INVALID_VALUE            = "SORT_INVALID_VALUE";
+
+    // --- LOCALE ---
+    public static final String LOCALE_MUST_NOT_BE_BLANK          = "LOCALE_MUST_NOT_BE_BLANK";
 }

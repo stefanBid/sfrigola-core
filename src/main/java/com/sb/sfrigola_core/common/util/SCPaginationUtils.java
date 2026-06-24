@@ -34,7 +34,7 @@ public class SCPaginationUtils {
      * @return {@link SCPagedOptionDto} containing pagination metadata
      */
     public static SCPagedOptionDto toPagedOption(Page<?> page) {
-        return new SCPagedOptionDto(
+        return SCPagedOptionDto.of(
                 page.getNumber(),
                 page.getSize(),
                 page.getTotalElements(),
