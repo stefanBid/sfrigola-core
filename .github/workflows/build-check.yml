@@ -16,7 +16,7 @@ jobs:
     steps:
       # Checkout repository code
       - name: Checkout code
-        uses: actions/checkout@v4
+        uses: actions/checkout@v5
 
       # Install JDK 25 (matches java.version in pom.xml)
       - name: Setup JDK 25
