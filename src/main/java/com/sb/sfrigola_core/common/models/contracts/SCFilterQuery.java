@@ -23,6 +23,14 @@ public record SCFilterQuery<T>(
         return new SCFilterQuery<>(searchKey,sortBy, sort, take, page, null);
     }
 
+    public static SCFilterQuery<Void> pagedOnly(int take, int page) {
+        return new SCFilterQuery<>(null, null, null, take, page, null);
+    }
+
+    public static SCFilterQuery<Void> pageWithSearch(String searchKey, int take, int page) {
+        return new SCFilterQuery<>(searchKey, null, null, take, page, null);
+    }
+
     public static <T> SCFilterQuery<T> powerful(String searchKey, String sortBy, SortDirection sort, int take, int page, T other) {
         return new SCFilterQuery<>(searchKey,sortBy, sort, take, page, other);
     }

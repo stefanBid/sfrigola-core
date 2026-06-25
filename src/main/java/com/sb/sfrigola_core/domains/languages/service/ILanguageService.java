@@ -20,6 +20,7 @@ public interface ILanguageService {
      */
     SCPagedResult<LanguageDto> getAllLanguages(SCFilterQuery<Void> filterQuery, Boolean isActive);
 
+
     /**
      * Verifies that a language with the given ISO code exists and is valid, or throws.
      * Always returns {@code true} on success — use the return value to chain calls if needed.

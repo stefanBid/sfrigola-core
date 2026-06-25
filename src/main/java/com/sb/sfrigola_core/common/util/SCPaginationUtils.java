@@ -22,9 +22,12 @@ public class SCPaginationUtils {
      * @return {@link Pageable} ready to pass to repository methods
      */
     public static Pageable toPageable(SCFilterQuery<?> filterQuery) {
-        Sort.Direction direction = filterQuery.sort().isAsc() ? Sort.Direction.ASC : Sort.Direction.DESC;
-        Sort sort = Sort.by(direction, filterQuery.sortBy());
-        return PageRequest.of(filterQuery.page(), filterQuery.take(), sort);
+        if(filterQuery.sortBy() != null && filterQuery.sort() != null) {
+            Sort.Direction direction = filterQuery.sort().isAsc() ? Sort.Direction.ASC : Sort.Direction.DESC;
+            Sort sort = Sort.by(direction, filterQuery.sortBy());
+            return PageRequest.of(filterQuery.page(), filterQuery.take(), sort);
+        }
+        return PageRequest.of(filterQuery.page(), filterQuery.take());
     }
 
     /**

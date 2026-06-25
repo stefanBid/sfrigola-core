@@ -56,9 +56,9 @@ public class UserController {
 
     @GetMapping(value = "/admin", version = "1.0")
     public ResponseEntity<SCGeneralResponseDto<List<SCUserDto>, SCPagedOptionDto>> getAllUsers(
-            @Min(value = 0, message = SCRequestParamValidationCodeConstants.PAGE_MUST_BE_GTE_ZERO)
+            @Min(value = 0, message = SCRequestParamValidationCodeConstants.PAGE_MUST_BE_AT_LEAST_ZERO)
             @RequestParam(value = "page", required = false, defaultValue = "0") int page,
-            @Min(value = 1, message = SCRequestParamValidationCodeConstants.TAKE_MUST_BE_GTE_ONE) @Max(value = 100, message = SCRequestParamValidationCodeConstants.TAKE_MUST_BE_LTE_HUNDRED)
+            @Min(value = 1, message = SCRequestParamValidationCodeConstants.TAKE_MUST_BE_AT_LEAST_ONE) @Max(value = 100, message = SCRequestParamValidationCodeConstants.TAKE_MUST_BE_AT_MOST_HUNDRED)
             @RequestParam(value = "take", required = false, defaultValue = "10") int take,
             @RequestParam(value = "sortBy", required = false, defaultValue = "firstName") String sortBy,
             @Pattern(regexp = "asc|desc", message = SCRequestParamValidationCodeConstants.SORT_INVALID_VALUE)

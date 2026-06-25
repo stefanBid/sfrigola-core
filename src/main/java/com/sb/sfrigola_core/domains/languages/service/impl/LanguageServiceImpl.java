@@ -42,6 +42,10 @@ public class LanguageServiceImpl implements ILanguageService {
         return true;
     }
 
+    // =========================================================
+    // PRIVATE
+    // =========================================================
+
     private LanguageDto toDto(Language language) {
         return new LanguageDto(language.getCode(), language.getName());
     }
