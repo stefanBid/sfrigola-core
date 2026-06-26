@@ -149,8 +149,44 @@ public class CategoryServiceImpl implements ICategoryService {
     }
 
     @Override
+    @Transactional
     public CategoryPreviewAdminDto updateCategory(CategoryUpsertDto categoryUpsertDto, UUID publicId) {
-        throw new UnsupportedOperationException("Not yet implemented");
+        // Guard for check if category with passed public ID does exist
+        var categoryToUpdate = categoryRepository.findByPublicIdWithAllTranslation(publicId)
+                .orElseThrow(() -> new NoCategoryFoundException(publicId));
+
+        // Guard for existing Slug
+
+        if (!categoryToUpdate.getSlug().equals(categoryUpsertDto.slug()) && categoryRepository.existsBySlug(categoryUpsertDto.slug()))
+            throw new CategorySlugAlreadyExistsException(categoryUpsertDto.slug());
+
+        // Guard for duplicate locale in input — fail fast before building entities
+        Set<String> seenLocales = new HashSet<>();
+        categoryUpsertDto.translations().forEach(t -> {
+            if (!seenLocales.add(t.langCode()))
+                throw new DuplicateCategoryLocaleException(t.langCode());
+        });
+
+        var activeLangMap = languageDomainBridgeService.getActiveLanguageEntitiesMap();
+
+        ArrayList<CategoryTranslation> translations = categoryUpsertDto.translations().stream()
+                .map(t -> {
+                    Language lang = activeLangMap.get(t.langCode());
+                    if (lang == null) throw new InvalidCategoryLocaleException(t.langCode());
+                    return this.toCategoryTranslation(t, lang);
+                })
+                .collect(Collectors.toCollection(ArrayList::new));
+
+        categoryToUpdate.setTranslations(translations);
+
+        if(!categoryUpsertDto.slug().equals(categoryToUpdate.getSlug()))
+            categoryToUpdate.setSlug(categoryUpsertDto.slug());
+
+        if(categoryUpsertDto.isActive() != categoryToUpdate.isActive())
+            categoryToUpdate.setActive(categoryUpsertDto.isActive());
+
+        String previewLocale = categoryUpsertDto.translations().getFirst().langCode();
+        return toAdminDto(categoryToUpdate, previewLocale, activeLangMap.size());
     }
 
     @Override
