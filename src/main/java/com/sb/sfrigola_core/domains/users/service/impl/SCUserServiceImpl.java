@@ -53,15 +53,23 @@ public class SCUserServiceImpl implements ISCUserService {
 
     @Override
     @Transactional
-    public boolean updatePreferredLang(String newLangCode) {
+    public SCUserDto updatePreferredLang(String newLangCode) {
         languageService.existsByCodeOrThrow(newLangCode);
         var authUser = SCAuthenticationUtils.getAuthUserByContextHolder();
-        if (authUser.preferredLang().equals(newLangCode))
-            return true;
-        int updated = userRepository.updatePreferredLang(authUser.publicId(), newLangCode, Instant.now(), authUser.username());
-        if (updated == 0)
-            throw new SCNoRowsAffectedException("No rows were updated when trying to change preferred language for user with id " + authUser.publicId());
-        return true;
+        if (!authUser.preferredLang().equals(newLangCode)) {
+            int updated = userRepository.updatePreferredLang(authUser.publicId(), newLangCode, Instant.now(), authUser.username());
+            if (updated == 0)
+                throw new SCNoRowsAffectedException("No rows were updated when trying to change preferred language for user with id " + authUser.publicId());
+        }
+        return SCUserDto.minimalInfo(
+                authUser.publicId(),
+                authUser.username(),
+                authUser.email(),
+                newLangCode,
+                authUser.isActive(),
+                authUser.firstName(),
+                authUser.lastName()
+        );
     }
 
 

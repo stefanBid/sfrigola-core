@@ -32,9 +32,9 @@ public class UserController {
 
 
     @PatchMapping(value="/settings/change-preferred-lang/{newLangCode}",version = "1.0")
-    public ResponseEntity<SCGeneralResponseDto<String, Void>> changePreferredLang(@PathVariable("newLangCode") String newLangCode) {
-        userService.updatePreferredLang(newLangCode);
-        return ResponseEntity.ok(SCGeneralResponseDto.successMutation("Preferred language changed successfully"));
+    public ResponseEntity<SCGeneralResponseDto<SCUserDto, Void>> changePreferredLang(@PathVariable("newLangCode") String newLangCode) {
+        SCUserDto updated = userService.updatePreferredLang(newLangCode);
+        return ResponseEntity.ok(SCGeneralResponseDto.success(updated));
     }
 
     @PatchMapping(value = "/profile/update", version = "1.0")
