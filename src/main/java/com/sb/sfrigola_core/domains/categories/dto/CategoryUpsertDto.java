@@ -11,10 +11,6 @@ import java.io.Serializable;
 import java.util.List;
 
 public record CategoryUpsertDto(
-        String publicId, // null = CREATE, non-null = UPDATE
-
-        String parentPublicId,
-
         @NotBlank(message = CategoryValidationCodeConstants.SLUG_REQUIRED)
         @Pattern(regexp = "^[a-z0-9]+(?:-[a-z0-9]+)*$", message = CategoryValidationCodeConstants.SLUG_INVALID_FORMAT)
         String slug,

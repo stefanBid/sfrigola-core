@@ -75,8 +75,8 @@ public class UserController {
 
 
     @PatchMapping(value = "/admin/{publicId}/status", version = "1.0")
-    public ResponseEntity<SCGeneralResponseDto<String, Void>> setUserActive(@PathVariable("publicId") UUID publicId, @RequestBody @Valid SetStatusDto setStatusDto) {
-        userService.setUserActive(publicId, setStatusDto.active());
-        return ResponseEntity.ok(SCGeneralResponseDto.successMutation( "User status updated successfully" ));
+    public ResponseEntity<SCGeneralResponseDto<SCUserDto, Void>> setUserActive(@PathVariable("publicId") UUID publicId, @RequestBody @Valid SetStatusDto setStatusDto) {
+        SCUserDto updated = userService.setUserActive(publicId, setStatusDto.active());
+        return ResponseEntity.ok(SCGeneralResponseDto.success(updated));
     }
 }

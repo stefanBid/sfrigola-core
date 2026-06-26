@@ -42,12 +42,12 @@ public interface ISCUserService {
      *
      * @param publicId the public ID of the target user
      * @param active   {@code true} to activate, {@code false} to deactivate
-     * @return {@code true} if the update succeeded
+     * @return updated user data as {@link SCUserDto}
      * @throws com.sb.sfrigola_core.domains.users.exceptions.SCCanNotActiveOrDeactivateYourselfException if the admin targets themselves
      * @throws jakarta.persistence.EntityNotFoundException if no user with the given public ID exists
      * @throws com.sb.sfrigola_core.common.exception.ex.SCNoRowsAffectedException if no rows were updated
      */
-    boolean setUserActive(UUID publicId, boolean active);
+    SCUserDto setUserActive(UUID publicId, boolean active);
 
     /**
      * Promotes the currently authenticated user to {@code ROLE_CONTRIBUTOR}.

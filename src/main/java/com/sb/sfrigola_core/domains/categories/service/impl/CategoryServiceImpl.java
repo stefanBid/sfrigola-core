@@ -3,24 +3,23 @@ package com.sb.sfrigola_core.domains.categories.service.impl;
 import com.sb.sfrigola_core.common.models.contracts.SCFilterQuery;
 import com.sb.sfrigola_core.common.models.contracts.SCPagedResult;
 import com.sb.sfrigola_core.common.util.SCPaginationUtils;
-import com.sb.sfrigola_core.domains.categories.dto.CategoryDetailsAdminDto;
-import com.sb.sfrigola_core.domains.categories.dto.CategoryDto;
-import com.sb.sfrigola_core.domains.categories.dto.CategoryPreviewAdminDto;
-import com.sb.sfrigola_core.domains.categories.dto.CategoryTranslationDto;
+import com.sb.sfrigola_core.domains.categories.dto.*;
 import com.sb.sfrigola_core.domains.categories.entity.Category;
 import com.sb.sfrigola_core.domains.categories.entity.CategoryTranslation;
+import com.sb.sfrigola_core.domains.categories.exception.CategorySlugAlreadyExistsException;
+import com.sb.sfrigola_core.domains.categories.exception.DuplicateCategoryLocaleException;
+import com.sb.sfrigola_core.domains.categories.exception.InvalidCategoryLocaleException;
 import com.sb.sfrigola_core.domains.categories.exception.NoCategoryFoundException;
-import com.sb.sfrigola_core.domains.categories.repository.CategoryRepository;
+import com.sb.sfrigola_core.domains.categories.repository.ICategoryRepository;
 import com.sb.sfrigola_core.domains.categories.service.ICategoryService;
+import com.sb.sfrigola_core.domains.languages.entity.Language;
 import com.sb.sfrigola_core.domains.languages.service.ILanguageDomainBridgeService;
 import lombok.RequiredArgsConstructor;
+import org.jspecify.annotations.Nullable;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
-import java.util.ArrayList;
-import java.util.List;
-import java.util.Map;
-import java.util.Objects;
+import java.util.*;
 import java.util.stream.Collectors;
 
 @Service
@@ -28,7 +27,7 @@ import java.util.stream.Collectors;
 @Transactional(readOnly = true)
 public class CategoryServiceImpl implements ICategoryService {
 
-    private final CategoryRepository categoryRepository;
+    private final ICategoryRepository categoryRepository;
     private final ILanguageDomainBridgeService languageDomainBridgeService;
 
     @Override
@@ -78,7 +77,7 @@ public class CategoryServiceImpl implements ICategoryService {
     }
 
     @Override
-    public CategoryDetailsAdminDto getByPublicIdAdmin(String publicId, String locale) {
+    public CategoryDetailsAdminDto getByPublicIdAdmin(UUID publicId, String locale) {
         var activeLanguages = languageDomainBridgeService.getAllActiveLanguages();
         var category = categoryRepository.findByPublicIdWithAllTranslation(publicId)
                 .orElseThrow(() -> new NoCategoryFoundException(publicId));
@@ -95,6 +94,68 @@ public class CategoryServiceImpl implements ICategoryService {
 
         return toAdminDetailsDto(category,totalLocalization,totalMissingLocalization, missingTranslation, locale);
 
+    }
+
+    @Override
+    @Transactional
+    public CategoryPreviewAdminDto createNewCategory(CategoryUpsertDto categoryUpsertDto, @Nullable UUID parentPublicId) {
+        // Guard for existing Slug
+        if (categoryRepository.existsBySlug(categoryUpsertDto.slug()))
+            throw new CategorySlugAlreadyExistsException(categoryUpsertDto.slug());
+
+        // Guard for duplicate locale in input — fail fast before building entities
+        Set<String> seenLocales = new HashSet<>();
+        categoryUpsertDto.translations().forEach(t -> {
+            if (!seenLocales.add(t.langCode()))
+                throw new DuplicateCategoryLocaleException(t.langCode());
+        });
+
+        // Resolve parent early — fail fast before any entity construction
+        Category parentCategory = null;
+        if (parentPublicId != null) {
+            parentCategory = categoryRepository.findByPublicId(parentPublicId)
+                    .orElseThrow(() -> new NoCategoryFoundException(parentPublicId));
+        }
+
+        Category category = new Category();
+
+        // Set Translation
+        var activeLanguageMap = languageDomainBridgeService.getActiveLanguageEntitiesMap();
+        ArrayList<CategoryTranslation> translations = categoryUpsertDto.translations().stream()
+                .map(t -> {
+                    Language lang = activeLanguageMap.get(t.langCode());
+                    if (lang == null) throw new InvalidCategoryLocaleException(t.langCode());
+                    return this.toCategoryTranslation(t, lang);
+                })
+                .collect(Collectors.toCollection(ArrayList::new));
+        translations.forEach(t -> t.setCategory(category));
+
+        if (parentCategory != null)
+            category.setParent(parentCategory);
+
+        Long parentId = parentCategory != null ? parentCategory.getId() : null;
+        short sortOrder = (short) (categoryRepository.findMaxSortOrderInGroup(parentId) + 1);
+        category.setSortOrder(sortOrder);
+
+        // Set Other parameters
+        category.setSlug(categoryUpsertDto.slug());
+        category.setActive(categoryUpsertDto.isActive());
+        category.setTranslations(translations);
+
+        categoryRepository.save(category);
+
+        String previewLocale = categoryUpsertDto.translations().getFirst().langCode();
+        return toAdminDto(category, previewLocale, activeLanguageMap.size());
+    }
+
+    @Override
+    public CategoryPreviewAdminDto updateCategory(CategoryUpsertDto categoryUpsertDto, UUID publicId) {
+        throw new UnsupportedOperationException("Not yet implemented");
+    }
+
+    @Override
+    public CategoryPreviewAdminDto deleteCategory(UUID publicId) {
+        throw new UnsupportedOperationException("Not yet implemented");
     }
 
     // =========================================================
@@ -153,6 +214,14 @@ public class CategoryServiceImpl implements ICategoryService {
 
     private CategoryTranslationDto toCategoryTranslationDto(CategoryTranslation translation) {
         return new CategoryTranslationDto(translation.getLanguage().getCode(), translation.getLanguage().getName(), translation.getName(), translation.getDescription());
+    }
+
+    private CategoryTranslation toCategoryTranslation(CategoryTranslationInputDto translationInputDto, Language lang) {
+        CategoryTranslation translation = new CategoryTranslation();
+        translation.setLanguage(lang);
+        translation.setName(translationInputDto.name());
+        translation.setDescription(translationInputDto.description());
+        return translation;
     }
 
 }

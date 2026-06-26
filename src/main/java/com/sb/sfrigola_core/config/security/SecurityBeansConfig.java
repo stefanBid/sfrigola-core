@@ -44,7 +44,7 @@ public class SecurityBeansConfig {
     public List<String> adminPath() {
         return List.of(
                 "/api/users/admin/**",
-                "/api/companies/admin/**"
+                "/api/categories/admin/**"
         );
     }
 
@@ -64,8 +64,7 @@ public class SecurityBeansConfig {
                 "/api/users/settings/**",
                 "/api/users/profile/**",
                 "/api/auth/change-password",
-                "/api/auth/change-email",
-                "/api/categories/**"
+                "/api/auth/change-email"
         );
     }
 

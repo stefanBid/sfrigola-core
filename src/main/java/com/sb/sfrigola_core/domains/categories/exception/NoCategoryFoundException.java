@@ -4,8 +4,10 @@ import com.sb.sfrigola_core.common.exception.ex.SCGeneralException;
 import com.sb.sfrigola_core.domains.categories.enums.CategoryErrorCode;
 import org.springframework.http.HttpStatus;
 
+import java.util.UUID;
+
 public class NoCategoryFoundException extends SCGeneralException {
-    public NoCategoryFoundException(String publicId) {
+    public NoCategoryFoundException(UUID publicId) {
         super(
                 HttpStatus.NOT_FOUND,
                 CategoryErrorCode.SELECTED_CATEGORY_NOT_FOUND,

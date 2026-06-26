@@ -8,6 +8,8 @@ import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
 
 import java.util.List;
+import java.util.Map;
+import java.util.stream.Collectors;
 
 @Service
 @RequiredArgsConstructor
@@ -18,6 +20,13 @@ public class LanguageDomainBridgeServiceImpl implements ILanguageDomainBridgeSer
     @Override
     public List<LanguageDto> getAllActiveLanguages() {
         return languageRepository.findAllByIsActiveTrue().stream().map(this::toDto).toList();
+    }
+
+    @Override
+    public Map<String, Language> getActiveLanguageEntitiesMap() {
+        return languageRepository.findAllByIsActiveTrue().stream().collect(
+                Collectors.toMap(Language::getCode, lang -> lang)
+        );
     }
 
     // =========================================================
