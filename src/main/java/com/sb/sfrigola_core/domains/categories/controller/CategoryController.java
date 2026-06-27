@@ -4,10 +4,10 @@ import com.sb.sfrigola_core.common.constant.SCRequestParamValidationCodeConstant
 import com.sb.sfrigola_core.common.dto.option.SCPagedOptionDto;
 import com.sb.sfrigola_core.common.dto.response.SCGeneralResponseDto;
 import com.sb.sfrigola_core.common.models.contracts.SCFilterQuery;
-import com.sb.sfrigola_core.domains.categories.dto.CategoryDetailsAdminDto;
+import com.sb.sfrigola_core.domains.categories.dto.admin.CategoryDetailsAdminDto;
 import com.sb.sfrigola_core.domains.categories.dto.CategoryDto;
-import com.sb.sfrigola_core.domains.categories.dto.CategoryPreviewAdminDto;
-import com.sb.sfrigola_core.domains.categories.dto.CategoryUpsertDto;
+import com.sb.sfrigola_core.domains.categories.dto.admin.CategoryPreviewAdminDto;
+import com.sb.sfrigola_core.domains.categories.dto.admin.CategoryInputDto;
 import com.sb.sfrigola_core.domains.categories.service.ICategoryService;
 import jakarta.validation.Valid;
 import jakarta.validation.constraints.Max;
@@ -52,7 +52,7 @@ public class CategoryController {
             @RequestParam(value = "take", required = false, defaultValue = "10") int take,
             @RequestParam(value = "searchKey", required = false) String searchKey,
             @RequestParam(value = "isActive", required = false) Boolean isActive,
-            @RequestParam(required = false) @NotBlank(message = SCRequestParamValidationCodeConstants.LOCALE_MUST_NOT_BE_BLANK) String locale
+            @RequestParam(required = false) String locale
     ){
 
         var filterQuery = SCFilterQuery.pageWithSearch(searchKey, take, page);
@@ -62,10 +62,9 @@ public class CategoryController {
 
     @GetMapping(value = "/admin/{publicId}", version = "1.0")
     public ResponseEntity<SCGeneralResponseDto<CategoryDetailsAdminDto, Void>> getCategoryByPublicIdAdmin(
-            @PathVariable("publicId") UUID publicId,
-            @RequestParam(required = false) @NotBlank(message = SCRequestParamValidationCodeConstants.LOCALE_MUST_NOT_BE_BLANK) String locale
+            @PathVariable("publicId") UUID publicId
     ) {
-        var selectedCategory = categoryService.getByPublicIdAdmin(publicId, locale);
+        var selectedCategory = categoryService.getByPublicIdAdmin(publicId);
 
         return ResponseEntity.ok(SCGeneralResponseDto.success(selectedCategory));
     }
@@ -73,9 +72,18 @@ public class CategoryController {
     @PostMapping(value = {"/admin/create", "/admin/create/{parentPublicId}"}, version = "1.0")
     public ResponseEntity<SCGeneralResponseDto<CategoryPreviewAdminDto, Void>> createCategory(
             @PathVariable(value = "parentPublicId", required = false) UUID parentPublicId,
-            @RequestBody @Valid CategoryUpsertDto categoryUpsertDto
+            @RequestBody @Valid CategoryInputDto categoryUpsertDto
     ) {
         CategoryPreviewAdminDto created = categoryService.createNewCategory(categoryUpsertDto, parentPublicId);
         return ResponseEntity.ok(SCGeneralResponseDto.success(created));
+    }
+
+    @PutMapping(value = "/admin/update/{publicId}", version = "1.0")
+    public ResponseEntity<SCGeneralResponseDto<CategoryPreviewAdminDto, Void>> updateCategory(
+            @PathVariable(value = "publicId") UUID publicId,
+            @RequestBody @Valid CategoryInputDto categoryUpsertDto
+    ) {
+        CategoryPreviewAdminDto updated = categoryService.updateCategory(categoryUpsertDto, publicId);
+        return ResponseEntity.ok(SCGeneralResponseDto.success(updated));
     }
 }

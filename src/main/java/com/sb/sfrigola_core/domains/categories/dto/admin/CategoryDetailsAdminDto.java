@@ -1,9 +1,10 @@
-package com.sb.sfrigola_core.domains.categories.dto;
+package com.sb.sfrigola_core.domains.categories.dto.admin;
 
 import java.io.Serializable;
+import java.util.List;
 import java.util.UUID;
 
-public record CategoryPreviewAdminDto(
+public record CategoryDetailsAdminDto(
         UUID publicId,
         String slug,
         UUID parentPublicId,
@@ -12,6 +13,8 @@ public record CategoryPreviewAdminDto(
         String namePreview,
         String descriptionPreview,
         int totalLocalization,
-        int totalMissingLocalization
+        int totalMissingLocalization,
+        List<CategoryDetailsTranslationAdminDto> translations,
+        List<CategoryDetailsTranslationAdminDto> missingTranslation
 ) implements Serializable {
 }

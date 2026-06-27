@@ -1,4 +1,4 @@
-package com.sb.sfrigola_core.domains.categories.dto;
+package com.sb.sfrigola_core.domains.categories.dto.admin;
 
 import com.sb.sfrigola_core.domains.categories.constants.CategoryValidationCodeConstants;
 import jakarta.validation.Valid;
@@ -10,7 +10,7 @@ import jakarta.validation.constraints.Size;
 import java.io.Serializable;
 import java.util.List;
 
-public record CategoryUpsertDto(
+public record CategoryInputDto(
         @NotBlank(message = CategoryValidationCodeConstants.SLUG_REQUIRED)
         @Pattern(regexp = "^[a-z0-9]+(?:-[a-z0-9]+)*$", message = CategoryValidationCodeConstants.SLUG_INVALID_FORMAT)
         String slug,

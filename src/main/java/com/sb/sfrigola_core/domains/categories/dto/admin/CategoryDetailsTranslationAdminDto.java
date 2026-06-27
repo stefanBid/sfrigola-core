@@ -1,8 +1,8 @@
-package com.sb.sfrigola_core.domains.categories.dto;
+package com.sb.sfrigola_core.domains.categories.dto.admin;
 
 import java.io.Serializable;
 
-public record CategoryTranslationDto(
+public record CategoryDetailsTranslationAdminDto(
         String langCode,
         String langName,
         String name,

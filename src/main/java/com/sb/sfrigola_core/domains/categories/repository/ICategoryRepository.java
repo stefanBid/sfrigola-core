@@ -40,6 +40,32 @@ public interface ICategoryRepository extends JpaRepository<Category, Long> {
             @Param("searchKey") String searchKey,
             Pageable pageable);
 
+    @Query(value = """
+            SELECT c.id FROM Category c
+            LEFT JOIN c.parent p
+            JOIN c.translations t
+            WHERE (:isActive IS NULL OR c.isActive = :isActive)
+              AND (:searchKey IS NULL
+                   OR LOWER(t.name) LIKE LOWER(CONCAT('%', CAST(:searchKey AS string), '%'))
+                   OR LOWER(t.description) LIKE LOWER(CONCAT('%', CAST(:searchKey AS string), '%')))
+            GROUP BY c.id, p.id, p.sortOrder, c.sortOrder
+            ORDER BY COALESCE(p.sortOrder, c.sortOrder) ASC,
+                     CASE WHEN p IS NULL THEN 0 ELSE 1 END ASC,
+                     c.sortOrder ASC
+            """,
+            countQuery = """
+            SELECT COUNT(DISTINCT c.id) FROM Category c
+            JOIN c.translations t
+            WHERE (:isActive IS NULL OR c.isActive = :isActive)
+              AND (:searchKey IS NULL
+                   OR LOWER(t.name) LIKE LOWER(CONCAT('%', CAST(:searchKey AS string), '%'))
+                   OR LOWER(t.description) LIKE LOWER(CONCAT('%', CAST(:searchKey AS string), '%')))
+            """)
+    Page<Long> findIdsByIsActiveAndSearchKey(
+            @Param("isActive") Boolean isActive,
+            @Param("searchKey") String searchKey,
+            Pageable pageable);
+
     @Query("""
             SELECT c FROM Category c
             LEFT JOIN FETCH c.parent p

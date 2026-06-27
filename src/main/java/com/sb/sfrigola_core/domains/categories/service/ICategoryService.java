@@ -2,10 +2,10 @@ package com.sb.sfrigola_core.domains.categories.service;
 
 import com.sb.sfrigola_core.common.models.contracts.SCFilterQuery;
 import com.sb.sfrigola_core.common.models.contracts.SCPagedResult;
-import com.sb.sfrigola_core.domains.categories.dto.CategoryDetailsAdminDto;
+import com.sb.sfrigola_core.domains.categories.dto.admin.CategoryDetailsAdminDto;
 import com.sb.sfrigola_core.domains.categories.dto.CategoryDto;
-import com.sb.sfrigola_core.domains.categories.dto.CategoryPreviewAdminDto;
-import com.sb.sfrigola_core.domains.categories.dto.CategoryUpsertDto;
+import com.sb.sfrigola_core.domains.categories.dto.admin.CategoryPreviewAdminDto;
+import com.sb.sfrigola_core.domains.categories.dto.admin.CategoryInputDto;
 import jakarta.annotation.Nullable;
 
 import java.util.UUID;
@@ -36,7 +36,7 @@ public interface ICategoryService {
      * @param locale      BCP-47 language code used for the name/description preview field
      * @param isActive    when non-{@code null}, filters by active/inactive status
      * @return a {@link com.sb.sfrigola_core.common.models.contracts.SCPagedResult} of
-     *         {@link com.sb.sfrigola_core.domains.categories.dto.CategoryPreviewAdminDto}; never {@code null}
+     *         {@link CategoryPreviewAdminDto}; never {@code null}
      */
     SCPagedResult<CategoryPreviewAdminDto> getAllAdmin(SCFilterQuery<Void> filterQuery, String locale, Boolean isActive);
 
@@ -45,12 +45,11 @@ public interface ICategoryService {
      * and the list of active languages that still lack a translation.
      *
      * @param publicId the UUID string identifying the category
-     * @param locale   BCP-47 language code used for the name/description preview field
-     * @return a {@link com.sb.sfrigola_core.domains.categories.dto.CategoryDetailsAdminDto}
+     * @return a {@link CategoryDetailsAdminDto}
      * @throws com.sb.sfrigola_core.domains.categories.exception.NoCategoryFoundException
      *         if no category exists with the given {@code publicId}
      */
-    CategoryDetailsAdminDto getByPublicIdAdmin(UUID publicId, String locale);
+    CategoryDetailsAdminDto getByPublicIdAdmin(UUID publicId);
 
 
     /**
@@ -72,7 +71,7 @@ public interface ICategoryService {
      * @throws com.sb.sfrigola_core.domains.categories.exception.DuplicateCategoryLocaleException
      *         if the same locale appears more than once in the translations list
      */
-    CategoryPreviewAdminDto createNewCategory(CategoryUpsertDto dto, @Nullable UUID parentPublicId);
+    CategoryPreviewAdminDto createNewCategory(CategoryInputDto dto, @Nullable UUID parentPublicId);
 
     /**
      * Updates an existing category's slug, active status, and translations.
@@ -94,7 +93,7 @@ public interface ICategoryService {
      * @throws com.sb.sfrigola_core.domains.categories.exception.DuplicateCategoryLocaleException
      *         if the same locale appears more than once in the translations list
      */
-    CategoryPreviewAdminDto updateCategory(CategoryUpsertDto dto, UUID publicId);
+    CategoryPreviewAdminDto updateCategory(CategoryInputDto dto, UUID publicId);
 
     /**
      * Deletes a category and all its translations.

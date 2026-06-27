@@ -4,6 +4,7 @@ import com.sb.sfrigola_core.common.models.contracts.SCFilterQuery;
 import com.sb.sfrigola_core.common.models.contracts.SCPagedResult;
 import com.sb.sfrigola_core.common.util.SCPaginationUtils;
 import com.sb.sfrigola_core.domains.categories.dto.*;
+import com.sb.sfrigola_core.domains.categories.dto.admin.*;
 import com.sb.sfrigola_core.domains.categories.entity.Category;
 import com.sb.sfrigola_core.domains.categories.entity.CategoryTranslation;
 import com.sb.sfrigola_core.domains.categories.exception.CategorySlugAlreadyExistsException;
@@ -59,53 +60,73 @@ public class CategoryServiceImpl implements ICategoryService {
     public SCPagedResult<CategoryPreviewAdminDto> getAllAdmin(SCFilterQuery<Void> filterQuery, String locale, Boolean isActive) {
         var pageable = SCPaginationUtils.toPageable(filterQuery);
         var totalActiveLanguages = languageDomainBridgeService.getAllActiveLanguages().size();
+        // LOCALE SWITCHER
+        // CASE: Locale is null
+        // RESULT: All categories returned; preview translation = first element of collection
+        // CASE: Locale has value
+        // RESULT: Only categories that have a translation for the given locale; preview = that specific translation
+        var categoryIds = locale != null
+                ? categoryRepository.findIdsByLocaleAndIsActiveAndSearchKey(locale, isActive, filterQuery.searchKey(), pageable)
+                : categoryRepository.findIdsByIsActiveAndSearchKey(isActive, filterQuery.searchKey(), pageable);
 
-        var categoryIds = categoryRepository.findIdsByLocaleAndIsActiveAndSearchKey(locale, isActive, filterQuery.searchKey(), pageable);
 
-        if(categoryIds.hasContent()) {
+        if (categoryIds.hasContent()) {
             var ids = categoryIds.getContent();
             Map<Long, Category> byId = categoryRepository.findByIdsWithAllTranslations(ids)
                     .stream().collect(Collectors.toMap(Category::getId, c -> c));
             List<Category> ordered = ids.stream().map(byId::get).filter(Objects::nonNull).toList();
+
             return new SCPagedResult<>(
-                    ordered.stream().map(category -> toAdminDto(category, locale, totalActiveLanguages)).toList(),
+                    ordered.stream().map(category -> {
+                        CategoryTranslation categoryTranslation;
+                        if(locale != null)
+                            categoryTranslation = category.getTranslations().stream().filter(t -> t.getLanguage().getCode().equals(locale)).findFirst().orElse(null);
+                        else
+                            categoryTranslation = category.getTranslations().stream().findFirst().orElse(null);
+
+                        var translationPreview = new CategoryPreviewTranslationAdminDto(
+                                categoryTranslation != null ? categoryTranslation.getName() : null,
+                                categoryTranslation != null ? categoryTranslation.getDescription() : null
+                        );
+                        return toAdminDto(category, translationPreview, totalActiveLanguages);
+                    }).toList(),
                     SCPaginationUtils.toPagedOption(categoryIds)
             );
         }
-
         return SCPagedResult.empty();
+
     }
 
     @Override
-    public CategoryDetailsAdminDto getByPublicIdAdmin(UUID publicId, String locale) {
-        var activeLanguages = languageDomainBridgeService.getAllActiveLanguages();
+    public CategoryDetailsAdminDto getByPublicIdAdmin(UUID publicId) {
+        var activeLanguages = new ArrayList<>(languageDomainBridgeService.getAllActiveLanguages());
         var category = categoryRepository.findByPublicIdWithAllTranslation(publicId)
                 .orElseThrow(() -> new NoCategoryFoundException(publicId));
         // Preparing details for this category
         int totalLocalization = category.getTranslations().size();
         int totalMissingLocalization = activeLanguages.size() - totalLocalization;
-        ArrayList<CategoryTranslationDto> missingTranslation = new ArrayList<>();
+        ArrayList<CategoryDetailsTranslationAdminDto> missingTranslation = new ArrayList<>();
 
         // Populate missing translation only if there are missing languages
         if(totalMissingLocalization > 0) {
             category.getTranslations().forEach(t -> activeLanguages.removeIf(l -> l.code().equals(t.getLanguage().getCode())));
-            activeLanguages.forEach(l -> missingTranslation.add(new CategoryTranslationDto(l.code(), l.name(), null, null)));
+            activeLanguages.forEach(l -> missingTranslation.add(new CategoryDetailsTranslationAdminDto(l.code(), l.name(), null, null)));
         }
 
-        return toAdminDetailsDto(category,totalLocalization,totalMissingLocalization, missingTranslation, locale);
+        return toAdminDetailsDto(category,totalLocalization,totalMissingLocalization, missingTranslation);
 
     }
 
     @Override
     @Transactional
-    public CategoryPreviewAdminDto createNewCategory(CategoryUpsertDto categoryUpsertDto, @Nullable UUID parentPublicId) {
+    public CategoryPreviewAdminDto createNewCategory(CategoryInputDto inputDto, @Nullable UUID parentPublicId) {
         // Guard for existing Slug
-        if (categoryRepository.existsBySlug(categoryUpsertDto.slug()))
-            throw new CategorySlugAlreadyExistsException(categoryUpsertDto.slug());
+        if (categoryRepository.existsBySlug(inputDto.slug()))
+            throw new CategorySlugAlreadyExistsException(inputDto.slug());
 
         // Guard for duplicate locale in input — fail fast before building entities
         Set<String> seenLocales = new HashSet<>();
-        categoryUpsertDto.translations().forEach(t -> {
+        inputDto.translations().forEach(t -> {
             if (!seenLocales.add(t.langCode()))
                 throw new DuplicateCategoryLocaleException(t.langCode());
         });
@@ -121,7 +142,7 @@ public class CategoryServiceImpl implements ICategoryService {
 
         // Set Translation
         var activeLanguageMap = languageDomainBridgeService.getActiveLanguageEntitiesMap();
-        ArrayList<CategoryTranslation> translations = categoryUpsertDto.translations().stream()
+        ArrayList<CategoryTranslation> translations = inputDto.translations().stream()
                 .map(t -> {
                     Language lang = activeLanguageMap.get(t.langCode());
                     if (lang == null) throw new InvalidCategoryLocaleException(t.langCode());
@@ -138,55 +159,77 @@ public class CategoryServiceImpl implements ICategoryService {
         category.setSortOrder(sortOrder);
 
         // Set Other parameters
-        category.setSlug(categoryUpsertDto.slug());
-        category.setActive(categoryUpsertDto.isActive());
+        category.setSlug(inputDto.slug());
+        category.setActive(inputDto.isActive());
         category.setTranslations(translations);
 
         categoryRepository.save(category);
 
-        String previewLocale = categoryUpsertDto.translations().getFirst().langCode();
-        return toAdminDto(category, previewLocale, activeLanguageMap.size());
+        var dataForTranslationPreview = inputDto.translations().stream().findFirst().orElse(null);
+        var translationPreview = new CategoryPreviewTranslationAdminDto(
+                dataForTranslationPreview != null ? dataForTranslationPreview.name() : null,
+                dataForTranslationPreview != null ? dataForTranslationPreview.description() : null
+        );
+
+        return toAdminDto(category, translationPreview,activeLanguageMap.size());
     }
 
     @Override
     @Transactional
-    public CategoryPreviewAdminDto updateCategory(CategoryUpsertDto categoryUpsertDto, UUID publicId) {
+    public CategoryPreviewAdminDto updateCategory(CategoryInputDto inputDto, UUID publicId) {
         // Guard for check if category with passed public ID does exist
         var categoryToUpdate = categoryRepository.findByPublicIdWithAllTranslation(publicId)
                 .orElseThrow(() -> new NoCategoryFoundException(publicId));
 
         // Guard for existing Slug
 
-        if (!categoryToUpdate.getSlug().equals(categoryUpsertDto.slug()) && categoryRepository.existsBySlug(categoryUpsertDto.slug()))
-            throw new CategorySlugAlreadyExistsException(categoryUpsertDto.slug());
+        if (!categoryToUpdate.getSlug().equals(inputDto.slug()) && categoryRepository.existsBySlug(inputDto.slug()))
+            throw new CategorySlugAlreadyExistsException(inputDto.slug());
 
         // Guard for duplicate locale in input — fail fast before building entities
         Set<String> seenLocales = new HashSet<>();
-        categoryUpsertDto.translations().forEach(t -> {
+        inputDto.translations().forEach(t -> {
             if (!seenLocales.add(t.langCode()))
                 throw new DuplicateCategoryLocaleException(t.langCode());
         });
 
         var activeLangMap = languageDomainBridgeService.getActiveLanguageEntitiesMap();
 
-        ArrayList<CategoryTranslation> translations = categoryUpsertDto.translations().stream()
-                .map(t -> {
-                    Language lang = activeLangMap.get(t.langCode());
-                    if (lang == null) throw new InvalidCategoryLocaleException(t.langCode());
-                    return this.toCategoryTranslation(t, lang);
-                })
-                .collect(Collectors.toCollection(ArrayList::new));
+        Map<String, CategoryTranslation> categoryToUpdateTranslationMapped = categoryToUpdate.getTranslations()
+                .stream()
+                .collect(Collectors.toMap(t -> t.getLanguage().getCode(), t -> t));
 
-        categoryToUpdate.setTranslations(translations);
+        List<CategoryTranslation> toRemove = new ArrayList<>();
 
-        if(!categoryUpsertDto.slug().equals(categoryToUpdate.getSlug()))
-            categoryToUpdate.setSlug(categoryUpsertDto.slug());
+        for (CategoryTranslationInputDto input : inputDto.translations()) {
+            Language lang = activeLangMap.get(input.langCode());
+            if (lang == null) throw new InvalidCategoryLocaleException(input.langCode());
+            // If in an update you want to remove a translation for category you can send it into translation array input with name null
+            boolean deleteSignal = input.name() == null || input.name().isBlank();
+            CategoryTranslation translationExtracted = categoryToUpdateTranslationMapped.get(input.langCode());
 
-        if(categoryUpsertDto.isActive() != categoryToUpdate.isActive())
-            categoryToUpdate.setActive(categoryUpsertDto.isActive());
+            if (deleteSignal) {
+                if (translationExtracted != null) toRemove.add(translationExtracted);
+            } else if (translationExtracted != null) {
+                translationExtracted.setName(input.name());
+                translationExtracted.setDescription(input.description());
+            } else {
+                CategoryTranslation newT = toCategoryTranslation(input, lang);
+                newT.setCategory(categoryToUpdate);
+                categoryToUpdate.getTranslations().add(newT);
+            }
+        }
 
-        String previewLocale = categoryUpsertDto.translations().getFirst().langCode();
-        return toAdminDto(categoryToUpdate, previewLocale, activeLangMap.size());
+        categoryToUpdate.getTranslations().removeAll(toRemove);
+        categoryToUpdate.setSlug(inputDto.slug());
+        categoryToUpdate.setActive(inputDto.isActive());
+
+        var dataForTranslationPreview = inputDto.translations().stream().findFirst().orElse(null);
+        var translationPreview = new CategoryPreviewTranslationAdminDto(
+                dataForTranslationPreview != null ? dataForTranslationPreview.name() : null,
+                dataForTranslationPreview != null ? dataForTranslationPreview.description() : null
+        );
+        return toAdminDto(categoryToUpdate, translationPreview, activeLangMap.size());
     }
 
     @Override
@@ -213,32 +256,30 @@ public class CategoryServiceImpl implements ICategoryService {
         );
     }
 
-    private CategoryPreviewAdminDto toAdminDto(Category category, String locale, int totalActiveLanguages) {
+    private CategoryPreviewAdminDto toAdminDto(Category category, CategoryPreviewTranslationAdminDto translationPreview, int totalActiveLanguages) {
         var translationCount = category.getTranslations().size();
-        var extractedPreviewForSpecificLang = category.getTranslations().stream().filter(t -> t.getLanguage().getCode().equals(locale)).findFirst().orElse(null);
         return new CategoryPreviewAdminDto(
                 category.getPublicId(),
                 category.getSlug(),
                 category.getParent() != null ? category.getParent().getPublicId() : null,
                 category.getSortOrder(),
                 category.isActive(),
-                extractedPreviewForSpecificLang != null ? extractedPreviewForSpecificLang.getName() : null,
-                extractedPreviewForSpecificLang != null ? extractedPreviewForSpecificLang.getDescription() : null,
+                translationPreview,
                 translationCount,
                 totalActiveLanguages - translationCount
         );
     }
 
-    private CategoryDetailsAdminDto toAdminDetailsDto(Category category, int totalLocalization, int totalMissingLocalization, List<CategoryTranslationDto> missingTranslation, String locale) {
-        var extractedPreviewForSpecificLang = category.getTranslations().stream().filter(t -> t.getLanguage().getCode().equals(locale)).findFirst().orElse(null);
+    private CategoryDetailsAdminDto toAdminDetailsDto(Category category, int totalLocalization, int totalMissingLocalization, List<CategoryDetailsTranslationAdminDto> missingTranslation) {
+        var extractedPreview = category.getTranslations().stream().findFirst().orElse(null);
         return new CategoryDetailsAdminDto(
                 category.getPublicId(),
                 category.getSlug(),
                 category.getParent() != null ? category.getParent().getPublicId() : null,
                 category.getSortOrder(),
                 category.isActive(),
-                extractedPreviewForSpecificLang != null ? extractedPreviewForSpecificLang.getName() : null,
-                extractedPreviewForSpecificLang != null ? extractedPreviewForSpecificLang.getDescription() : null,
+                extractedPreview != null ? extractedPreview.getName() : null,
+                extractedPreview != null ? extractedPreview.getDescription() : null,
                 totalLocalization,
                 totalMissingLocalization,
                 category.getTranslations().stream().map(this::toCategoryTranslationDto).toList(),
@@ -248,8 +289,8 @@ public class CategoryServiceImpl implements ICategoryService {
     }
 
 
-    private CategoryTranslationDto toCategoryTranslationDto(CategoryTranslation translation) {
-        return new CategoryTranslationDto(translation.getLanguage().getCode(), translation.getLanguage().getName(), translation.getName(), translation.getDescription());
+    private CategoryDetailsTranslationAdminDto toCategoryTranslationDto(CategoryTranslation translation) {
+        return new CategoryDetailsTranslationAdminDto(translation.getLanguage().getCode(), translation.getLanguage().getName(), translation.getName(), translation.getDescription());
     }
 
     private CategoryTranslation toCategoryTranslation(CategoryTranslationInputDto translationInputDto, Language lang) {
