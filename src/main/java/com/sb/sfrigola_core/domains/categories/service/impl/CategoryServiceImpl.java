@@ -7,10 +7,7 @@ import com.sb.sfrigola_core.domains.categories.dto.*;
 import com.sb.sfrigola_core.domains.categories.dto.admin.*;
 import com.sb.sfrigola_core.domains.categories.entity.Category;
 import com.sb.sfrigola_core.domains.categories.entity.CategoryTranslation;
-import com.sb.sfrigola_core.domains.categories.exception.CategorySlugAlreadyExistsException;
-import com.sb.sfrigola_core.domains.categories.exception.DuplicateCategoryLocaleException;
-import com.sb.sfrigola_core.domains.categories.exception.InvalidCategoryLocaleException;
-import com.sb.sfrigola_core.domains.categories.exception.NoCategoryFoundException;
+import com.sb.sfrigola_core.domains.categories.exception.*;
 import com.sb.sfrigola_core.domains.categories.repository.ICategoryRepository;
 import com.sb.sfrigola_core.domains.categories.service.ICategoryService;
 import com.sb.sfrigola_core.domains.languages.entity.Language;
@@ -233,8 +230,23 @@ public class CategoryServiceImpl implements ICategoryService {
     }
 
     @Override
+    @Transactional
     public CategoryPreviewAdminDto deleteCategory(UUID publicId) {
-        throw new UnsupportedOperationException("Not yet implemented");
+        var categoryToDelete = categoryRepository.findByPublicIdWithAllTranslation(publicId)
+                .orElseThrow(() -> new NoCategoryFoundException(publicId));
+
+        if (categoryRepository.existsByParentId(categoryToDelete.getId()))
+            throw new CategoryHasChildrenException(publicId);
+
+        var totalActiveLanguages = languageDomainBridgeService.getAllActiveLanguages().size();
+        var dataForTranslationPreview = categoryToDelete.getTranslations().stream().findFirst().orElse(null);
+        var translationPreview = new CategoryPreviewTranslationAdminDto(
+                dataForTranslationPreview != null ? dataForTranslationPreview.getName() : null,
+                dataForTranslationPreview != null ? dataForTranslationPreview.getDescription() : null
+        );
+
+        categoryRepository.delete(categoryToDelete);
+        return toAdminDto(categoryToDelete, translationPreview, totalActiveLanguages);
     }
 
     // =========================================================

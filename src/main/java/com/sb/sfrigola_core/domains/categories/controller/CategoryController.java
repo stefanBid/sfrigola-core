@@ -69,7 +69,7 @@ public class CategoryController {
         return ResponseEntity.ok(SCGeneralResponseDto.success(selectedCategory));
     }
 
-    @PostMapping(value = {"/admin/create", "/admin/create/{parentPublicId}"}, version = "1.0")
+    @PostMapping(value = {"/admin", "/admin/{parentPublicId}"}, version = "1.0")
     public ResponseEntity<SCGeneralResponseDto<CategoryPreviewAdminDto, Void>> createCategory(
             @PathVariable(value = "parentPublicId", required = false) UUID parentPublicId,
             @RequestBody @Valid CategoryInputDto categoryUpsertDto
@@ -78,12 +78,20 @@ public class CategoryController {
         return ResponseEntity.ok(SCGeneralResponseDto.success(created));
     }
 
-    @PutMapping(value = "/admin/update/{publicId}", version = "1.0")
+    @PutMapping(value = "/admin/{publicId}", version = "1.0")
     public ResponseEntity<SCGeneralResponseDto<CategoryPreviewAdminDto, Void>> updateCategory(
             @PathVariable(value = "publicId") UUID publicId,
             @RequestBody @Valid CategoryInputDto categoryUpsertDto
     ) {
         CategoryPreviewAdminDto updated = categoryService.updateCategory(categoryUpsertDto, publicId);
         return ResponseEntity.ok(SCGeneralResponseDto.success(updated));
+    }
+
+    @DeleteMapping(value = "/admin/{publicId}", version = "1.0")
+    public ResponseEntity<SCGeneralResponseDto<CategoryPreviewAdminDto, Void>> deleteCategory(
+            @PathVariable(value = "publicId") UUID publicId
+    ){
+        CategoryPreviewAdminDto deleted = categoryService.deleteCategory(publicId);
+        return ResponseEntity.ok(SCGeneralResponseDto.success(deleted));
     }
 }
