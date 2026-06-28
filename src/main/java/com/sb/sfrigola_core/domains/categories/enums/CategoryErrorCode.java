@@ -8,7 +8,8 @@ public enum CategoryErrorCode implements ISCErrorCode {
     CATEGORY_SLUG_ALREADY_EXISTS,
     CATEGORY_HAS_CHILDREN,
     INVALID_CATEGORY_LOCALE,
-    DUPLICATE_CATEGORY_LOCALE;
+    DUPLICATE_CATEGORY_LOCALE,
+    CATEGORY_REORDER_MISMATCH;
 
     @Override
     public String code() {

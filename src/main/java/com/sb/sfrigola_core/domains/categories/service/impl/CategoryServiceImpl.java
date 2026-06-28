@@ -249,6 +249,52 @@ public class CategoryServiceImpl implements ICategoryService {
         return toAdminDto(categoryToDelete, translationPreview, totalActiveLanguages);
     }
 
+    @Override
+    @Transactional
+    public List<CategoryPreviewAdminDto> reorderCategories(CategoryReorderInputDto reorderDto) {
+        // Resolve Parent ID if is present
+        Long parentId = null;
+        if(reorderDto.parentPublicId() != null) {
+            Category parent = categoryRepository.findByPublicId(reorderDto.parentPublicId())
+                    .orElseThrow(() -> new NoCategoryFoundException(reorderDto.parentPublicId()));
+            parentId = parent.getId();
+        }
+
+        // Parent ID Switcher
+        // CASE 1: parentID == null
+        // RESULT: obtain categories of main root
+        // CASE2 : parentID != null
+        // RESULT: obtain children categories of a root categories
+
+        List<Category> groupOfCategoryToSort = parentId == null ? categoryRepository.findByParentIsNull() : categoryRepository.findByParentId(parentId);
+
+        // Check if reorder input has exactly content of DB
+        Set<UUID> dbIds = groupOfCategoryToSort.stream().map(Category::getPublicId).collect(Collectors.toSet());
+        Set<UUID> inputIds = new HashSet<>(reorderDto.orderedPublicIds());
+
+        if(!dbIds.equals(inputIds))
+            throw new CategoryReorderMismatchException();
+
+        // Map publicId -> entity for lookup during reordering
+        Map<UUID, Category> byPublicId = groupOfCategoryToSort.stream().collect(Collectors.toMap(Category::getPublicId, c -> c));
+        List<Category> ordered = new ArrayList<>();
+
+        // Reorder categories
+        for(int i =0; i< reorderDto.orderedPublicIds().size(); i++) {
+            UUID publicId = reorderDto.orderedPublicIds().get(i);
+            Category category = byPublicId.get(publicId);
+            category.setSortOrder((short) i);
+            ordered.add(category);
+        }
+
+        var totalActiveLanguages = languageDomainBridgeService.getAllActiveLanguages().size();
+        return ordered.stream()
+                .map(c -> toAdminDto(c, new
+                        CategoryPreviewTranslationAdminDto(null,
+                        null), totalActiveLanguages))
+                .toList();
+    }
+
     // =========================================================
     // PRIVATE
     // =========================================================

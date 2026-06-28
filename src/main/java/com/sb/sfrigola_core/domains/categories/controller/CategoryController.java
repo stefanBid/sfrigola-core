@@ -8,6 +8,7 @@ import com.sb.sfrigola_core.domains.categories.dto.admin.CategoryDetailsAdminDto
 import com.sb.sfrigola_core.domains.categories.dto.CategoryDto;
 import com.sb.sfrigola_core.domains.categories.dto.admin.CategoryPreviewAdminDto;
 import com.sb.sfrigola_core.domains.categories.dto.admin.CategoryInputDto;
+import com.sb.sfrigola_core.domains.categories.dto.admin.CategoryReorderInputDto;
 import com.sb.sfrigola_core.domains.categories.service.ICategoryService;
 import jakarta.validation.Valid;
 import jakarta.validation.constraints.Max;
@@ -93,5 +94,13 @@ public class CategoryController {
     ){
         CategoryPreviewAdminDto deleted = categoryService.deleteCategory(publicId);
         return ResponseEntity.ok(SCGeneralResponseDto.success(deleted));
+    }
+
+    @PutMapping(value = "/admin/reorder", version = "1.0")
+    public ResponseEntity<SCGeneralResponseDto<List<CategoryPreviewAdminDto>, Void>> reorderCategories(
+            @RequestBody @Valid CategoryReorderInputDto categoryReorderInputDto
+            ){
+       List<CategoryPreviewAdminDto> reordered = categoryService.reorderCategories(categoryReorderInputDto);
+       return ResponseEntity.ok(SCGeneralResponseDto.success(reordered));
     }
 }

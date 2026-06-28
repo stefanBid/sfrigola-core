@@ -96,6 +96,7 @@ public interface ICategoryRepository extends JpaRepository<Category, Long> {
     Optional<Category> findByPublicId(UUID publicId);
 
     boolean existsBySlug(String slug);
-
     boolean existsByParentId(Long parentId);
+    List<Category> findByParentIsNull();
+    List<Category> findByParentId(Long parentId);
 }
