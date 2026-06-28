@@ -28,13 +28,13 @@ public interface ISCUserService {
 
     /**
      * Updates the preferred language of the currently authenticated user.
-     * If the new language code matches the current one, returns {@code true} immediately without writing.
+     * If the new language code matches the current one, returns the user unchanged.
      *
      * @param newLangCode ISO 639-1 language code (e.g. {@code "it"}, {@code "en"})
-     * @return {@code true} if the update succeeded or the language was already set
+     * @return updated user data as {@link SCUserDto} with the new preferred language applied
      * @throws com.sb.sfrigola_core.common.exception.ex.SCNoRowsAffectedException if no rows were updated
      */
-    boolean updatePreferredLang(String newLangCode);
+    SCUserDto updatePreferredLang(String newLangCode);
 
     /**
      * Sets the active status of a target user. Reserved for {@code ROLE_ADMIN}.
@@ -42,12 +42,12 @@ public interface ISCUserService {
      *
      * @param publicId the public ID of the target user
      * @param active   {@code true} to activate, {@code false} to deactivate
-     * @return {@code true} if the update succeeded
+     * @return updated user data as {@link SCUserDto}
      * @throws com.sb.sfrigola_core.domains.users.exceptions.SCCanNotActiveOrDeactivateYourselfException if the admin targets themselves
      * @throws jakarta.persistence.EntityNotFoundException if no user with the given public ID exists
      * @throws com.sb.sfrigola_core.common.exception.ex.SCNoRowsAffectedException if no rows were updated
      */
-    boolean setUserActive(UUID publicId, boolean active);
+    SCUserDto setUserActive(UUID publicId, boolean active);
 
     /**
      * Promotes the currently authenticated user to {@code ROLE_CONTRIBUTOR}.

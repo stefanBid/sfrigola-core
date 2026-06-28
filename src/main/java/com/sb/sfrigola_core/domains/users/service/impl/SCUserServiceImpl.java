@@ -53,21 +53,29 @@ public class SCUserServiceImpl implements ISCUserService {
 
     @Override
     @Transactional
-    public boolean updatePreferredLang(String newLangCode) {
+    public SCUserDto updatePreferredLang(String newLangCode) {
         languageService.existsByCodeOrThrow(newLangCode);
         var authUser = SCAuthenticationUtils.getAuthUserByContextHolder();
-        if (authUser.preferredLang().equals(newLangCode))
-            return true;
-        int updated = userRepository.updatePreferredLang(authUser.publicId(), newLangCode, Instant.now(), authUser.username());
-        if (updated == 0)
-            throw new SCNoRowsAffectedException("No rows were updated when trying to change preferred language for user with id " + authUser.publicId());
-        return true;
+        if (!authUser.preferredLang().equals(newLangCode)) {
+            int updated = userRepository.updatePreferredLang(authUser.publicId(), newLangCode, Instant.now(), authUser.username());
+            if (updated == 0)
+                throw new SCNoRowsAffectedException("No rows were updated when trying to change preferred language for user with id " + authUser.publicId());
+        }
+        return SCUserDto.minimalInfo(
+                authUser.publicId(),
+                authUser.username(),
+                authUser.email(),
+                newLangCode,
+                authUser.isActive(),
+                authUser.firstName(),
+                authUser.lastName()
+        );
     }
 
 
     @Override
     @Transactional
-    public boolean setUserActive(UUID publicId, boolean active) {
+    public SCUserDto setUserActive(UUID publicId, boolean active) {
         var authUser = SCAuthenticationUtils.getAuthUserByContextHolder();
 
         // Check if publicId is not the admin auth publicId
@@ -78,13 +86,14 @@ public class SCUserServiceImpl implements ISCUserService {
         var scUserByPublicId = userRepository.findByPublicId(publicId)
                 .orElseThrow(() -> new EntityNotFoundException("User not found with public ID: " + publicId));
         if (scUserByPublicId.isActive() == active) {
-            return true;
+            return convertToExternalDto(scUserByPublicId);
         }
         int updated = userRepository.updateActiveByPublicId(publicId, active, Instant.now(), authUser.username());
         if (updated == 0) {
             throw new SCNoRowsAffectedException("No rows were updated when trying to change active status for user with id " + publicId);
         }
-        return true;
+        scUserByPublicId.setActive(active);
+        return convertToExternalDto(scUserByPublicId);
     }
 
     @Override
@@ -121,6 +130,8 @@ public class SCUserServiceImpl implements ISCUserService {
                 pageableOption
         );
     }
+
+
 
     // =========================================================
     // PRIVATE

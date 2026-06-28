@@ -20,10 +20,10 @@ public interface ISCUserRepository extends JpaRepository<SCUser, Long> {
 
     @Query("""
             SELECT u FROM SCUser u
-            WHERE (:searchKey IS NULL OR LOWER(u.username)  LIKE LOWER(CONCAT('%', :searchKey, '%'))
-                                     OR LOWER(u.firstName) LIKE LOWER(CONCAT('%', :searchKey, '%'))
-                                     OR LOWER(u.lastName)  LIKE LOWER(CONCAT('%', :searchKey, '%'))
-                                     OR LOWER(u.email)     LIKE LOWER(CONCAT('%', :searchKey, '%')))
+            WHERE (:searchKey IS NULL OR LOWER(u.username)  LIKE LOWER(CONCAT('%', CAST(:searchKey AS string), '%'))
+                                     OR LOWER(u.firstName) LIKE LOWER(CONCAT('%', CAST(:searchKey AS string), '%'))
+                                     OR LOWER(u.lastName)  LIKE LOWER(CONCAT('%', CAST(:searchKey AS string), '%'))
+                                     OR LOWER(u.email)     LIKE LOWER(CONCAT('%', CAST(:searchKey AS string), '%')))
             AND   (:active IS NULL OR u.isActive = :active)
     """)
     Page<SCUser> findAllUsersByParams(

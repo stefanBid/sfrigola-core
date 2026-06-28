@@ -431,17 +431,17 @@ INSERT INTO roles (name, description) VALUES
 
 -- Categories (universal English slugs)
 INSERT INTO categories (id, slug, parent_id, sort_order) VALUES
- (1,  'appetizers',    NULL, 1),
- (2,  'first-courses', NULL, 2),
- (3,  'main-courses',  NULL, 3),
- (4,  'side-dishes',   NULL, 4),
- (5,  'desserts',      NULL, 5),
- (6,  'beverages',     NULL, 6),
- (7,  'pasta',         2,    1),
- (8,  'risotto',       2,    2),
- (9,  'soups',         2,    3),
- (10, 'fish',          3,    1),
- (11, 'meat',          3,    2);
+ (1,  'appetizers',    NULL, 0),
+ (2,  'first-courses', NULL, 1),
+ (3,  'main-courses',  NULL, 2),
+ (4,  'side-dishes',   NULL, 3),
+ (5,  'desserts',      NULL, 4),
+ (6,  'beverages',     NULL, 5),
+ (7,  'pasta',         2,    0),
+ (8,  'risotto',       2,    1),
+ (9,  'soups',         2,    2),
+ (10, 'fish',          3,    0),
+ (11, 'meat',          3,    1);
 
 SELECT setval('categories_id_seq', (SELECT MAX(id) FROM categories));
 

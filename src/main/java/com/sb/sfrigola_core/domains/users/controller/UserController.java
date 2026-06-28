@@ -32,9 +32,9 @@ public class UserController {
 
 
     @PatchMapping(value="/settings/change-preferred-lang/{newLangCode}",version = "1.0")
-    public ResponseEntity<SCGeneralResponseDto<String, Void>> changePreferredLang(@PathVariable("newLangCode") String newLangCode) {
-        userService.updatePreferredLang(newLangCode);
-        return ResponseEntity.ok(SCGeneralResponseDto.successMutation("Preferred language changed successfully"));
+    public ResponseEntity<SCGeneralResponseDto<SCUserDto, Void>> changePreferredLang(@PathVariable("newLangCode") String newLangCode) {
+        SCUserDto updated = userService.updatePreferredLang(newLangCode);
+        return ResponseEntity.ok(SCGeneralResponseDto.success(updated));
     }
 
     @PatchMapping(value = "/profile/update", version = "1.0")
@@ -56,9 +56,9 @@ public class UserController {
 
     @GetMapping(value = "/admin", version = "1.0")
     public ResponseEntity<SCGeneralResponseDto<List<SCUserDto>, SCPagedOptionDto>> getAllUsers(
-            @Min(value = 0, message = SCRequestParamValidationCodeConstants.PAGE_MUST_BE_GTE_ZERO)
+            @Min(value = 0, message = SCRequestParamValidationCodeConstants.PAGE_MUST_BE_AT_LEAST_ZERO)
             @RequestParam(value = "page", required = false, defaultValue = "0") int page,
-            @Min(value = 1, message = SCRequestParamValidationCodeConstants.TAKE_MUST_BE_GTE_ONE) @Max(value = 100, message = SCRequestParamValidationCodeConstants.TAKE_MUST_BE_LTE_HUNDRED)
+            @Min(value = 1, message = SCRequestParamValidationCodeConstants.TAKE_MUST_BE_AT_LEAST_ONE) @Max(value = 100, message = SCRequestParamValidationCodeConstants.TAKE_MUST_BE_AT_MOST_HUNDRED)
             @RequestParam(value = "take", required = false, defaultValue = "10") int take,
             @RequestParam(value = "sortBy", required = false, defaultValue = "firstName") String sortBy,
             @Pattern(regexp = "asc|desc", message = SCRequestParamValidationCodeConstants.SORT_INVALID_VALUE)
@@ -75,8 +75,8 @@ public class UserController {
 
 
     @PatchMapping(value = "/admin/{publicId}/status", version = "1.0")
-    public ResponseEntity<SCGeneralResponseDto<String, Void>> setUserActive(@PathVariable("publicId") UUID publicId, @RequestBody @Valid SetStatusDto setStatusDto) {
-        userService.setUserActive(publicId, setStatusDto.active());
-        return ResponseEntity.ok(SCGeneralResponseDto.successMutation( "User status updated successfully" ));
+    public ResponseEntity<SCGeneralResponseDto<SCUserDto, Void>> setUserActive(@PathVariable("publicId") UUID publicId, @RequestBody @Valid SetStatusDto setStatusDto) {
+        SCUserDto updated = userService.setUserActive(publicId, setStatusDto.active());
+        return ResponseEntity.ok(SCGeneralResponseDto.success(updated));
     }
 }

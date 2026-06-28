@@ -11,6 +11,7 @@ import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.http.converter.HttpMessageNotReadableException;
 import org.springframework.web.bind.MethodArgumentNotValidException;
+import org.springframework.web.bind.MissingServletRequestParameterException;
 import org.springframework.web.bind.annotation.ExceptionHandler;
 import org.springframework.web.bind.annotation.RestControllerAdvice;
 import org.springframework.web.context.request.WebRequest;
@@ -18,6 +19,7 @@ import org.springframework.web.method.annotation.HandlerMethodValidationExceptio
 
 import java.util.HashMap;
 import java.util.Map;
+import java.util.Objects;
 import java.util.stream.Collectors;
 
     @RestControllerAdvice
@@ -29,6 +31,12 @@ public class SCExceptionHandler {
         return SCErrorDataBuilderUtils.build(HttpStatus.NOT_FOUND, Map.of(GeneralErrorCode.ENTITY_NOT_FOUND.code(), ex.getMessage()), request);
     }
 
+    // ========== VALIDATION ERROR ==========
+    // 400 - Param required not passed
+    @ExceptionHandler(MissingServletRequestParameterException.class)
+    public ResponseEntity<SCGeneralResponseDto<Void, Void>> handleMissingServletRequestParameterException(MissingServletRequestParameterException ex, WebRequest request) {
+        return SCErrorDataBuilderUtils.build(HttpStatus.BAD_REQUEST, Map.of(ex.getParameterName(), Objects.requireNonNull(ex.getBody().getDetail())), request);
+    }
 
     // 400 — Validation failed (@Validated on controller method parameters - for Query params) Spring 6.1+
     @ExceptionHandler(HandlerMethodValidationException.class)

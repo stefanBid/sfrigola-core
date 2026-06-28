@@ -8,4 +8,7 @@ public record SCPagedResult<T>(
     List<T> content,
     SCPagedOptionDto pagedOptionDto
 ) {
+    public static <T> SCPagedResult<T> empty() {
+        return new SCPagedResult<>(List.of(), SCPagedOptionDto.noItems());
+    }
 }
