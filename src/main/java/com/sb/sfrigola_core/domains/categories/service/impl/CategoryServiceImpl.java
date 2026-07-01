@@ -110,7 +110,7 @@ public class CategoryServiceImpl implements ICategoryService {
             activeLanguages.forEach(l -> missingTranslation.add(new CategoryDetailsTranslationAdminDto(l.code(), l.name(), null, null)));
         }
 
-        return toAdminDetailsDto(category,totalLocalization,totalMissingLocalization, missingTranslation);
+        return toAdminDetailsDto(category, missingTranslation);
 
     }
 
@@ -328,7 +328,7 @@ public class CategoryServiceImpl implements ICategoryService {
         );
     }
 
-    private CategoryDetailsAdminDto toAdminDetailsDto(Category category, int totalLocalization, int totalMissingLocalization, List<CategoryDetailsTranslationAdminDto> missingTranslation) {
+    private CategoryDetailsAdminDto toAdminDetailsDto(Category category, List<CategoryDetailsTranslationAdminDto> missingTranslation) {
         var extractedPreview = category.getTranslations().stream().findFirst().orElse(null);
         return new CategoryDetailsAdminDto(
                 category.getPublicId(),
@@ -338,8 +338,6 @@ public class CategoryServiceImpl implements ICategoryService {
                 category.isActive(),
                 extractedPreview != null ? extractedPreview.getName() : null,
                 extractedPreview != null ? extractedPreview.getDescription() : null,
-                totalLocalization,
-                totalMissingLocalization,
                 category.getTranslations().stream().map(this::toCategoryTranslationDto).toList(),
                 missingTranslation
         );

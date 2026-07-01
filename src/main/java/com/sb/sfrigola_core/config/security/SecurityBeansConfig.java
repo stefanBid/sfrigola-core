@@ -36,6 +36,7 @@ public class SecurityBeansConfig {
                 "/api/auth/register",
                 "/api/languages/**",
                 "/api/categories",
+                "/api/tags",
                 "/error"
         );
     }
@@ -44,7 +45,8 @@ public class SecurityBeansConfig {
     public List<String> adminPath() {
         return List.of(
                 "/api/users/admin/**",
-                "/api/categories/admin/**"
+                "/api/categories/admin/**",
+                "/api/tags/admin/**"
         );
     }
 
