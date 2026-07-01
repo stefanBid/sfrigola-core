@@ -6,13 +6,12 @@ import com.sb.sfrigola_core.common.util.SCAuthenticationUtils;
 import com.sb.sfrigola_core.common.util.SCPaginationUtils;
 import com.sb.sfrigola_core.domains.languages.entity.Language;
 import com.sb.sfrigola_core.domains.tags.dto.TagDto;
-import com.sb.sfrigola_core.domains.tags.dto.admin.TagDetailsAdminDto;
-import com.sb.sfrigola_core.domains.tags.dto.admin.TagTranslationDetailsAdminDto;
-import com.sb.sfrigola_core.domains.tags.dto.admin.TagPreviewAdminDto;
-import com.sb.sfrigola_core.domains.tags.dto.consumer.TagSuggestDto;
+import com.sb.sfrigola_core.domains.tags.dto.admin.*;
+import com.sb.sfrigola_core.domains.tags.dto.contributor.TagSuggestDto;
 import com.sb.sfrigola_core.domains.tags.entity.Tag;
 import com.sb.sfrigola_core.domains.tags.entity.TagTranslation;
 import com.sb.sfrigola_core.domains.tags.enums.TagStatus;
+import com.sb.sfrigola_core.domains.tags.exception.DuplicateTagLocaleException;
 import com.sb.sfrigola_core.domains.tags.exception.NoTagFoundException;
 import com.sb.sfrigola_core.domains.tags.exception.TagLabelAlreadyExistsException;
 import com.sb.sfrigola_core.domains.tags.exception.TagLanguageNotActiveException;
@@ -121,6 +120,45 @@ public class TagServiceImpl implements ITagService {
 
     @Override
     @Transactional
+    public TagPreviewAdminDto createNewTag(TagInputDto inputDto) {
+        // Guard for existing slug
+        if(tagRepository.existsBySlug(inputDto.slug()))
+            throw new TagSlugAlreadyExistsException(inputDto.slug());
+
+        // Guard for duplicate locale in input — fail fast before building entities
+        Set<String> seenLocales = new HashSet<>();
+        inputDto.translations().forEach(t -> {
+            if(!seenLocales.add(t.langCode()))
+                throw new DuplicateTagLocaleException(t.langCode());
+        });
+
+        Tag newTag = new Tag();
+
+        var activeLanguageMap = languageDomainBridgeService.getActiveLanguageEntitiesMap();
+        List<TagTranslation> translations = inputDto.translations().stream()
+                .map(t -> {
+                    Language lang = activeLanguageMap.get(t.langCode());
+                    if(lang == null) throw new TagLanguageNotActiveException(t.langCode());
+                    return toTagTranslation(t, lang);
+                })
+                .collect(Collectors.toCollection(ArrayList::new));
+        translations.forEach(t -> t.setTag(newTag));
+
+        newTag.setSlug(inputDto.slug());
+        newTag.setType(inputDto.type());
+        newTag.setScope(inputDto.scope());
+        newTag.setTranslations(translations);
+
+        tagRepository.save(newTag);
+
+        var dataForTranslationPreview = inputDto.translations().stream().findFirst().orElse(null);
+        var labelPreview = dataForTranslationPreview != null ? dataForTranslationPreview.label() : null;
+
+        return toAdminDto(newTag, labelPreview, activeLanguageMap.size());
+    }
+
+    @Override
+    @Transactional
     public TagSuggestDto suggestNewTag(TagSuggestDto newTagSuggested) {
         // Obtain lang code from authUser
         Language lang = getLanguageOrThrow();
@@ -150,6 +188,88 @@ public class TagServiceImpl implements ITagService {
         tagRepository.save(newSuggestedTag);
 
         return newTagSuggested;
+    }
+
+    @Override
+    @Transactional
+    public boolean updateTagStatus(TagStatus newStatus, UUID publicId) {
+        var existingTag = tagRepository.findByPublicId(publicId).orElseThrow(
+                () -> new NoTagFoundException(publicId)
+        );
+
+        if(!newStatus.getValue().equals(existingTag.getStatus().getValue()))
+            existingTag.setStatus(newStatus);
+        return true;
+    }
+
+    @Override
+    @Transactional
+    public TagPreviewAdminDto updateTag(UUID publicId, TagInputDto inputDto) {
+        var tagToUpdate = tagRepository.findByPublicIdWithAllTranslation(publicId).orElseThrow(
+                () -> new NoTagFoundException(publicId)
+        );
+
+        // Check: new slug not already used by a different tag
+        if(!inputDto.slug().equals(tagToUpdate.getSlug()) && tagRepository.existsBySlug(inputDto.slug()))
+            throw new TagSlugAlreadyExistsException(inputDto.slug());
+
+        // Check: duplicate locale in input — fail fast before touching any translation
+        Set<String> seenLocales = new HashSet<>();
+        inputDto.translations().forEach(t -> {
+            if(!seenLocales.add(t.langCode())) throw new DuplicateTagLocaleException(t.langCode());
+        });
+
+        // Prepare Translation update
+        var activeLanguagesMap = languageDomainBridgeService.getActiveLanguageEntitiesMap();
+        Map<String, TagTranslation> tagToUpdateTranslationMapped = tagToUpdate.getTranslations().stream()
+                .collect(Collectors.toMap(t -> t.getLanguage().getCode(), t-> t));
+
+        List<TagTranslation> toRemove = new ArrayList<>();
+
+        for(TagTranslationInputDto input : inputDto.translations()) {
+            Language lang = activeLanguagesMap.get(input.langCode());
+            if(lang == null) throw new TagLanguageNotActiveException(input.langCode());
+
+            boolean deleteSignal = input.label() == null || input.label().isBlank();
+            TagTranslation extractedTagTranslation = tagToUpdateTranslationMapped.get(input.langCode());
+            if(deleteSignal){
+                if(extractedTagTranslation != null) toRemove.add(extractedTagTranslation);
+            } else if (extractedTagTranslation != null) {
+                // Update existing translation
+                extractedTagTranslation.setLabel(input.label());
+            } else {
+                // Create new translation
+                TagTranslation newTranslation = new TagTranslation();
+                newTranslation.setTag(tagToUpdate);
+                newTranslation.setLanguage(lang);
+                newTranslation.setLabel(input.label());
+                tagToUpdate.getTranslations().add(newTranslation);
+
+            }
+        }
+
+        tagToUpdate.getTranslations().removeAll(toRemove);
+        tagToUpdate.setSlug(inputDto.slug());
+        tagToUpdate.setType(inputDto.type());
+        tagToUpdate.setScope(inputDto.scope());
+
+        var labelPreview = tagToUpdate.getTranslations().stream().findFirst().map(TagTranslation::getLabel).orElse(null);
+
+        return toAdminDto(tagToUpdate, labelPreview, activeLanguagesMap.size());
+    }
+
+    @Override
+    @Transactional
+    public TagPreviewAdminDto deleteTag(UUID publicId) {
+        var tagToDelete = tagRepository.findByPublicIdWithAllTranslation(publicId).orElseThrow(
+                () -> new NoTagFoundException(publicId)
+        );
+
+        var totalActiveLanguages = languageDomainBridgeService.getAllActiveLanguages().size();
+        var labelPreview = tagToDelete.getTranslations().stream().findFirst().map(TagTranslation::getLabel).orElse(null);
+
+        tagRepository.delete(tagToDelete);
+        return toAdminDto(tagToDelete, labelPreview, totalActiveLanguages);
     }
 
     // =========================================================
@@ -207,6 +327,13 @@ public class TagServiceImpl implements ITagService {
         );
     }
 
+
+    private TagTranslation toTagTranslation(TagTranslationInputDto translationInputDto, Language lang) {
+        TagTranslation translation = new TagTranslation();
+        translation.setLanguage(lang);
+        translation.setLabel(translationInputDto.label());
+        return translation;
+    }
 
     private TagTranslationDetailsAdminDto toTagTranslationDetails(TagTranslation translation) {
         return new TagTranslationDetailsAdminDto(

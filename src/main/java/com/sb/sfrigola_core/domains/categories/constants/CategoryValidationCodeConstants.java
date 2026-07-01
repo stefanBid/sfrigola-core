@@ -5,10 +5,6 @@ public class CategoryValidationCodeConstants {
         throw new AssertionError("Cannot instantiate CategoryValidationCodeConstants");
     }
 
-    // --- SLUG ---
-    public static final String SLUG_REQUIRED         = "SLUG_REQUIRED";
-    public static final String SLUG_INVALID_FORMAT   = "SLUG_INVALID_FORMAT";
-
     // --- TRANSLATIONS ---
     public static final String TRANSLATIONS_REQUIRED = "TRANSLATIONS_REQUIRED";
     public static final String TRANSLATIONS_MIN_ONE  = "TRANSLATIONS_MIN_ONE";

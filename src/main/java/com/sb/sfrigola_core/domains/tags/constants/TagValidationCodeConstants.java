@@ -6,11 +6,6 @@ public class TagValidationCodeConstants {
         throw new AssertionError("Cannot instantiate TagValidationCodeConstants");
     }
 
-    // --- SLUG ---
-    public static final String SLUG_REQUIRED         = "SLUG_REQUIRED";
-    public static final String SLUG_INVALID_FORMAT   = "SLUG_INVALID_FORMAT";
-    public static final String SLUG_TOO_LONG         = "SLUG_TOO_LONG";
-
     // --- TYPE / SCOPE ---
     public static final String TYPE_REQUIRED         = "TYPE_REQUIRED";
     public static final String SCOPE_REQUIRED        = "SCOPE_REQUIRED";

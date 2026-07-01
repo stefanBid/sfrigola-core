@@ -57,7 +57,9 @@ public class SecurityBeansConfig {
 
     @Bean("onlyContributorPath")
     public List<String> contributorPath() {
-        return List.of();
+        return List.of(
+                "/api/tags/contributor/**"
+        );
     }
 
     @Bean("authPath")

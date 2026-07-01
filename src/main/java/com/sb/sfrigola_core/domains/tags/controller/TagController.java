@@ -6,12 +6,15 @@ import com.sb.sfrigola_core.common.dto.response.SCGeneralResponseDto;
 import com.sb.sfrigola_core.common.models.contracts.SCFilterQuery;
 import com.sb.sfrigola_core.domains.tags.dto.TagDto;
 import com.sb.sfrigola_core.domains.tags.dto.admin.TagDetailsAdminDto;
+import com.sb.sfrigola_core.domains.tags.dto.admin.TagInputDto;
 import com.sb.sfrigola_core.domains.tags.dto.admin.TagPreviewAdminDto;
+import com.sb.sfrigola_core.domains.tags.dto.contributor.TagSuggestDto;
 import com.sb.sfrigola_core.domains.tags.enums.TagScope;
 import com.sb.sfrigola_core.domains.tags.enums.TagStatus;
 import com.sb.sfrigola_core.domains.tags.enums.TagType;
 import com.sb.sfrigola_core.domains.tags.models.TagSpecificFilter;
 import com.sb.sfrigola_core.domains.tags.service.ITagService;
+import jakarta.validation.Valid;
 import jakarta.validation.constraints.Max;
 import jakarta.validation.constraints.Min;
 import jakarta.validation.constraints.NotBlank;
@@ -47,7 +50,15 @@ public class TagController {
         return ResponseEntity.ok(SCGeneralResponseDto.success(paginatedTags.content(), paginatedTags.pagedOptionDto()));
     }
 
-    // ADMIN-CONTRIBUTOR CONTROLLER
+    // CONTRIBUTOR CONTROLLER
+
+    @PostMapping(value = "/contributor", version = "1.0")
+    public ResponseEntity<SCGeneralResponseDto<TagSuggestDto, Void>> suggestNewTag(
+            @RequestBody @Valid TagSuggestDto newTagSuggested
+    ) {
+        var suggested = tagService.suggestNewTag(newTagSuggested);
+        return ResponseEntity.ok(SCGeneralResponseDto.success(suggested));
+    }
 
     // ADMIN CONTROLLER
 
@@ -80,5 +91,39 @@ public class TagController {
     ){
       var tagDetails = tagService.getByPublicIdAdmin(publicId);
       return ResponseEntity.ok(SCGeneralResponseDto.success(tagDetails));
+    }
+
+    @PostMapping(value = "/admin", version = "1.0")
+    public ResponseEntity<SCGeneralResponseDto<TagPreviewAdminDto, Void>> createTag(
+            @RequestBody @Valid TagInputDto tagInputDto
+    ) {
+        var createdTag = tagService.createNewTag(tagInputDto);
+        return ResponseEntity.ok(SCGeneralResponseDto.success(createdTag));
+    }
+
+    @PatchMapping(value = "/admin/{publicId}/status/{status}", version = "1.0")
+    public ResponseEntity<SCGeneralResponseDto<String, Void>> updateTagStatus(
+            @PathVariable("publicId") UUID publicId,
+            @PathVariable("status") String status
+    ) {
+        tagService.updateTagStatus(TagStatus.fromValue(status), publicId);
+        return ResponseEntity.ok(SCGeneralResponseDto.successMutation("Tag status updated successfully"));
+    }
+
+    @PutMapping(value = "/admin/{publicId}", version = "1.0")
+    public ResponseEntity<SCGeneralResponseDto<TagPreviewAdminDto, Void>> updateTag(
+            @PathVariable("publicId") UUID publicId,
+            @RequestBody @Valid TagInputDto tagInputDto
+    ) {
+        var updated = tagService.updateTag(publicId, tagInputDto);
+        return ResponseEntity.ok(SCGeneralResponseDto.success(updated));
+    }
+
+    @DeleteMapping(value = "/admin/{publicId}", version = "1.0")
+    public ResponseEntity<SCGeneralResponseDto<TagPreviewAdminDto, Void>> deleteTag(
+            @PathVariable("publicId") UUID publicId
+    ) {
+        var deleted = tagService.deleteTag(publicId);
+        return ResponseEntity.ok(SCGeneralResponseDto.success(deleted));
     }
 }

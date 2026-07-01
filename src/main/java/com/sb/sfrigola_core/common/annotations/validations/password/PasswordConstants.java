@@ -1,4 +1,4 @@
-package com.sb.sfrigola_core.domains.auth.annotations.validations.password;
+package com.sb.sfrigola_core.common.annotations.validations.password;
 
 import java.util.regex.Pattern;
 
