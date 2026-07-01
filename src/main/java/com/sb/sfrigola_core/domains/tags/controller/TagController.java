@@ -59,11 +59,16 @@ public class TagController {
             @RequestParam(value = "take", required = false, defaultValue = "10") int take,
             @RequestParam(required = false) String locale,
             @RequestParam(value = "searchKey", required = false) String searchKey,
-            @RequestParam(required = false) TagStatus status,
-            @RequestParam(required = false) TagType type,
-            @RequestParam(required = false) TagScope scope
+            @RequestParam(required = false) String status,
+            @RequestParam(required = false) String type,
+            @RequestParam(required = false) String scope
     ) {
-        var filterQuery = SCFilterQuery.powerful(searchKey, null, null, take, page, new TagSpecificFilter(status, type, scope));
+        var tagSpecificFilter = new TagSpecificFilter(
+                status != null ? TagStatus.fromValue(status) : null,
+                type != null ? TagType.fromValue(type) : null,
+                scope != null ? TagScope.fromValue(scope) : null
+        );
+        var filterQuery = SCFilterQuery.powerful(searchKey, null, null, take, page, tagSpecificFilter);
         var paginatedTags = tagService.getAllAdmin(filterQuery, locale);
 
         return ResponseEntity.ok(SCGeneralResponseDto.success(paginatedTags.content(), paginatedTags.pagedOptionDto()));

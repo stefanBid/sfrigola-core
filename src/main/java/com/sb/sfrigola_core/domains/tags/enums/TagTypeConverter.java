@@ -3,8 +3,6 @@ package com.sb.sfrigola_core.domains.tags.enums;
 import jakarta.persistence.AttributeConverter;
 import jakarta.persistence.Converter;
 
-import java.util.Arrays;
-
 @Converter(autoApply = true)
 public class TagTypeConverter implements AttributeConverter<TagType, String> {
 
@@ -15,8 +13,6 @@ public class TagTypeConverter implements AttributeConverter<TagType, String> {
 
     @Override
     public TagType convertToEntityAttribute(String dbData) {
-        return Arrays.stream(TagType.values()).filter(tagType -> tagType.getValue().equals(dbData)).findFirst().orElseThrow(
-                () -> new IllegalArgumentException("Unknown database value: " + dbData)
-        );
+        return TagType.fromValue(dbData);
     }
 }

@@ -92,4 +92,12 @@ public interface ITagRepository extends JpaRepository<Tag, Long> {
     Optional<Tag> findByPublicId(UUID publicId);
 
     boolean existsBySlug(String slug);
+
+    @Query("""
+            SELECT COUNT(tr) > 0 FROM Tag t
+            JOIN t.translations tr
+            JOIN tr.language l
+            WHERE LOWER(tr.label) = LOWER(:label) AND l.code = :locale
+           """)
+    boolean existsByLabelAndLanguage(@Param("label") String label, @Param("locale") String locale);
 }

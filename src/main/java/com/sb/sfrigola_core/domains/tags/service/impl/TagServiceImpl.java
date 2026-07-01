@@ -4,18 +4,26 @@ import com.sb.sfrigola_core.common.models.contracts.SCFilterQuery;
 import com.sb.sfrigola_core.common.models.contracts.SCPagedResult;
 import com.sb.sfrigola_core.common.util.SCAuthenticationUtils;
 import com.sb.sfrigola_core.common.util.SCPaginationUtils;
+import com.sb.sfrigola_core.domains.languages.entity.Language;
 import com.sb.sfrigola_core.domains.tags.dto.TagDto;
 import com.sb.sfrigola_core.domains.tags.dto.admin.TagDetailsAdminDto;
 import com.sb.sfrigola_core.domains.tags.dto.admin.TagTranslationDetailsAdminDto;
 import com.sb.sfrigola_core.domains.tags.dto.admin.TagPreviewAdminDto;
+import com.sb.sfrigola_core.domains.tags.dto.consumer.TagSuggestDto;
 import com.sb.sfrigola_core.domains.tags.entity.Tag;
 import com.sb.sfrigola_core.domains.tags.entity.TagTranslation;
 import com.sb.sfrigola_core.domains.tags.enums.TagStatus;
+import com.sb.sfrigola_core.domains.tags.exception.NoTagFoundException;
+import com.sb.sfrigola_core.domains.tags.exception.TagLabelAlreadyExistsException;
+import com.sb.sfrigola_core.domains.tags.exception.TagLanguageNotActiveException;
+import com.sb.sfrigola_core.domains.tags.exception.TagSlugAlreadyExistsException;
 import com.sb.sfrigola_core.domains.tags.models.TagSpecificFilter;
 import com.sb.sfrigola_core.domains.tags.repository.ITagRepository;
 import com.sb.sfrigola_core.domains.tags.service.ITagService;
 import com.sb.sfrigola_core.domains.languages.service.ILanguageDomainBridgeService;
+import com.sb.sfrigola_core.config.security.exception.ex.SCAuthenticatedUserNotFoundException;
 import lombok.RequiredArgsConstructor;
+import org.jspecify.annotations.NonNull;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -95,7 +103,7 @@ public class TagServiceImpl implements ITagService {
     public TagDetailsAdminDto getByPublicIdAdmin(UUID publicId) {
         var activeLanguages = new ArrayList<>(languageDomainBridgeService.getAllActiveLanguages());
         var tag = tagRepository.findByPublicId(publicId).orElseThrow(
-                () -> new RuntimeException("NoTagFoundException")
+                () -> new NoTagFoundException(publicId)
         );
         // Preparing Details for this Tag
         int totalLocalization = tag.getTranslations().size();
@@ -112,19 +120,54 @@ public class TagServiceImpl implements ITagService {
     }
 
     @Override
-    public boolean suggestNewTag(String label) {
+    @Transactional
+    public TagSuggestDto suggestNewTag(TagSuggestDto newTagSuggested) {
         // Obtain lang code from authUser
-        var authUserPreferredLang = SCAuthenticationUtils.getAuthUserByContextHolder().preferredLang();
-        if(authUserPreferredLang == null){
-            throw new RuntimeException("UnauthorizedException: Only authenticated users can suggest new tags");
-        }
+        Language lang = getLanguageOrThrow();
 
-        return false;
+        // Check: suggested slug already exists in the system (case-insensitive)
+        var existingTag = tagRepository.existsBySlug(newTagSuggested.slug());
+        if(existingTag) throw new TagSlugAlreadyExistsException(newTagSuggested.slug());
+
+        //Check: suggested label already exists in the system (case-insensitive)
+        var existingLabel = tagRepository.existsByLabelAndLanguage(newTagSuggested.translationByConsumerLang(), lang.getCode());
+        if(existingLabel) throw new TagLabelAlreadyExistsException(newTagSuggested.translationByConsumerLang(), lang.getCode());
+
+        // Prepare Entities
+        Tag newSuggestedTag = new Tag();
+        TagTranslation newSuggestedTagTranslation = new TagTranslation();
+
+        newSuggestedTagTranslation.setTag(newSuggestedTag);
+        newSuggestedTagTranslation.setLanguage(lang);
+        newSuggestedTagTranslation.setLabel(newTagSuggested.translationByConsumerLang());
+
+        newSuggestedTag.setSlug(newTagSuggested.slug());
+        newSuggestedTag.setType(newTagSuggested.type());
+        newSuggestedTag.setScope(newTagSuggested.scope());
+        newSuggestedTag.setStatus(TagStatus.PENDING);
+        newSuggestedTag.setTranslations(new ArrayList<>(List.of(newSuggestedTagTranslation)));
+        
+        tagRepository.save(newSuggestedTag);
+
+        return newTagSuggested;
     }
 
     // =========================================================
     // PRIVATE
     // =========================================================
+
+    private @NonNull Language getLanguageOrThrow() {
+        var authUser = SCAuthenticationUtils.getAuthUserByContextHolder();
+        if(authUser.preferredLang() == null){
+            throw new SCAuthenticatedUserNotFoundException("Only authenticated users can suggest new tags");
+        }
+        // Check: preferredLang is active in the system
+        var activeLanguagesMap = languageDomainBridgeService.getActiveLanguageEntitiesMap();
+        Language lang = activeLanguagesMap.get(authUser.preferredLang());
+        if(lang == null)
+            throw new TagLanguageNotActiveException(authUser.preferredLang());
+        return lang;
+    }
 
     private TagDto toDto(Tag tag) {
         // We have only one item in the list of translations — the first query filters by locale

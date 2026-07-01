@@ -5,6 +5,7 @@ import com.sb.sfrigola_core.common.models.contracts.SCPagedResult;
 import com.sb.sfrigola_core.domains.tags.dto.TagDto;
 import com.sb.sfrigola_core.domains.tags.dto.admin.TagDetailsAdminDto;
 import com.sb.sfrigola_core.domains.tags.dto.admin.TagPreviewAdminDto;
+import com.sb.sfrigola_core.domains.tags.dto.consumer.TagSuggestDto;
 import com.sb.sfrigola_core.domains.tags.models.TagSpecificFilter;
 import jakarta.annotation.Nullable;
 
@@ -42,8 +43,27 @@ public interface ITagService {
      */
     SCPagedResult<TagPreviewAdminDto> getAllAdmin(SCFilterQuery<TagSpecificFilter> filterQuery, @Nullable String locale);
 
-
+    /**
+     * Returns full admin details for a single tag, including every existing translation
+     * and the list of active languages still missing a translation.
+     *
+     * @param publicId public identifier of the tag
+     * @return {@link TagDetailsAdminDto} with translation coverage details
+     * @throws com.sb.sfrigola_core.domains.tags.exception.NoTagFoundException if no tag with the given public ID exists
+     */
     TagDetailsAdminDto getByPublicIdAdmin(UUID publicId);
 
-    boolean suggestNewTag(String label);
+    /**
+     * Registers a new tag proposed by an authenticated user, in {@code PENDING} status,
+     * with a single translation in the user's preferred language. Reads the authenticated
+     * user from the security context to resolve the target language.
+     *
+     * @param newTagSuggested slug, type, scope and the label to translate in the user's preferred language
+     * @return the same {@link TagSuggestDto} received, once persisted
+     * @throws com.sb.sfrigola_core.config.security.exception.ex.SCAuthenticatedUserNotFoundException if no authenticated user is present in the security context
+     * @throws com.sb.sfrigola_core.domains.tags.exception.TagLanguageNotActiveException if the user's preferred language is not active in the system
+     * @throws com.sb.sfrigola_core.domains.tags.exception.TagSlugAlreadyExistsException if a tag with the same slug already exists
+     * @throws com.sb.sfrigola_core.domains.tags.exception.TagLabelAlreadyExistsException if a tag with the same label already exists in that language
+     */
+    TagSuggestDto suggestNewTag(TagSuggestDto newTagSuggested);
 }
