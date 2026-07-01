@@ -1,9 +1,6 @@
 package com.sb.sfrigola_core.domains.tags.repository;
 
 import com.sb.sfrigola_core.domains.tags.entity.Tag;
-import com.sb.sfrigola_core.domains.tags.enums.TagScope;
-import com.sb.sfrigola_core.domains.tags.enums.TagStatus;
-import com.sb.sfrigola_core.domains.tags.enums.TagType;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
 import org.springframework.data.jpa.repository.JpaRepository;
@@ -22,17 +19,17 @@ public interface ITagRepository extends JpaRepository<Tag, Long> {
             JOIN tr.language l
             WHERE l.code = :locale
                 AND (:searchKey IS NULL OR LOWER(tr.label) LIKE LOWER(CONCAT('%', CAST(:searchKey AS string), '%')))
-                AND (:status IS NULL OR t.status = :status)
-                AND (:scope IS NULL OR t.scope = :scope)
-                AND (:type IS NULL OR t.type = :type)
+                AND (:status IS NULL OR CAST(t.status AS string) = :status)
+                AND (:scope IS NULL OR CAST(t.scope AS string) = :scope)
+                AND (:type IS NULL OR CAST(t.type AS string) = :type)
             ORDER BY tr.label ASC
            """)
     Page<Long> findIdsByFiltersAndLocale(
             @Param("locale") String locale,
             @Param("searchKey") String searchKey,
-            @Param("status") TagStatus status,
-            @Param("scope") TagScope scope,
-            @Param("type") TagType type,
+            @Param("status") String status,
+            @Param("scope") String scope,
+            @Param("type") String type,
             Pageable pageable
     );
 
@@ -41,9 +38,9 @@ public interface ITagRepository extends JpaRepository<Tag, Long> {
             SELECT t.id FROM Tag t
             JOIN t.translations tr
             WHERE (:searchKey IS NULL OR LOWER(tr.label) LIKE LOWER(CONCAT('%', CAST(:searchKey AS string), '%')))
-                AND (:status IS NULL OR t.status = :status)
-                AND (:scope IS NULL OR t.scope = :scope)
-                AND (:type IS NULL OR t.type = :type)
+                AND (:status IS NULL OR CAST(t.status AS string) = :status)
+                AND (:scope IS NULL OR CAST(t.scope AS string) = :scope)
+                AND (:type IS NULL OR CAST(t.type AS string) = :type)
             GROUP BY t.id
             ORDER BY MIN(tr.label) ASC
            """,
@@ -51,16 +48,16 @@ public interface ITagRepository extends JpaRepository<Tag, Long> {
             SELECT COUNT(DISTINCT t.id) FROM Tag t
             JOIN t.translations tr
             WHERE (:searchKey IS NULL OR LOWER(tr.label) LIKE LOWER(CONCAT('%', CAST(:searchKey AS string), '%')))
-                AND (:status IS NULL OR t.status = :status)
-                AND (:scope IS NULL OR t.scope = :scope)
-                AND (:type IS NULL OR t.type = :type)
+                AND (:status IS NULL OR CAST(t.status AS string) = :status)
+                AND (:scope IS NULL OR CAST(t.scope AS string) = :scope)
+                AND (:type IS NULL OR CAST(t.type AS string) = :type)
            """
     )
     Page<Long> findIdsByFilters(
             @Param("searchKey") String searchKey,
-            @Param("status") TagStatus status,
-            @Param("scope") TagScope scope,
-            @Param("type") TagType type,
+            @Param("status") String status,
+            @Param("scope") String scope,
+            @Param("type") String type,
             Pageable pageable
     );
 

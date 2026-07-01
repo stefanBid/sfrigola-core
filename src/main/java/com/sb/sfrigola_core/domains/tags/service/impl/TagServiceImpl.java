@@ -35,7 +35,7 @@ public class TagServiceImpl implements ITagService {
         var pageable = SCPaginationUtils.toPageable(filterQuery);
 
         // Step 1: Fetch IDs of Tags for the given locale — public endpoint returns only approved tags
-        var tagIds = tagRepository.findIdsByFiltersAndLocale(locale, filterQuery.searchKey(), TagStatus.APPROVED, null, null, pageable);
+        var tagIds = tagRepository.findIdsByFiltersAndLocale(locale, filterQuery.searchKey(), TagStatus.APPROVED.getValue(), null, null, pageable);
 
         if (tagIds.hasContent()) {
             var ids = tagIds.getContent();
@@ -59,9 +59,9 @@ public class TagServiceImpl implements ITagService {
         // CASE: locale is null → all tags returned; preview = first translation in collection
         // CASE: locale has value → only tags with a translation for that locale; preview = that specific translation
         var filter = filterQuery.other();
-        var status = filter != null ? filter.status() : null;
-        var scope  = filter != null ? filter.scope()  : null;
-        var type   = filter != null ? filter.type()   : null;
+        var status = filter != null && filter.status() != null ? filter.status().getValue() : null;
+        var scope  = filter != null && filter.scope()  != null ? filter.scope().getValue()  : null;
+        var type   = filter != null && filter.type()   != null ? filter.type().getValue()   : null;
         var tagIds = locale != null
                 ? tagRepository.findIdsByFiltersAndLocale(locale, filterQuery.searchKey(), status, scope, type, pageable)
                 : tagRepository.findIdsByFilters(filterQuery.searchKey(), status, scope, type, pageable);
