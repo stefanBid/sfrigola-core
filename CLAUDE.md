@@ -548,7 +548,9 @@ public class TagTypeConverter implements AttributeConverter<TagType, String> {
 }
 
 // Entity field — must declare columnDefinition to reference the PG ENUM type
+// AND @ColumnTransformer to force an explicit cast on write (see rules below)
 @Column(name = "type", nullable = false, columnDefinition = "tag_type")
+@ColumnTransformer(write = "?::tag_type")
 private TagType type;
 ```
 
@@ -556,6 +558,7 @@ Rules:
 - One converter class per enum, co-located in the same `enums/` package as the enum.
 - `autoApply = true` — no `@Convert` annotation needed on entity fields.
 - `columnDefinition = "pg_enum_name"` is mandatory on the `@Column` — without it Hibernate maps to VARCHAR and PostgreSQL rejects the cast.
+- `@ColumnTransformer(write = "?::pg_enum_name")` (`org.hibernate.annotations.ColumnTransformer`) is **also mandatory** on every converted-enum field. `columnDefinition` only affects DDL generation (irrelevant here since `ddl-auto=none`) — it does NOT change how Hibernate binds the JDBC parameter at runtime. Without `@ColumnTransformer`, Hibernate sends the converted value as a plain `VARCHAR` on every INSERT/UPDATE, and PostgreSQL rejects the implicit `varchar → pg_enum` assignment cast with: `column "x" is of type x_enum but expression is of type character varying`. `@ColumnTransformer(write = "?::pg_enum_name")` makes Hibernate emit the explicit cast in the generated SQL (`?::tag_type`), which PostgreSQL accepts.
 - Enum must expose `getValue()` returning the lowercase string stored in the DB.
 
 ### Boolean fields in entities
