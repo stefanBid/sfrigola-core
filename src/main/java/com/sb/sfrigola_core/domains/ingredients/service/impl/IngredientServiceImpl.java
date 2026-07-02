@@ -24,7 +24,6 @@ import jakarta.annotation.Nullable;
 import lombok.RequiredArgsConstructor;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.PageRequest;
-import org.springframework.data.domain.Sort;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -43,7 +42,7 @@ public class IngredientServiceImpl implements IIngredientService {
     public SCPagedResult<IngredientDto> getAll(SCFilterQuery<Void> filterQuery, String locale) {
         var pageable = SCPaginationUtils.toPageable(filterQuery);
 
-        var ingredientIds = ingredientRepository.findIdsByFiltersAndLocale(
+        var ingredientIds = ingredientRepository.findIdsByFiltersAndLocaleNameAsc(
                 locale, filterQuery.searchKey(), null, null, null, null, null, null, pageable
         );
 
@@ -76,27 +75,37 @@ public class IngredientServiceImpl implements IIngredientService {
         var maxCalories = filter != null ? filter.maxCalories() : null;
 
         // SORT SWITCHER
-        // "name" lives on the translations join, not on Ingredient — handled by two dedicated static
-        // @Query methods (ASC/DESC), and only when locale is set (otherwise "name" is ambiguous across
-        // an ingredient's locales). Any other sortBy is a plain Ingredient property, resolved natively
-        // by Spring Data via Pageable's Sort against findIdsByFiltersCustomSort (no hardcoded ORDER BY).
+        // "name" lives on the translations join, not on Ingredient — handled by dedicated static
+        // @Query methods (ASC/DESC, hardcoded ORDER BY). Any other sortBy is a plain Ingredient
+        // property, resolved natively by Spring Data via Pageable's Sort against the *OtherSort
+        // queries (no hardcoded ORDER BY there). Six methods total: (name-asc / name-desc / other) x
+        // (locale present / locale absent) — mirrors ITagRepository's locale-present/absent split,
+        // multiplied by the three sort shapes.
         boolean sortByName = filterQuery.sortBy() == null || "name".equals(filterQuery.sortBy());
         boolean descending = filterQuery.sort() != null && !filterQuery.sort().isAsc();
 
         Page<Long> idsPage;
-        if (sortByName && locale != null) {
-            var idPageable = PageRequest.of(filterQuery.page(), filterQuery.take());
-            idsPage = descending
-                    ? ingredientRepository.findIdsByFiltersAndLocaleNameDesc(locale, filterQuery.searchKey(), category, isVegetarian, isVegan, isGlutenFree, minCalories, maxCalories, idPageable)
-                    : ingredientRepository.findIdsByFiltersAndLocale(locale, filterQuery.searchKey(), category, isVegetarian, isVegan, isGlutenFree, minCalories, maxCalories, idPageable);
+        if (locale != null) {
+            if (sortByName) {
+                // ORDER BY is already hardcoded in these two queries (tr.name ASC/DESC) — must NOT
+                // pass a Pageable Sort here: sortBy="name" would make Spring Data try to append
+                // "i.name" (Ingredient has no such property; "name" only exists on the translation).
+                var idPageable = PageRequest.of(filterQuery.page(), filterQuery.take());
+                idsPage = descending
+                        ? ingredientRepository.findIdsByFiltersAndLocaleNameDesc(locale, filterQuery.searchKey(), category, isVegetarian, isVegan, isGlutenFree, minCalories, maxCalories, idPageable)
+                        : ingredientRepository.findIdsByFiltersAndLocaleNameAsc(locale, filterQuery.searchKey(), category, isVegetarian, isVegan, isGlutenFree, minCalories, maxCalories, idPageable);
+            } else {
+                idsPage = ingredientRepository.findIdsByFiltersAndLocaleOtherSort(locale, filterQuery.searchKey(), category, isVegetarian, isVegan, isGlutenFree, minCalories, maxCalories, SCPaginationUtils.toPageable(filterQuery));
+            }
         } else {
-            // Either a plain-property sortBy, or name-sort requested without a locale (unsupported —
-            // falls back to a deterministic id order so pagination stays stable across pages).
-            Sort sort = !sortByName
-                    ? Sort.by(descending ? Sort.Direction.DESC : Sort.Direction.ASC, filterQuery.sortBy())
-                    : Sort.by(Sort.Direction.ASC, "id");
-            var idPageable = PageRequest.of(filterQuery.page(), filterQuery.take(), sort);
-            idsPage = ingredientRepository.findIdsByFiltersCustomSort(locale, filterQuery.searchKey(), category, isVegetarian, isVegan, isGlutenFree, minCalories, maxCalories, idPageable);
+            if (sortByName) {
+                var idPageable = PageRequest.of(filterQuery.page(), filterQuery.take());
+                idsPage = descending
+                        ? ingredientRepository.findIdsByFiltersNameDesc(filterQuery.searchKey(), category, isVegetarian, isVegan, isGlutenFree, minCalories, maxCalories, idPageable)
+                        : ingredientRepository.findIdsByFiltersNameAsc(filterQuery.searchKey(), category, isVegetarian, isVegan, isGlutenFree, minCalories, maxCalories, idPageable);
+            } else {
+                idsPage = ingredientRepository.findIdsByFiltersOtherSort(filterQuery.searchKey(), category, isVegetarian, isVegan, isGlutenFree, minCalories, maxCalories, SCPaginationUtils.toPageable(filterQuery));
+            }
         }
 
         if (idsPage.hasContent()) {
