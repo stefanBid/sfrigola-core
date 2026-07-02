@@ -208,8 +208,12 @@ public class CategoryServiceImpl implements ICategoryService {
             if (deleteSignal) {
                 if (translationExtracted != null) toRemove.add(translationExtracted);
             } else if (translationExtracted != null) {
-                translationExtracted.setName(input.name());
-                translationExtracted.setDescription(input.description());
+                if(translationExtracted.getName().equals(input.name()) && Objects.equals(translationExtracted.getDescription(), input.description())) continue;
+
+                if(!translationExtracted.getName().equals(input.name()))
+                    translationExtracted.setName(input.name());
+                if(!Objects.equals(translationExtracted.getDescription(), input.description()))
+                    translationExtracted.setDescription(input.description());
             } else {
                 CategoryTranslation newT = toCategoryTranslation(input, lang);
                 newT.setCategory(categoryToUpdate);

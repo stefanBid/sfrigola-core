@@ -236,7 +236,7 @@ public class TagServiceImpl implements ITagService {
                 if(extractedTagTranslation != null) toRemove.add(extractedTagTranslation);
             } else if (extractedTagTranslation != null) {
                 // Update existing translatio
-                if(extractedTagTranslation.getLabel().equals(input.label())) continue; // No change
+                if(Objects.equals(extractedTagTranslation.getLabel(), input.label())) continue; // No change
                 extractedTagTranslation.setLabel(input.label());
             } else {
                 // Create new translation
