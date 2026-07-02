@@ -1,4 +1,4 @@
-package com.sb.sfrigola_core.domains.categories.entity;
+package com.sb.sfrigola_core.domains.tags.entity;
 
 import com.sb.sfrigola_core.common.entity.BaseEntity;
 import com.sb.sfrigola_core.domains.languages.entity.Language;
@@ -10,12 +10,12 @@ import java.util.UUID;
 
 @Entity
 @Table(
-        name = "category_translations",
-        uniqueConstraints = @UniqueConstraint(columnNames = {"category_id", "locale"})
+        name = "tag_translations",
+        uniqueConstraints = @UniqueConstraint(columnNames = {"tag_id", "locale"})
 )
 @Getter
 @Setter
-public class CategoryTranslation extends BaseEntity {
+public class TagTranslation extends BaseEntity {
 
     @Id
     @GeneratedValue(strategy = GenerationType.IDENTITY)
@@ -25,17 +25,16 @@ public class CategoryTranslation extends BaseEntity {
     private UUID publicId = UUID.randomUUID();
 
     @ManyToOne(fetch = FetchType.LAZY)
-    @JoinColumn(name = "category_id", nullable = false)
-    private Category category;
+    @JoinColumn(name = "tag_id", nullable = false)
+    private Tag tag;
 
     @ManyToOne(fetch = FetchType.LAZY)
     @JoinColumn(name = "locale", referencedColumnName = "code", nullable = false)
     private Language language;
 
-    @Column(name = "name", nullable = false, length = 100)
-    private String name;
+    @Column(name = "label", nullable = false, length = 100)
+    private String label;
 
-    @Column(name = "description", columnDefinition = "TEXT")
-    private String description;
+
 
 }

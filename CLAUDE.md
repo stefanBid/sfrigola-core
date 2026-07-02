@@ -110,7 +110,15 @@ com.sb.sfrigola_core/
     ├── auth/
     ├── languages/
     ├── users/
-    └── categories/                          # entity only — no service/controller yet
+    ├── categories/                          # entity + CategoryTranslation; no repo/service/controller yet
+    └── tags/
+        ├── entity/
+        │   ├── Tag.java
+        │   └── TagTranslation.java
+        └── enums/                           # domain enums + JPA converters co-located
+            ├── TagType.java + TagTypeConverter.java
+            ├── TagScope.java + TagScopeConverter.java
+            └── TagStatus.java + TagStatusConverter.java
 ```
 
 ---
@@ -390,15 +398,15 @@ idx_favorites_user           ON favorites (user_id)
 
 ---
 
-## Implementation Status (Sprint 1)
+## Implementation Status (Sprint 3 in progress — Sprints 1 & 2 complete)
 
 | Domain      | Entity | Repository | Service | Controller | Notes |
 |-------------|--------|------------|---------|------------|-------|
 | `auth`      | SCUser/SCRole (in users) | — | done | done | login, register, change-email, change-password |
 | `languages` | done | done | done | done | GET paginated |
 | `users`     | done | done | done | done | update-profile, change-lang, become-contributor, admin CRUD |
-| `categories`| done | missing | missing | missing | entity only |
-| `tags`      | missing | missing | missing | missing | not started |
+| `categories`| done | missing | missing | missing | Category + CategoryTranslation entities; self-referential parent |
+| `tags`      | done | missing | missing | missing | Tag + TagTranslation + enums + converters |
 | `ingredients` | missing | missing | missing | missing | not started |
 | `recipes`   | missing | missing | missing | missing | not started |
 | `favorites` | missing | missing | missing | missing | not started |
@@ -517,6 +525,41 @@ private Long id;                           // internal PK, never exposed in APIs
 @Column(name = "public_id", nullable = false, unique = true, updatable = false)
 private UUID publicId = UUID.randomUUID(); // exposed in APIs
 ```
+
+### PostgreSQL ENUM → Java Enum (AttributeConverter)
+
+PostgreSQL native enums (e.g. `tag_type`, `tag_scope`, `tag_status`) are mapped via `@Converter(autoApply = true)`:
+
+```java
+// enums/TagTypeConverter.java
+@Converter(autoApply = true)
+public class TagTypeConverter implements AttributeConverter<TagType, String> {
+    @Override
+    public String convertToDatabaseColumn(TagType attr) {
+        return attr == null ? null : attr.getValue();
+    }
+    @Override
+    public TagType convertToEntityAttribute(String dbData) {
+        return Arrays.stream(TagType.values())
+            .filter(e -> e.getValue().equals(dbData))
+            .findFirst()
+            .orElseThrow(() -> new IllegalArgumentException("Unknown: " + dbData));
+    }
+}
+
+// Entity field — must declare columnDefinition to reference the PG ENUM type
+// AND @ColumnTransformer to force an explicit cast on write (see rules below)
+@Column(name = "type", nullable = false, columnDefinition = "tag_type")
+@ColumnTransformer(write = "?::tag_type")
+private TagType type;
+```
+
+Rules:
+- One converter class per enum, co-located in the same `enums/` package as the enum.
+- `autoApply = true` — no `@Convert` annotation needed on entity fields.
+- `columnDefinition = "pg_enum_name"` is mandatory on the `@Column` — without it Hibernate maps to VARCHAR and PostgreSQL rejects the cast.
+- `@ColumnTransformer(write = "?::pg_enum_name")` (`org.hibernate.annotations.ColumnTransformer`) is **also mandatory** on every converted-enum field. `columnDefinition` only affects DDL generation (irrelevant here since `ddl-auto=none`) — it does NOT change how Hibernate binds the JDBC parameter at runtime. Without `@ColumnTransformer`, Hibernate sends the converted value as a plain `VARCHAR` on every INSERT/UPDATE, and PostgreSQL rejects the implicit `varchar → pg_enum` assignment cast with: `column "x" is of type x_enum but expression is of type character varying`. `@ColumnTransformer(write = "?::pg_enum_name")` makes Hibernate emit the explicit cast in the generated SQL (`?::tag_type`), which PostgreSQL accepts.
+- Enum must expose `getValue()` returning the lowercase string stored in the DB.
 
 ### Boolean fields in entities
 
@@ -637,4 +680,6 @@ Jakarta Validation on DTOs. Message constants in `SCRequestParamValidationCodeCo
 - `preferred_lang` in `SCUser` is a `String` (FK to `languages.code`), not a referenced entity.
 - `ddl-auto=none` — any schema change requires updating the SQL file.
 - Tag approval flow (`pending → approved/rejected`) is ROLE_ADMIN only.
+- `tags/enums/` holds both the enum and its converter — keep them co-located, never split to `common/`.
+- For any new PostgreSQL native ENUM: create the enum + `AttributeConverter` in the domain's `enums/` package; use `columnDefinition` on the entity `@Column`.
 - Flag any request that violates these conventions before proceeding.

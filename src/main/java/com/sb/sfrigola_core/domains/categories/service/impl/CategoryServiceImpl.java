@@ -110,7 +110,7 @@ public class CategoryServiceImpl implements ICategoryService {
             activeLanguages.forEach(l -> missingTranslation.add(new CategoryDetailsTranslationAdminDto(l.code(), l.name(), null, null)));
         }
 
-        return toAdminDetailsDto(category,totalLocalization,totalMissingLocalization, missingTranslation);
+        return toAdminDetailsDto(category, missingTranslation);
 
     }
 
@@ -208,8 +208,12 @@ public class CategoryServiceImpl implements ICategoryService {
             if (deleteSignal) {
                 if (translationExtracted != null) toRemove.add(translationExtracted);
             } else if (translationExtracted != null) {
-                translationExtracted.setName(input.name());
-                translationExtracted.setDescription(input.description());
+                if(translationExtracted.getName().equals(input.name()) && Objects.equals(translationExtracted.getDescription(), input.description())) continue;
+
+                if(!translationExtracted.getName().equals(input.name()))
+                    translationExtracted.setName(input.name());
+                if(!Objects.equals(translationExtracted.getDescription(), input.description()))
+                    translationExtracted.setDescription(input.description());
             } else {
                 CategoryTranslation newT = toCategoryTranslation(input, lang);
                 newT.setCategory(categoryToUpdate);
@@ -328,7 +332,7 @@ public class CategoryServiceImpl implements ICategoryService {
         );
     }
 
-    private CategoryDetailsAdminDto toAdminDetailsDto(Category category, int totalLocalization, int totalMissingLocalization, List<CategoryDetailsTranslationAdminDto> missingTranslation) {
+    private CategoryDetailsAdminDto toAdminDetailsDto(Category category, List<CategoryDetailsTranslationAdminDto> missingTranslation) {
         var extractedPreview = category.getTranslations().stream().findFirst().orElse(null);
         return new CategoryDetailsAdminDto(
                 category.getPublicId(),
@@ -338,8 +342,6 @@ public class CategoryServiceImpl implements ICategoryService {
                 category.isActive(),
                 extractedPreview != null ? extractedPreview.getName() : null,
                 extractedPreview != null ? extractedPreview.getDescription() : null,
-                totalLocalization,
-                totalMissingLocalization,
                 category.getTranslations().stream().map(this::toCategoryTranslationDto).toList(),
                 missingTranslation
         );

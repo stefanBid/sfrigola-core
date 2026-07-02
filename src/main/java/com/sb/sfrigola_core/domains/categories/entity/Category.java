@@ -22,7 +22,7 @@ public class Category extends BaseEntity {
     @Column(name = "public_id", nullable = false, unique = true, updatable = false)
     private UUID publicId = UUID.randomUUID();
 
-    @Column(name = "slug", nullable = false, unique = true)
+    @Column(name = "slug", nullable = false, unique = true, length = 100)
     private String slug;
 
     @ManyToOne(fetch = FetchType.LAZY)

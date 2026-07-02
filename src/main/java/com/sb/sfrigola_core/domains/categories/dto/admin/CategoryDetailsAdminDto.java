@@ -12,8 +12,6 @@ public record CategoryDetailsAdminDto(
         boolean isActive,
         String namePreview,
         String descriptionPreview,
-        int totalLocalization,
-        int totalMissingLocalization,
         List<CategoryDetailsTranslationAdminDto> translations,
         List<CategoryDetailsTranslationAdminDto> missingTranslation
 ) implements Serializable {
