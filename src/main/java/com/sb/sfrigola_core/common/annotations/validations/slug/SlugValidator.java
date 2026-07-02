@@ -5,6 +5,13 @@ import jakarta.validation.ConstraintValidatorContext;
 
 public class SlugValidator implements ConstraintValidator<ValidSlug, String> {
 
+    private int maxLength;
+
+    @Override
+    public void initialize(ValidSlug constraintAnnotation) {
+        this.maxLength = constraintAnnotation.maxLength();
+    }
+
     @Override
     public boolean isValid(String slug, ConstraintValidatorContext context) {
         context.disableDefaultConstraintViolation();
@@ -15,7 +22,7 @@ public class SlugValidator implements ConstraintValidator<ValidSlug, String> {
             return false;
         }
 
-        if (slug.length() > SlugConstants.MAX_LENGTH) {
+        if (slug.length() > maxLength) {
             context.buildConstraintViolationWithTemplate(SlugConstants.SLUG_TOO_LONG)
                     .addConstraintViolation();
             return false;
