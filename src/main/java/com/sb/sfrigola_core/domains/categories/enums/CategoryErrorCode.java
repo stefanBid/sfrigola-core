@@ -1,6 +1,6 @@
 package com.sb.sfrigola_core.domains.categories.enums;
 
-import com.sb.sfrigola_core.common.exception.ISCErrorCode;
+import com.sb.sfrigola_core.common.interfaces.ISCErrorCode;
 
 public enum CategoryErrorCode implements ISCErrorCode {
 

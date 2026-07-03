@@ -32,7 +32,7 @@ public interface IIngredientRepository extends JpaRepository<Ingredient, Long> {
                 AND (:maxCalories IS NULL OR i.caloriesPer100g <= :maxCalories)
             ORDER BY tr.name ASC
            """)
-    Page<Long> findIdsByFiltersAndLocaleNameAsc(
+    Page<Long> findIdsByFiltersAndLocaleAsc(
             @Param("locale") String locale,
             @Param("searchKey") String searchKey,
             @Param("category") String category,
@@ -58,7 +58,7 @@ public interface IIngredientRepository extends JpaRepository<Ingredient, Long> {
                 AND (:maxCalories IS NULL OR i.caloriesPer100g <= :maxCalories)
             ORDER BY tr.name DESC
            """)
-    Page<Long> findIdsByFiltersAndLocaleNameDesc(
+    Page<Long> findIdsByFiltersAndLocaleDesc(
             @Param("locale") String locale,
             @Param("searchKey") String searchKey,
             @Param("category") String category,
@@ -131,7 +131,7 @@ public interface IIngredientRepository extends JpaRepository<Ingredient, Long> {
                 AND (:maxCalories IS NULL OR i.caloriesPer100g <= :maxCalories)
            """
     )
-    Page<Long> findIdsByFiltersNameAsc(
+    Page<Long> findIdsByFiltersAsc(
             @Param("searchKey") String searchKey,
             @Param("category") String category,
             @Param("isVegetarian") Boolean isVegetarian,
@@ -167,7 +167,7 @@ public interface IIngredientRepository extends JpaRepository<Ingredient, Long> {
                 AND (:maxCalories IS NULL OR i.caloriesPer100g <= :maxCalories)
            """
     )
-    Page<Long> findIdsByFiltersNameDesc(
+    Page<Long> findIdsByFiltersDesc(
             @Param("searchKey") String searchKey,
             @Param("category") String category,
             @Param("isVegetarian") Boolean isVegetarian,

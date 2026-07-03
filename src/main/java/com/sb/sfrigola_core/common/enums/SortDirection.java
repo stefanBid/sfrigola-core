@@ -1,5 +1,6 @@
 package com.sb.sfrigola_core.common.enums;
 
+
 import java.util.Arrays;
 
 public enum SortDirection {

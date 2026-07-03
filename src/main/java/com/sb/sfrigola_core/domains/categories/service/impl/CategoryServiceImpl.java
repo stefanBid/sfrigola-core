@@ -14,6 +14,7 @@ import com.sb.sfrigola_core.domains.languages.entity.Language;
 import com.sb.sfrigola_core.domains.languages.service.ILanguageDomainBridgeService;
 import lombok.RequiredArgsConstructor;
 import org.jspecify.annotations.Nullable;
+import org.springframework.data.domain.Page;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -30,11 +31,11 @@ public class CategoryServiceImpl implements ICategoryService {
 
     @Override
     public SCPagedResult<CategoryDto> getAll(SCFilterQuery<Void> filterQuery, String locale) {
-        var pageable = SCPaginationUtils.toPageable(filterQuery);
+        var pageable = SCPaginationUtils.toPageable(filterQuery, true);
 
         // Step 1: Fetch the IDs of active categories for the given locale
         // Remove Category that are inactive or translation that are not in the given locale
-        var categoryIds = categoryRepository.findIdsByLocaleAndIsActiveAndSearchKey(locale,true,null, pageable);
+        var categoryIds = categoryRepository.findIdsByLocaleAndIsActiveAndSearchKeyAsc(locale,true,null, pageable);
 
         // Step 2: Fetch and restore the ordered ID sequence from step 1
         if(categoryIds.hasContent()) {
@@ -55,16 +56,32 @@ public class CategoryServiceImpl implements ICategoryService {
 
     @Override
     public SCPagedResult<CategoryPreviewAdminDto> getAllAdmin(SCFilterQuery<Void> filterQuery, String locale, Boolean isActive) {
-        var pageable = SCPaginationUtils.toPageable(filterQuery);
         var totalActiveLanguages = languageDomainBridgeService.getAllActiveLanguages().size();
+
+        // SORT SWITCHER
+        // CASE: Sort is ASC call query with GOUP-BY ASC
+        // CASE: Sort is DESC call query with GOUP-BY DESC
+        boolean descending = filterQuery.sort() != null && !filterQuery.sort().isAsc();
+
         // LOCALE SWITCHER
         // CASE: Locale is null
         // RESULT: All categories returned; preview translation = first element of collection
         // CASE: Locale has value
         // RESULT: Only categories that have a translation for the given locale; preview = that specific translation
-        var categoryIds = locale != null
-                ? categoryRepository.findIdsByLocaleAndIsActiveAndSearchKey(locale, isActive, filterQuery.searchKey(), pageable)
-                : categoryRepository.findIdsByIsActiveAndSearchKey(isActive, filterQuery.searchKey(), pageable);
+        boolean hasLocale = locale != null && !locale.isBlank();
+
+        // STEP 1: Obtain ids
+        var pageable = SCPaginationUtils.toPageable(filterQuery, true);
+        Page<Long> categoryIds;
+
+        if(descending)
+            categoryIds = hasLocale
+                    ? categoryRepository.findIdsByLocaleAndIsActiveAndSearchKeyDesc(locale, isActive, filterQuery.searchKey(), pageable)
+                    : categoryRepository.findIdsByIsActiveAndSearchKeyDesc(isActive, filterQuery.searchKey(), pageable);
+        else
+            categoryIds = hasLocale
+                    ? categoryRepository.findIdsByLocaleAndIsActiveAndSearchKeyAsc(locale, isActive, filterQuery.searchKey(), pageable)
+                    : categoryRepository.findIdsByIsActiveAndSearchKeyAsc(isActive, filterQuery.searchKey(), pageable);
 
 
         if (categoryIds.hasContent()) {

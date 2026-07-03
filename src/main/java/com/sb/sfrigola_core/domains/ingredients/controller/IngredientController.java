@@ -7,6 +7,7 @@ import com.sb.sfrigola_core.common.enums.SortDirection;
 import com.sb.sfrigola_core.common.models.contracts.SCFilterQuery;
 import com.sb.sfrigola_core.domains.ingredients.dto.IngredientDto;
 import com.sb.sfrigola_core.domains.ingredients.dto.admin.IngredientPreviewAdminDto;
+import com.sb.sfrigola_core.domains.ingredients.enums.IngredientSortField;
 import com.sb.sfrigola_core.domains.ingredients.models.IngredientSpecificFilter;
 import com.sb.sfrigola_core.domains.ingredients.service.IIngredientService;
 import jakarta.validation.constraints.Max;
@@ -56,7 +57,6 @@ public class IngredientController {
             @RequestParam(value = "page", required = false, defaultValue = "0") int page,
             @Min(value = 1, message = SCRequestParamValidationCodeConstants.TAKE_MUST_BE_AT_LEAST_ONE) @Max(value = 100, message = SCRequestParamValidationCodeConstants.TAKE_MUST_BE_AT_MOST_HUNDRED)
             @RequestParam(value = "take", required = false, defaultValue = "10") int take,
-            @Pattern(regexp = "slug|category|caloriesPer100g|isVegetarian|isVegan|isGlutenFree|name", message = SCRequestParamValidationCodeConstants.SORT_BY_INVALID_VALUE)
             @RequestParam(value = "sortBy", required = false) String sortBy,
             @Pattern(regexp = "asc|desc", message = SCRequestParamValidationCodeConstants.SORT_INVALID_VALUE)
             @RequestParam(value = "sort", required = false, defaultValue = "asc") String sort,
@@ -77,7 +77,8 @@ public class IngredientController {
                 minCalories,
                 maxCalories
         );
-        var filterQuery = SCFilterQuery.powerful(searchKey, sortBy, SortDirection.fromString(sort), take, page, specificFilterForIngredients);
+        var sortField = sortBy != null ? IngredientSortField.fromString(sortBy) : null;
+        var filterQuery = SCFilterQuery.powerful(searchKey, sortField, SortDirection.fromString(sort), take, page, specificFilterForIngredients);
         var paginatedIngredients = ingredientService.getAllAdmin(filterQuery, locale);
         return ResponseEntity.ok(SCGeneralResponseDto.success(paginatedIngredients.content(), paginatedIngredients.pagedOptionDto()));
     }

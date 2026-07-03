@@ -15,6 +15,7 @@ import com.sb.sfrigola_core.domains.ingredients.exception.DuplicateIngredientLoc
 import com.sb.sfrigola_core.domains.ingredients.exception.IngredientLanguageNotActiveException;
 import com.sb.sfrigola_core.domains.ingredients.exception.IngredientSlugAlreadyExistsException;
 import com.sb.sfrigola_core.domains.ingredients.exception.NoIngredientFoundException;
+import com.sb.sfrigola_core.domains.ingredients.enums.IngredientSortField;
 import com.sb.sfrigola_core.domains.ingredients.models.IngredientSpecificFilter;
 import com.sb.sfrigola_core.domains.ingredients.repository.IIngredientRepository;
 import com.sb.sfrigola_core.domains.ingredients.service.IIngredientService;
@@ -23,7 +24,6 @@ import com.sb.sfrigola_core.domains.languages.service.ILanguageDomainBridgeServi
 import jakarta.annotation.Nullable;
 import lombok.RequiredArgsConstructor;
 import org.springframework.data.domain.Page;
-import org.springframework.data.domain.PageRequest;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -42,7 +42,7 @@ public class IngredientServiceImpl implements IIngredientService {
     public SCPagedResult<IngredientDto> getAll(SCFilterQuery<Void> filterQuery, String locale) {
         var pageable = SCPaginationUtils.toPageable(filterQuery);
 
-        var ingredientIds = ingredientRepository.findIdsByFiltersAndLocaleNameAsc(
+        var ingredientIds = ingredientRepository.findIdsByFiltersAndLocaleAsc(
                 locale, filterQuery.searchKey(), null, null, null, null, null, null, pageable
         );
 
@@ -63,49 +63,50 @@ public class IngredientServiceImpl implements IIngredientService {
     public SCPagedResult<IngredientPreviewAdminDto> getAllAdmin(SCFilterQuery<IngredientSpecificFilter> filterQuery, @Nullable String locale) {
         var totalActiveLanguages = languageDomainBridgeService.getAllActiveLanguages().size();
 
-        // LOCALE SWITCHER
-        // CASE: locale is null → all ingredients returned; preview = first translation in collection
-        // CASE: locale has value → only ingredients with a translation for that locale; preview = that specific translation
-        var filter = filterQuery.other();
-        var category = filter != null ? filter.category() : null;
-        var isVegetarian = filter != null ? filter.isVegetarian() : null;
-        var isVegan = filter != null ? filter.isVegan() : null;
-        var isGlutenFree = filter != null ? filter.isGlutenFree() : null;
-        var minCalories = filter != null ? filter.minCalories() : null;
-        var maxCalories = filter != null ? filter.maxCalories() : null;
+        // SORT BY SWITCHER
+        // CASE: SortBy is null or is NAME → "name" lives on the translation join, not on Ingredient,
+        // so ORDER BY is hardcoded in the dedicated Asc/Desc @Query methods.
+        // CASE: SortBy is not null and not NAME → the field lives directly on Ingredient, resolved
+        // natively by Spring Data via Pageable's Sort against the *OtherSort queries (no hardcoded ORDER BY there).
+        boolean sortByName = filterQuery.sortBy() == null || filterQuery.sortBy() == IngredientSortField.NAME;
 
         // SORT SWITCHER
-        // "name" lives on the translations join, not on Ingredient — handled by dedicated static
-        // @Query methods (ASC/DESC, hardcoded ORDER BY). Any other sortBy is a plain Ingredient
-        // property, resolved natively by Spring Data via Pageable's Sort against the *OtherSort
-        // queries (no hardcoded ORDER BY there). Six methods total: (name-asc / name-desc / other) x
-        // (locale present / locale absent) — mirrors ITagRepository's locale-present/absent split,
-        // multiplied by the three sort shapes.
-        boolean sortByName = filterQuery.sortBy() == null || "name".equals(filterQuery.sortBy());
+        // CASE: Sort is ASC call query with hardcoded ORDER BY ASC
+        // CASE: Sort is DESC call query with hardcoded ORDER BY DESC
         boolean descending = filterQuery.sort() != null && !filterQuery.sort().isAsc();
 
+        // LOCALE SWITCHER
+        // CASE: Locale is null
+        // RESULT: All ingredients returned; preview = first translation in collection
+        // CASE: Locale has value
+        // RESULT: Only ingredients that have a translation for the given locale; preview = that specific translation
+        boolean hasLocale = locale != null && !locale.isBlank();
+
+        // STEP 1: Obtain ids
+        var filterOtherExtracted = filterQuery.other();
+        var category = filterOtherExtracted != null ? filterOtherExtracted.category() : null;
+        var isVegetarian = filterOtherExtracted != null ? filterOtherExtracted.isVegetarian() : null;
+        var isVegan = filterOtherExtracted != null ? filterOtherExtracted.isVegan() : null;
+        var isGlutenFree = filterOtherExtracted != null ? filterOtherExtracted.isGlutenFree() : null;
+        var minCalories = filterOtherExtracted != null ? filterOtherExtracted.minCalories() : null;
+        var maxCalories = filterOtherExtracted != null ? filterOtherExtracted.maxCalories() : null;
+
+        var pageable = SCPaginationUtils.toPageable(filterQuery, sortByName);
         Page<Long> idsPage;
-        if (locale != null) {
-            if (sortByName) {
-                // ORDER BY is already hardcoded in these two queries (tr.name ASC/DESC) — must NOT
-                // pass a Pageable Sort here: sortBy="name" would make Spring Data try to append
-                // "i.name" (Ingredient has no such property; "name" only exists on the translation).
-                var idPageable = PageRequest.of(filterQuery.page(), filterQuery.take());
-                idsPage = descending
-                        ? ingredientRepository.findIdsByFiltersAndLocaleNameDesc(locale, filterQuery.searchKey(), category, isVegetarian, isVegan, isGlutenFree, minCalories, maxCalories, idPageable)
-                        : ingredientRepository.findIdsByFiltersAndLocaleNameAsc(locale, filterQuery.searchKey(), category, isVegetarian, isVegan, isGlutenFree, minCalories, maxCalories, idPageable);
-            } else {
-                idsPage = ingredientRepository.findIdsByFiltersAndLocaleOtherSort(locale, filterQuery.searchKey(), category, isVegetarian, isVegan, isGlutenFree, minCalories, maxCalories, SCPaginationUtils.toPageable(filterQuery));
-            }
+
+        if (sortByName) {
+            if (descending)
+                idsPage = hasLocale
+                        ? ingredientRepository.findIdsByFiltersAndLocaleDesc(locale, filterQuery.searchKey(), category, isVegetarian, isVegan, isGlutenFree, minCalories, maxCalories, pageable)
+                        : ingredientRepository.findIdsByFiltersDesc(filterQuery.searchKey(), category, isVegetarian, isVegan, isGlutenFree, minCalories, maxCalories, pageable);
+            else
+                idsPage = hasLocale
+                        ? ingredientRepository.findIdsByFiltersAndLocaleAsc(locale, filterQuery.searchKey(), category, isVegetarian, isVegan, isGlutenFree, minCalories, maxCalories, pageable)
+                        : ingredientRepository.findIdsByFiltersAsc(filterQuery.searchKey(), category, isVegetarian, isVegan, isGlutenFree, minCalories, maxCalories, pageable);
         } else {
-            if (sortByName) {
-                var idPageable = PageRequest.of(filterQuery.page(), filterQuery.take());
-                idsPage = descending
-                        ? ingredientRepository.findIdsByFiltersNameDesc(filterQuery.searchKey(), category, isVegetarian, isVegan, isGlutenFree, minCalories, maxCalories, idPageable)
-                        : ingredientRepository.findIdsByFiltersNameAsc(filterQuery.searchKey(), category, isVegetarian, isVegan, isGlutenFree, minCalories, maxCalories, idPageable);
-            } else {
-                idsPage = ingredientRepository.findIdsByFiltersOtherSort(filterQuery.searchKey(), category, isVegetarian, isVegan, isGlutenFree, minCalories, maxCalories, SCPaginationUtils.toPageable(filterQuery));
-            }
+            idsPage = hasLocale
+                    ? ingredientRepository.findIdsByFiltersAndLocaleOtherSort(locale, filterQuery.searchKey(), category, isVegetarian, isVegan, isGlutenFree, minCalories, maxCalories, pageable)
+                    : ingredientRepository.findIdsByFiltersOtherSort(filterQuery.searchKey(), category, isVegetarian, isVegan, isGlutenFree, minCalories, maxCalories, pageable);
         }
 
         if (idsPage.hasContent()) {

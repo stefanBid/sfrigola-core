@@ -3,6 +3,7 @@ package com.sb.sfrigola_core.domains.tags.controller;
 import com.sb.sfrigola_core.common.constant.SCRequestParamValidationCodeConstants;
 import com.sb.sfrigola_core.common.dto.option.SCPagedOptionDto;
 import com.sb.sfrigola_core.common.dto.response.SCGeneralResponseDto;
+import com.sb.sfrigola_core.common.enums.SortDirection;
 import com.sb.sfrigola_core.common.models.contracts.SCFilterQuery;
 import com.sb.sfrigola_core.domains.tags.dto.TagDto;
 import com.sb.sfrigola_core.domains.tags.dto.admin.TagDetailsAdminDto;
@@ -10,6 +11,7 @@ import com.sb.sfrigola_core.domains.tags.dto.admin.TagInputDto;
 import com.sb.sfrigola_core.domains.tags.dto.admin.TagPreviewAdminDto;
 import com.sb.sfrigola_core.domains.tags.dto.contributor.TagSuggestDto;
 import com.sb.sfrigola_core.domains.tags.enums.TagScope;
+import com.sb.sfrigola_core.domains.tags.enums.TagSortField;
 import com.sb.sfrigola_core.domains.tags.enums.TagStatus;
 import com.sb.sfrigola_core.domains.tags.enums.TagType;
 import com.sb.sfrigola_core.domains.tags.models.TagSpecificFilter;
@@ -34,7 +36,9 @@ public class TagController {
 
     private final ITagService tagService;
 
-    @GetMapping(version = "1.0")
+    // CONTRIBUTOR CONTROLLER
+
+    @GetMapping(value = "/contributor", version = "1.0")
     public ResponseEntity<SCGeneralResponseDto<List<TagDto>, SCPagedOptionDto>> getAllTags(
             @Min(value = 0, message = SCRequestParamValidationCodeConstants.PAGE_MUST_BE_AT_LEAST_ZERO)
             @RequestParam(value = "page", required = false, defaultValue = "0") int page,
@@ -49,8 +53,6 @@ public class TagController {
 
         return ResponseEntity.ok(SCGeneralResponseDto.success(paginatedTags.content(), paginatedTags.pagedOptionDto()));
     }
-
-    // CONTRIBUTOR CONTROLLER
 
     @PostMapping(value = "/contributor", version = "1.0")
     public ResponseEntity<SCGeneralResponseDto<TagSuggestDto, Void>> suggestNewTag(
@@ -68,6 +70,8 @@ public class TagController {
             @RequestParam(value = "page", required = false, defaultValue = "0") int page,
             @Min(value = 1, message = SCRequestParamValidationCodeConstants.TAKE_MUST_BE_AT_LEAST_ONE) @Max(value = 100, message = SCRequestParamValidationCodeConstants.TAKE_MUST_BE_AT_MOST_HUNDRED)
             @RequestParam(value = "take", required = false, defaultValue = "10") int take,
+            @RequestParam(value = "sort", required = false, defaultValue = "asc") String sort,
+            @RequestParam(value = "sortBy", required = false) String sortBy,
             @RequestParam(required = false) String locale,
             @RequestParam(value = "searchKey", required = false) String searchKey,
             @RequestParam(required = false) String status,
@@ -79,7 +83,7 @@ public class TagController {
                 type != null ? TagType.fromValue(type) : null,
                 scope != null ? TagScope.fromValue(scope) : null
         );
-        var filterQuery = SCFilterQuery.powerful(searchKey, null, null, take, page, tagSpecificFilter);
+        var filterQuery = SCFilterQuery.powerful(searchKey, sortBy != null ? TagSortField.fromString(sortBy) : null, SortDirection.fromString(sort), take, page, tagSpecificFilter);
         var paginatedTags = tagService.getAllAdmin(filterQuery, locale);
 
         return ResponseEntity.ok(SCGeneralResponseDto.success(paginatedTags.content(), paginatedTags.pagedOptionDto()));

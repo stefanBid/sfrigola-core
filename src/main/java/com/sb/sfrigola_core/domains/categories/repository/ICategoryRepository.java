@@ -34,7 +34,27 @@ public interface ICategoryRepository extends JpaRepository<Category, Long> {
                      CASE WHEN p IS NULL THEN 0 ELSE 1 END ASC,
                      c.sortOrder ASC
             """)
-    Page<Long> findIdsByLocaleAndIsActiveAndSearchKey(
+    Page<Long> findIdsByLocaleAndIsActiveAndSearchKeyAsc(
+            @Param("locale") String locale,
+            @Param("isActive") Boolean isActive,
+            @Param("searchKey") String searchKey,
+            Pageable pageable);
+
+    @Query("""
+            SELECT c.id FROM Category c
+            LEFT JOIN c.parent p
+            JOIN c.translations t
+            JOIN t.language l
+            WHERE (:isActive IS NULL OR c.isActive = :isActive)
+              AND l.code = :locale
+              AND (:searchKey IS NULL
+                   OR LOWER(t.name) LIKE LOWER(CONCAT('%', CAST(:searchKey AS string), '%'))
+                   OR LOWER(t.description) LIKE LOWER(CONCAT('%', CAST(:searchKey AS string), '%')))
+            ORDER BY COALESCE(p.sortOrder, c.sortOrder) DESC,
+                     CASE WHEN p IS NULL THEN 0 ELSE 1 END ASC,
+                     c.sortOrder DESC
+            """)
+    Page<Long> findIdsByLocaleAndIsActiveAndSearchKeyDesc(
             @Param("locale") String locale,
             @Param("isActive") Boolean isActive,
             @Param("searchKey") String searchKey,
@@ -61,7 +81,33 @@ public interface ICategoryRepository extends JpaRepository<Category, Long> {
                    OR LOWER(t.name) LIKE LOWER(CONCAT('%', CAST(:searchKey AS string), '%'))
                    OR LOWER(t.description) LIKE LOWER(CONCAT('%', CAST(:searchKey AS string), '%')))
             """)
-    Page<Long> findIdsByIsActiveAndSearchKey(
+    Page<Long> findIdsByIsActiveAndSearchKeyAsc(
+            @Param("isActive") Boolean isActive,
+            @Param("searchKey") String searchKey,
+            Pageable pageable);
+
+    @Query(value = """
+            SELECT c.id FROM Category c
+            LEFT JOIN c.parent p
+            JOIN c.translations t
+            WHERE (:isActive IS NULL OR c.isActive = :isActive)
+              AND (:searchKey IS NULL
+                   OR LOWER(t.name) LIKE LOWER(CONCAT('%', CAST(:searchKey AS string), '%'))
+                   OR LOWER(t.description) LIKE LOWER(CONCAT('%', CAST(:searchKey AS string), '%')))
+            GROUP BY c.id, p.id, p.sortOrder, c.sortOrder
+            ORDER BY COALESCE(p.sortOrder, c.sortOrder) DESC,
+                     CASE WHEN p IS NULL THEN 0 ELSE 1 END ASC,
+                     c.sortOrder DESC
+            """,
+            countQuery = """
+            SELECT COUNT(DISTINCT c.id) FROM Category c
+            JOIN c.translations t
+            WHERE (:isActive IS NULL OR c.isActive = :isActive)
+              AND (:searchKey IS NULL
+                   OR LOWER(t.name) LIKE LOWER(CONCAT('%', CAST(:searchKey AS string), '%'))
+                   OR LOWER(t.description) LIKE LOWER(CONCAT('%', CAST(:searchKey AS string), '%')))
+            """)
+    Page<Long> findIdsByIsActiveAndSearchKeyDesc(
             @Param("isActive") Boolean isActive,
             @Param("searchKey") String searchKey,
             Pageable pageable);

@@ -1,12 +1,12 @@
 package com.sb.sfrigola_core.common.exception.ex;
 
-import com.sb.sfrigola_core.common.exception.ISCErrorCode;
+import com.sb.sfrigola_core.common.interfaces.ISCErrorCode;
 import lombok.Getter;
 import org.springframework.http.HttpStatus;
 
 import java.util.Map;
 
-public abstract class SCGeneralException extends RuntimeException {
+public abstract class  SCGeneralException extends RuntimeException {
 
     @Getter
     private final HttpStatus status;

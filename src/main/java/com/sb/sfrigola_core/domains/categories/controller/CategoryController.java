@@ -3,6 +3,7 @@ package com.sb.sfrigola_core.domains.categories.controller;
 import com.sb.sfrigola_core.common.constant.SCRequestParamValidationCodeConstants;
 import com.sb.sfrigola_core.common.dto.option.SCPagedOptionDto;
 import com.sb.sfrigola_core.common.dto.response.SCGeneralResponseDto;
+import com.sb.sfrigola_core.common.enums.SortDirection;
 import com.sb.sfrigola_core.common.models.contracts.SCFilterQuery;
 import com.sb.sfrigola_core.domains.categories.dto.admin.CategoryDetailsAdminDto;
 import com.sb.sfrigola_core.domains.categories.dto.CategoryDto;
@@ -14,6 +15,7 @@ import jakarta.validation.Valid;
 import jakarta.validation.constraints.Max;
 import jakarta.validation.constraints.Min;
 import jakarta.validation.constraints.NotBlank;
+import jakarta.validation.constraints.Pattern;
 import lombok.RequiredArgsConstructor;
 import org.springframework.http.ResponseEntity;
 import org.springframework.validation.annotation.Validated;
@@ -51,12 +53,13 @@ public class CategoryController {
             @RequestParam(value = "page", required = false, defaultValue = "0") int page,
             @Min(value = 1, message = SCRequestParamValidationCodeConstants.TAKE_MUST_BE_AT_LEAST_ONE) @Max(value = 100, message = SCRequestParamValidationCodeConstants.TAKE_MUST_BE_AT_MOST_HUNDRED)
             @RequestParam(value = "take", required = false, defaultValue = "10") int take,
+            @RequestParam(value = "sort", required = false, defaultValue = "asc") String sort,
             @RequestParam(value = "searchKey", required = false) String searchKey,
             @RequestParam(value = "isActive", required = false) Boolean isActive,
             @RequestParam(required = false) String locale
     ){
 
-        var filterQuery = SCFilterQuery.pageWithSearch(searchKey, take, page);
+        var filterQuery = SCFilterQuery.essentialWithSearch(searchKey,null, SortDirection.fromString(sort), take, page);
         var paginatedCategories = categoryService.getAllAdmin(filterQuery, locale, isActive);
         return ResponseEntity.ok(SCGeneralResponseDto.success(paginatedCategories.content(), paginatedCategories.pagedOptionDto()));
     }
