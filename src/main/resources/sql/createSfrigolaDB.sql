@@ -607,3 +607,259 @@ VALUES (
     'system',
     'system'
 );
+
+-- Contributor user
+INSERT INTO users (
+    role_id,
+    username,
+    email,
+    password_hash,
+    preferred_lang,
+    is_active,
+    first_name,
+    last_name,
+    created_by,
+    updated_by
+)
+VALUES (
+    (SELECT id FROM roles WHERE name = 'ROLE_CONTRIBUTOR'),
+    'contributor',
+    'contributor@sfrigola.com',
+    '$2a$12$0wTEADC4iyGDfOjgmcd0KOPLCCabcrEMNPZtFJJs5f7DoPWJexH0q',
+    'it',
+    TRUE,
+    'Contributor',
+    'Sfrigola',
+    'system',
+    'system'
+);
+
+-- Normal user
+INSERT INTO users (
+    role_id,
+    username,
+    email,
+    password_hash,
+    preferred_lang,
+    is_active,
+    first_name,
+    last_name,
+    created_by,
+    updated_by
+)
+VALUES (
+    (SELECT id FROM roles WHERE name = 'ROLE_USER'),
+    'user',
+    'user@sfrigola.com',
+    '$2a$12$0wTEADC4iyGDfOjgmcd0KOPLCCabcrEMNPZtFJJs5f7DoPWJexH0q',
+    'en',
+    TRUE,
+    'User',
+    'Sfrigola',
+    'system',
+    'system'
+);
+
+-- ============================================================
+--  SAMPLE INGREDIENTS + RECIPE
+--  Minimal end-to-end dataset so every table has at least one
+--  row from a fresh init - no manual seeding needed to start.
+-- ============================================================
+
+-- Ingredients
+INSERT INTO ingredients (id, slug, category, calories_per_100g, allergens, is_vegetarian, is_vegan, is_gluten_free) VALUES
+ (1,  'spaghetti',        'grain',     158.00, ARRAY['gluten'],        TRUE,  TRUE,  FALSE),
+ (2,  'tomato',           'vegetable',  18.00, NULL,                   TRUE,  TRUE,  TRUE),
+ (3,  'garlic',           'vegetable', 149.00, NULL,                   TRUE,  TRUE,  TRUE),
+ (4,  'olive-oil',        'fat',       884.00, NULL,                   TRUE,  TRUE,  TRUE),
+ (5,  'parmesan',         'dairy',     431.00, ARRAY['milk'],          TRUE,  FALSE, TRUE),
+ (6,  'basil',            'herb',       22.00, NULL,                   TRUE,  TRUE,  TRUE),
+ (7,  'onion',            'vegetable',  40.00, NULL,                   TRUE,  TRUE,  TRUE),
+ (8,  'carrot',           'vegetable',  41.00, NULL,                   TRUE,  TRUE,  TRUE),
+ (9,  'arborio-rice',     'grain',     130.00, NULL,                   TRUE,  TRUE,  TRUE),
+ (10, 'butter',           'dairy',     717.00, ARRAY['milk'],          TRUE,  FALSE, TRUE),
+ (11, 'porcini-mushroom', 'vegetable',  22.00, NULL,                   TRUE,  TRUE,  TRUE),
+ (12, 'chicken-breast',   'protein',   165.00, NULL,                   FALSE, FALSE, TRUE),
+ (13, 'lemon',            'fruit',      29.00, NULL,                   TRUE,  TRUE,  TRUE),
+ (14, 'egg',              'protein',   155.00, ARRAY['eggs'],          TRUE,  FALSE, TRUE),
+ (15, 'mascarpone',       'dairy',     429.00, ARRAY['milk'],          TRUE,  FALSE, TRUE),
+ (16, 'ladyfingers',      'grain',     384.00, ARRAY['gluten','eggs'], TRUE,  FALSE, FALSE),
+ (17, 'coffee',           'beverage',    2.00, NULL,                   TRUE,  TRUE,  TRUE),
+ (18, 'cocoa-powder',     'other',     228.00, NULL,                   TRUE,  TRUE,  TRUE),
+ (19, 'sugar',            'other',     387.00, NULL,                   TRUE,  TRUE,  TRUE);
+
+SELECT setval('ingredients_id_seq', (SELECT MAX(id) FROM ingredients));
+
+-- Ingredient translations - English
+INSERT INTO ingredient_translations (ingredient_id, locale, name) VALUES
+ (1,  'en', 'Spaghetti'),
+ (2,  'en', 'Tomato'),
+ (3,  'en', 'Garlic'),
+ (4,  'en', 'Olive oil'),
+ (5,  'en', 'Parmesan'),
+ (6,  'en', 'Basil'),
+ (7,  'en', 'Onion'),
+ (8,  'en', 'Carrot'),
+ (9,  'en', 'Arborio rice'),
+ (10, 'en', 'Butter'),
+ (11, 'en', 'Porcini mushroom'),
+ (12, 'en', 'Chicken breast'),
+ (13, 'en', 'Lemon'),
+ (14, 'en', 'Egg'),
+ (15, 'en', 'Mascarpone'),
+ (16, 'en', 'Ladyfingers'),
+ (17, 'en', 'Coffee'),
+ (18, 'en', 'Cocoa powder'),
+ (19, 'en', 'Sugar');
+
+-- Ingredient translations - Italian
+INSERT INTO ingredient_translations (ingredient_id, locale, name) VALUES
+ (1,  'it', 'Spaghetti'),
+ (2,  'it', 'Pomodoro'),
+ (3,  'it', 'Aglio'),
+ (4,  'it', 'Olio d''oliva'),
+ (5,  'it', 'Parmigiano'),
+ (6,  'it', 'Basilico'),
+ (7,  'it', 'Cipolla'),
+ (8,  'it', 'Carota'),
+ (9,  'it', 'Riso Arborio'),
+ (10, 'it', 'Burro'),
+ (11, 'it', 'Fungo porcino'),
+ (12, 'it', 'Petto di pollo'),
+ (13, 'it', 'Limone'),
+ (14, 'it', 'Uovo'),
+ (15, 'it', 'Mascarpone'),
+ (16, 'it', 'Savoiardi'),
+ (17, 'it', 'Caffe'''),
+ (18, 'it', 'Cacao in polvere'),
+ (19, 'it', 'Zucchero');
+
+-- Ingredient tags (flavor/texture/season)
+INSERT INTO ingredient_tags (ingredient_id, tag_id) VALUES
+ (2, 19),  -- tomato: acidic
+ (2, 30),  -- tomato: summer
+ (3, 18),  -- garlic: aromatic
+ (5, 15),  -- parmesan: umami
+ (5, 13),  -- parmesan: salty
+ (6, 18),  -- basil: aromatic
+ (7, 18),  -- onion: aromatic
+ (10, 22), -- butter: creamy
+ (11, 15), -- porcini: umami
+ (11, 31), -- porcini: autumn
+ (13, 12), -- lemon: sour
+ (15, 22), -- mascarpone: creamy
+ (17, 14), -- coffee: bitter
+ (18, 14), -- cocoa: bitter
+ (19, 11); -- sugar: sweet
+
+-- Recipes
+INSERT INTO recipes (
+    id, author_id, category_id, difficulty, meal_type, season,
+    prep_time_min, cook_time_min, servings,
+    is_vegetarian, is_vegan, is_gluten_free, is_published
+) VALUES
+ (1, (SELECT id FROM users WHERE username = 'admin'),
+     (SELECT id FROM categories WHERE slug = 'pasta'),
+     'easy', 'dinner', 'all_year', 10, 20, 4, TRUE, FALSE, FALSE, TRUE),
+ (2, (SELECT id FROM users WHERE username = 'contributor'),
+     (SELECT id FROM categories WHERE slug = 'risotto'),
+     'medium', 'dinner', 'autumn', 10, 35, 4, TRUE, FALSE, TRUE, TRUE),
+ (3, (SELECT id FROM users WHERE username = 'admin'),
+     (SELECT id FROM categories WHERE slug = 'meat'),
+     'easy', 'lunch', 'all_year', 15, 25, 4, FALSE, FALSE, TRUE, TRUE),
+ (4, (SELECT id FROM users WHERE username = 'contributor'),
+     (SELECT id FROM categories WHERE slug = 'desserts'),
+     'medium', 'dessert', 'all_year', 30, 0, 6, TRUE, FALSE, FALSE, TRUE);
+
+SELECT setval('recipes_id_seq', (SELECT MAX(id) FROM recipes));
+
+-- Recipe translations - English
+INSERT INTO recipe_translations (recipe_id, locale, title, description, instructions) VALUES
+ (1, 'en', 'Spaghetti al Pomodoro', 'Classic Italian pasta with fresh tomato sauce.',
+  'Boil salted water and cook spaghetti until al dente. Meanwhile, saute garlic in olive oil, add chopped tomatoes and simmer. Toss pasta with the sauce, top with grated parmesan and fresh basil.'),
+ (2, 'en', 'Porcini Mushroom Risotto', 'Creamy autumn risotto with porcini mushrooms and parmesan.',
+  'Saute chopped onion in butter and olive oil, add rice and toast briefly. Add porcini mushrooms, then ladle in warm stock gradually, stirring until creamy. Finish with butter and grated parmesan.'),
+ (3, 'en', 'Lemon Chicken', 'Quick pan-seared chicken breast with garlic and lemon.',
+  'Season chicken breast and sear in olive oil until golden. Add minced garlic and lemon juice, simmer briefly to make a light pan sauce, then finish with a knob of butter.'),
+ (4, 'en', 'Tiramisu', 'Classic Italian no-bake dessert with coffee and mascarpone.',
+  'Whisk egg yolks with sugar until pale, fold in mascarpone. Dip ladyfingers in coffee and layer with the mascarpone cream. Repeat layers, chill, then dust with cocoa powder before serving.');
+
+-- Recipe translations - Italian
+INSERT INTO recipe_translations (recipe_id, locale, title, description, instructions) VALUES
+ (1, 'it', 'Spaghetti al Pomodoro', 'Pasta italiana classica con salsa di pomodoro fresco.',
+  'Cuocere gli spaghetti in acqua salata fino a cottura al dente. Nel frattempo, soffriggere l''aglio nell''olio d''oliva, aggiungere i pomodori a pezzi e far sobbollire. Mantecare la pasta con il sugo, guarnire con parmigiano grattugiato e basilico fresco.'),
+ (2, 'it', 'Risotto ai Funghi Porcini', 'Risotto autunnale cremoso con funghi porcini e parmigiano.',
+  'Soffriggere la cipolla tritata nel burro e nell''olio, aggiungere il riso e tostarlo brevemente. Unire i funghi porcini, poi versare il brodo caldo poco alla volta mescolando fino a cremosita. Mantecare con burro e parmigiano grattugiato.'),
+ (3, 'it', 'Pollo al Limone', 'Petto di pollo in padella veloce con aglio e limone.',
+  'Insaporire il petto di pollo e rosolarlo nell''olio d''oliva fino a doratura. Aggiungere l''aglio tritato e il succo di limone, far sobbollire brevemente per creare un sughetto leggero, quindi mantecare con una noce di burro.'),
+ (4, 'it', 'Tiramisu', 'Classico dolce italiano al cucchiaio con caffe e mascarpone.',
+  'Sbattere i tuorli con lo zucchero fino a renderli chiari, incorporare il mascarpone. Inzuppare i savoiardi nel caffe e alternare a strati con la crema al mascarpone. Ripetere gli strati, far raffreddare e spolverare con cacao prima di servire.');
+
+-- Recipe tags
+INSERT INTO recipe_tags (recipe_id, tag_id) VALUES
+ (1, 2),  -- spaghetti: easy
+ (1, 5),  -- spaghetti: fresh
+ (1, 10), -- spaghetti: traditional
+ (2, 6),  -- risotto: comfort-food
+ (2, 9),  -- risotto: gourmet
+ (2, 31), -- risotto: autumn
+ (3, 1),  -- chicken: quick
+ (3, 2),  -- chicken: easy
+ (3, 5),  -- chicken: fresh
+ (4, 6),  -- tiramisu: comfort-food
+ (4, 9),  -- tiramisu: gourmet
+ (4, 10); -- tiramisu: traditional
+
+-- Recipe ingredients
+INSERT INTO recipe_ingredients (recipe_id, ingredient_id, quantity, unit, preparation_note, sort_order) VALUES
+ (1, 1, 400.00, 'g',     NULL,             0),
+ (1, 2, 500.00, 'g',     'chopped',        1),
+ (1, 3, 2.00,   'clove', 'minced',         2),
+ (1, 4, 3.00,   'tbsp',  NULL,             3),
+ (1, 5, 50.00,  'g',     'grated',         4),
+ (1, 6, 10.00,  'g',     'fresh leaves',   5),
+ (2, 9,  320.00, 'g',   NULL,              0),
+ (2, 11, 300.00, 'g',   'soaked',          1),
+ (2, 7,  1.00,   'unit','chopped',         2),
+ (2, 10, 50.00,  'g',   NULL,              3),
+ (2, 4,  2.00,   'tbsp',NULL,              4),
+ (2, 5,  60.00,  'g',   'grated',          5),
+ (3, 12, 500.00, 'g',   NULL,              0),
+ (3, 13, 2.00,   'unit','juiced',          1),
+ (3, 3,  1.00,   'clove','minced',         2),
+ (3, 4,  2.00,   'tbsp', NULL,             3),
+ (3, 10, 20.00,  'g',   NULL,              4),
+ (4, 15, 500.00, 'g',   NULL,              0),
+ (4, 14, 4.00,   'unit','yolks',           1),
+ (4, 16, 200.00, 'g',   NULL,              2),
+ (4, 17, 300.00, 'ml',  'brewed, cooled',  3),
+ (4, 18, 20.00,  'g',   'for dusting',     4),
+ (4, 19, 100.00, 'g',   NULL,              5);
+
+-- Favorites
+INSERT INTO favorites (user_id, recipe_id) VALUES
+ ((SELECT id FROM users WHERE username = 'user'),        1),
+ ((SELECT id FROM users WHERE username = 'contributor'), 1),
+ ((SELECT id FROM users WHERE username = 'user'),        2),
+ ((SELECT id FROM users WHERE username = 'admin'),       2),
+ ((SELECT id FROM users WHERE username = 'user'),        3),
+ ((SELECT id FROM users WHERE username = 'user'),        4),
+ ((SELECT id FROM users WHERE username = 'admin'),       4);
+
+-- Ratings
+INSERT INTO ratings (user_id, recipe_id, score, comment) VALUES
+ ((SELECT id FROM users WHERE username = 'user'),        1, 5, 'Delicious and easy to make!'),
+ ((SELECT id FROM users WHERE username = 'contributor'), 1, 4, 'Great weeknight classic.'),
+ ((SELECT id FROM users WHERE username = 'user'),        2, 4, 'Rich and creamy, worth the stirring.'),
+ ((SELECT id FROM users WHERE username = 'admin'),       2, 5, 'Restaurant quality at home.'),
+ ((SELECT id FROM users WHERE username = 'user'),        3, 5, 'Fast, fresh, perfect for lunch.'),
+ ((SELECT id FROM users WHERE username = 'contributor'), 3, 4, 'Simple and tasty.'),
+ ((SELECT id FROM users WHERE username = 'user'),        4, 5, 'Best tiramisu recipe I''ve tried.'),
+ ((SELECT id FROM users WHERE username = 'admin'),       4, 4, 'Classic and reliable.');
+
+-- Recipe stats (mirrors the seeded ratings/favorites above)
+INSERT INTO recipe_stats (recipe_id, avg_rating, ratings_count, favorites_count, views_count) VALUES
+ (1, 4.50, 2, 2, 42),
+ (2, 4.50, 2, 2, 30),
+ (3, 4.50, 2, 1, 18),
+ (4, 4.50, 2, 2, 55);
