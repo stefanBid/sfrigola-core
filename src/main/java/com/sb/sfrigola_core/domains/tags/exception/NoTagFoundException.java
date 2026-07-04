@@ -4,6 +4,7 @@ import com.sb.sfrigola_core.common.exception.ex.SCGeneralException;
 import com.sb.sfrigola_core.domains.tags.enums.TagErrorCode;
 import org.springframework.http.HttpStatus;
 
+import java.util.Collection;
 import java.util.UUID;
 
 public class NoTagFoundException extends SCGeneralException {
@@ -12,6 +13,14 @@ public class NoTagFoundException extends SCGeneralException {
                 HttpStatus.NOT_FOUND,
                 TagErrorCode.TAG_NOT_FOUND,
                 "No tag found with ID: " + publicId
+        );
+    }
+
+    public NoTagFoundException(Collection<UUID> publicIds) {
+        super(
+                HttpStatus.NOT_FOUND,
+                TagErrorCode.TAG_NOT_FOUND,
+                "No tag found for IDs: " + publicIds
         );
     }
 }

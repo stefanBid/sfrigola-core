@@ -599,7 +599,7 @@ VALUES (
     (SELECT id FROM roles WHERE name = 'ROLE_ADMIN'),
     'admin',
     'admin@sfrigola.com',
-    '$2a$12$CzGNXHYb3JW.uaXImbUDZeq/9O0M/5V.JYibrrZ87OwcYB/YmpFRe',
+    '$2a$12$0wTEADC4iyGDfOjgmcd0KOPLCCabcrEMNPZtFJJs5f7DoPWJexH0q', /* sfrigola */
     'en',
     TRUE,
     'Admin',

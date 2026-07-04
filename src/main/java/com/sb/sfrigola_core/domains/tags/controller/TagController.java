@@ -38,7 +38,7 @@ public class TagController {
 
     // CONTRIBUTOR CONTROLLER
 
-    @GetMapping(value = "/contributor", version = "1.0")
+    @GetMapping(version = "1.0")
     public ResponseEntity<SCGeneralResponseDto<List<TagDto>, SCPagedOptionDto>> getAllTags(
             @Min(value = 0, message = SCRequestParamValidationCodeConstants.PAGE_MUST_BE_AT_LEAST_ZERO)
             @RequestParam(value = "page", required = false, defaultValue = "0") int page,
@@ -54,7 +54,7 @@ public class TagController {
         return ResponseEntity.ok(SCGeneralResponseDto.success(paginatedTags.content(), paginatedTags.pagedOptionDto()));
     }
 
-    @PostMapping(value = "/contributor", version = "1.0")
+    @PostMapping(value = "/suggest", version = "1.0")
     public ResponseEntity<SCGeneralResponseDto<TagSuggestDto, Void>> suggestNewTag(
             @RequestBody @Valid TagSuggestDto newTagSuggested
     ) {

@@ -6,10 +6,12 @@ import com.sb.sfrigola_core.common.dto.response.SCGeneralResponseDto;
 import com.sb.sfrigola_core.common.enums.SortDirection;
 import com.sb.sfrigola_core.common.models.contracts.SCFilterQuery;
 import com.sb.sfrigola_core.domains.ingredients.dto.IngredientDto;
+import com.sb.sfrigola_core.domains.ingredients.dto.admin.IngredientInputDto;
 import com.sb.sfrigola_core.domains.ingredients.dto.admin.IngredientPreviewAdminDto;
 import com.sb.sfrigola_core.domains.ingredients.enums.IngredientSortField;
 import com.sb.sfrigola_core.domains.ingredients.models.IngredientSpecificFilter;
 import com.sb.sfrigola_core.domains.ingredients.service.IIngredientService;
+import jakarta.validation.Valid;
 import jakarta.validation.constraints.Max;
 import jakarta.validation.constraints.Min;
 import jakarta.validation.constraints.NotBlank;
@@ -17,10 +19,7 @@ import jakarta.validation.constraints.Pattern;
 import lombok.RequiredArgsConstructor;
 import org.springframework.http.ResponseEntity;
 import org.springframework.validation.annotation.Validated;
-import org.springframework.web.bind.annotation.GetMapping;
-import org.springframework.web.bind.annotation.RequestMapping;
-import org.springframework.web.bind.annotation.RequestParam;
-import org.springframework.web.bind.annotation.RestController;
+import org.springframework.web.bind.annotation.*;
 
 import java.util.List;
 
@@ -81,6 +80,14 @@ public class IngredientController {
         var filterQuery = SCFilterQuery.powerful(searchKey, sortField, SortDirection.fromString(sort), take, page, specificFilterForIngredients);
         var paginatedIngredients = ingredientService.getAllAdmin(filterQuery, locale);
         return ResponseEntity.ok(SCGeneralResponseDto.success(paginatedIngredients.content(), paginatedIngredients.pagedOptionDto()));
+    }
+
+    @PostMapping(value = "/admin", version = "1.0")
+    public ResponseEntity<SCGeneralResponseDto<IngredientPreviewAdminDto, Void>> createIngredient(
+            @RequestBody @Valid IngredientInputDto newIngredient
+    ) {
+        var ingredientCreated = ingredientService.createIngredient(newIngredient);
+        return ResponseEntity.ok(SCGeneralResponseDto.success(ingredientCreated));
     }
 
 }

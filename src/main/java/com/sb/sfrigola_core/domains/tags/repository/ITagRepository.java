@@ -183,6 +183,8 @@ public interface ITagRepository extends JpaRepository<Tag, Long> {
 
     Optional<Tag> findByPublicId(UUID publicId);
 
+    List<Tag> findByPublicIdIn(List<UUID> publicIds);
+
     boolean existsBySlug(String slug);
 
     @Query("""

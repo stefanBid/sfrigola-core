@@ -8,7 +8,8 @@ public enum TagErrorCode implements ISCErrorCode {
     TAG_SLUG_ALREADY_EXISTS,
     TAG_LABEL_ALREADY_EXISTS,
     TAG_LANGUAGE_NOT_ACTIVE,
-    DUPLICATE_TAG_LOCALE;
+    DUPLICATE_TAG_LOCALE,
+    TAG_SCOPE_NOT_ALLOWED;
 
     @Override
     public String code() {
