@@ -50,4 +50,7 @@ public class Ingredient extends BaseEntity {
     @OneToMany(mappedBy = "ingredient", fetch = FetchType.LAZY, cascade = CascadeType.ALL, orphanRemoval = true)
     private List<IngredientTranslation> translations = new ArrayList<>();
 
+    @OneToMany(mappedBy = "ingredient", fetch = FetchType.LAZY, cascade = CascadeType.ALL, orphanRemoval = true)
+    private List<IngredientTag> ingredientTags = new ArrayList<>();
+
 }

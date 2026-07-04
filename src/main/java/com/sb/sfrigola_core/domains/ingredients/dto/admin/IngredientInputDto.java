@@ -10,6 +10,7 @@ import jakarta.validation.constraints.Size;
 import java.io.Serializable;
 import java.math.BigDecimal;
 import java.util.List;
+import java.util.UUID;
 
 public record IngredientInputDto(
         @ValidSlug(maxLength = 150)
@@ -31,6 +32,8 @@ public record IngredientInputDto(
 
         @NotNull(message = IngredientValidationCodeConstants.TRANSLATIONS_REQUIRED)
         @Size(min = 1, message = IngredientValidationCodeConstants.TRANSLATIONS_MIN_ONE)
-        List<@Valid IngredientTranslationInputDto> translations
+        List<@Valid IngredientTranslationInputDto> translations,
+
+        List<UUID> ingredientTagsIds
 ) implements Serializable {
 }
