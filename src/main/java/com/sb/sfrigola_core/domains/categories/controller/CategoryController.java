@@ -5,17 +5,17 @@ import com.sb.sfrigola_core.common.dto.option.SCPagedOptionDto;
 import com.sb.sfrigola_core.common.dto.response.SCGeneralResponseDto;
 import com.sb.sfrigola_core.common.enums.SortDirection;
 import com.sb.sfrigola_core.common.models.contracts.SCFilterQuery;
-import com.sb.sfrigola_core.domains.categories.dto.admin.CategoryDetailsAdminDto;
-import com.sb.sfrigola_core.domains.categories.dto.CategoryDto;
-import com.sb.sfrigola_core.domains.categories.dto.admin.CategoryPreviewAdminDto;
-import com.sb.sfrigola_core.domains.categories.dto.admin.CategoryInputDto;
-import com.sb.sfrigola_core.domains.categories.dto.admin.CategoryReorderInputDto;
+import com.sb.sfrigola_core.domains.categories.dto.input.UpdateCategoryDto;
+import com.sb.sfrigola_core.domains.categories.dto.view.CategoryDetailsAdminDto;
+import com.sb.sfrigola_core.domains.categories.dto.view.CategoryPublicViewDto;
+import com.sb.sfrigola_core.domains.categories.dto.view.CategoryPreviewAdminDto;
+import com.sb.sfrigola_core.domains.categories.dto.input.AddCategoryDto;
+import com.sb.sfrigola_core.domains.categories.dto.input.ReorderedCategoriesTreeDto;
 import com.sb.sfrigola_core.domains.categories.service.ICategoryService;
 import jakarta.validation.Valid;
 import jakarta.validation.constraints.Max;
 import jakarta.validation.constraints.Min;
 import jakarta.validation.constraints.NotBlank;
-import jakarta.validation.constraints.Pattern;
 import lombok.RequiredArgsConstructor;
 import org.springframework.http.ResponseEntity;
 import org.springframework.validation.annotation.Validated;
@@ -33,7 +33,7 @@ public class CategoryController {
     private final ICategoryService categoryService;
 
     @GetMapping(version = "1.0")
-    public ResponseEntity<SCGeneralResponseDto<List<CategoryDto>, SCPagedOptionDto>> getAllCategories(
+    public ResponseEntity<SCGeneralResponseDto<List<CategoryPublicViewDto>, SCPagedOptionDto>> getAllCategories(
             @Min(value = 0, message = SCRequestParamValidationCodeConstants.PAGE_MUST_BE_AT_LEAST_ZERO)
             @RequestParam(value = "page", required = false, defaultValue = "0") int page,
             @Min(value = 1, message = SCRequestParamValidationCodeConstants.TAKE_MUST_BE_AT_LEAST_ONE) @Max(value = 100, message = SCRequestParamValidationCodeConstants.TAKE_MUST_BE_AT_MOST_HUNDRED)
@@ -56,19 +56,20 @@ public class CategoryController {
             @RequestParam(value = "sort", required = false, defaultValue = "asc") String sort,
             @RequestParam(value = "searchKey", required = false) String searchKey,
             @RequestParam(value = "isActive", required = false) Boolean isActive,
-            @RequestParam(required = false) String locale
+            @RequestParam(required = false) @NotBlank(message = SCRequestParamValidationCodeConstants.LOCALE_MUST_NOT_BE_BLANK) String locale
     ){
 
-        var filterQuery = SCFilterQuery.essentialWithSearch(searchKey,null, SortDirection.fromString(sort), take, page);
+        var filterQuery = SCFilterQuery.essentialWithSearch(searchKey, null, SortDirection.fromString(sort), take, page);
         var paginatedCategories = categoryService.getAllAdmin(filterQuery, locale, isActive);
         return ResponseEntity.ok(SCGeneralResponseDto.success(paginatedCategories.content(), paginatedCategories.pagedOptionDto()));
     }
 
     @GetMapping(value = "/admin/{publicId}", version = "1.0")
     public ResponseEntity<SCGeneralResponseDto<CategoryDetailsAdminDto, Void>> getCategoryByPublicIdAdmin(
-            @PathVariable("publicId") UUID publicId
+            @PathVariable("publicId") UUID publicId,
+            @RequestParam @NotBlank(message = SCRequestParamValidationCodeConstants.LOCALE_MUST_NOT_BE_BLANK) String locale
     ) {
-        var selectedCategory = categoryService.getByPublicIdAdmin(publicId);
+        var selectedCategory = categoryService.getByPublicIdAdmin(publicId, locale);
 
         return ResponseEntity.ok(SCGeneralResponseDto.success(selectedCategory));
     }
@@ -76,34 +77,35 @@ public class CategoryController {
     @PostMapping(value = {"/admin", "/admin/{parentPublicId}"}, version = "1.0")
     public ResponseEntity<SCGeneralResponseDto<CategoryPreviewAdminDto, Void>> createCategory(
             @PathVariable(value = "parentPublicId", required = false) UUID parentPublicId,
-            @RequestBody @Valid CategoryInputDto categoryUpsertDto
+            @RequestBody @Valid AddCategoryDto addCategoryDto,
+            @RequestParam @NotBlank(message = SCRequestParamValidationCodeConstants.LOCALE_MUST_NOT_BE_BLANK) String locale
     ) {
-        CategoryPreviewAdminDto created = categoryService.createNewCategory(categoryUpsertDto, parentPublicId);
+        CategoryPreviewAdminDto created = categoryService.createNewCategory(addCategoryDto, parentPublicId, locale);
         return ResponseEntity.ok(SCGeneralResponseDto.success(created));
     }
 
     @PutMapping(value = "/admin/{publicId}", version = "1.0")
     public ResponseEntity<SCGeneralResponseDto<CategoryPreviewAdminDto, Void>> updateCategory(
             @PathVariable(value = "publicId") UUID publicId,
-            @RequestBody @Valid CategoryInputDto categoryUpsertDto
+            @RequestBody @Valid UpdateCategoryDto updateCategoryDto
     ) {
-        CategoryPreviewAdminDto updated = categoryService.updateCategory(categoryUpsertDto, publicId);
+        CategoryPreviewAdminDto updated = categoryService.updateCategory(updateCategoryDto, publicId);
         return ResponseEntity.ok(SCGeneralResponseDto.success(updated));
     }
 
     @DeleteMapping(value = "/admin/{publicId}", version = "1.0")
-    public ResponseEntity<SCGeneralResponseDto<CategoryPreviewAdminDto, Void>> deleteCategory(
+    public ResponseEntity<SCGeneralResponseDto<UUID, Void>> deleteCategory(
             @PathVariable(value = "publicId") UUID publicId
     ){
-        CategoryPreviewAdminDto deleted = categoryService.deleteCategory(publicId);
+        UUID deleted = categoryService.deleteCategory(publicId);
         return ResponseEntity.ok(SCGeneralResponseDto.success(deleted));
     }
 
     @PutMapping(value = "/admin/reorder", version = "1.0")
     public ResponseEntity<SCGeneralResponseDto<List<CategoryPreviewAdminDto>, Void>> reorderCategories(
-            @RequestBody @Valid CategoryReorderInputDto categoryReorderInputDto
+            @RequestBody @Valid ReorderedCategoriesTreeDto reorderedCategoriesTreeDto
             ){
-       List<CategoryPreviewAdminDto> reordered = categoryService.reorderCategories(categoryReorderInputDto);
+       List<CategoryPreviewAdminDto> reordered = categoryService.reorderCategories(reorderedCategoriesTreeDto);
        return ResponseEntity.ok(SCGeneralResponseDto.success(reordered));
     }
 }

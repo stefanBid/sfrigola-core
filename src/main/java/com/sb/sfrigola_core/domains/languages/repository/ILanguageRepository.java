@@ -12,4 +12,5 @@ public interface ILanguageRepository extends JpaRepository<Language, Long> {
     Page<Language> findAllByIsActiveTrue(Pageable pageable);
     List<Language> findAllByIsActiveTrue();
     boolean existsByCode(String code);
+    boolean existsByCodeAndIsActiveTrue(String code);
 }

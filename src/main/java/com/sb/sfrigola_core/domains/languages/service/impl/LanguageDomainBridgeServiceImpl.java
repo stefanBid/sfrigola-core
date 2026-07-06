@@ -1,13 +1,12 @@
 package com.sb.sfrigola_core.domains.languages.service.impl;
 
-import com.sb.sfrigola_core.domains.languages.dto.LanguageDto;
 import com.sb.sfrigola_core.domains.languages.entity.Language;
+import com.sb.sfrigola_core.domains.languages.exception.LocaleNotActiveException;
 import com.sb.sfrigola_core.domains.languages.repository.ILanguageRepository;
 import com.sb.sfrigola_core.domains.languages.service.ILanguageDomainBridgeService;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
 
-import java.util.List;
 import java.util.Map;
 import java.util.stream.Collectors;
 
@@ -18,8 +17,8 @@ public class LanguageDomainBridgeServiceImpl implements ILanguageDomainBridgeSer
     private final ILanguageRepository languageRepository;
 
     @Override
-    public List<LanguageDto> getAllActiveLanguages() {
-        return languageRepository.findAllByIsActiveTrue().stream().map(this::toDto).toList();
+    public Map<String, String> getAllActiveLanguagesSimpleMap() {
+        return languageRepository.findAllByIsActiveTrue().stream().collect(Collectors.toMap(Language::getCode, Language::getName));
     }
 
     @Override
@@ -29,10 +28,9 @@ public class LanguageDomainBridgeServiceImpl implements ILanguageDomainBridgeSer
         );
     }
 
-    // =========================================================
-    // PRIVATE
-    // =========================================================
-    private LanguageDto toDto(Language language) {
-        return new LanguageDto(language.getCode(), language.getName());
+    @Override
+    public void validateLocaleIsActiveOrThrow(String locale) {
+        if (!languageRepository.existsByCodeAndIsActiveTrue(locale))
+            throw new LocaleNotActiveException(locale);
     }
 }

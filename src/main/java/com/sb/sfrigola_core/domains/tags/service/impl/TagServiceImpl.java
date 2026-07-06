@@ -61,7 +61,7 @@ public class TagServiceImpl implements ITagService {
 
     @Override
     public SCPagedResult<TagPreviewAdminDto> getAllAdmin(SCFilterQuery<TagSpecificFilter> filterQuery, String locale) {
-        var totalActiveLanguages = languageDomainBridgeService.getAllActiveLanguages().size();
+        var totalActiveLanguages = languageDomainBridgeService.getAllActiveLanguagesSimpleMap().size();
 
         // SORT BY SWITCHER
         // CASE: SortBy is null or is LABEL  use forced group-by on label (in another table)
@@ -132,7 +132,7 @@ public class TagServiceImpl implements ITagService {
 
     @Override
     public TagDetailsAdminDto getByPublicIdAdmin(UUID publicId) {
-        var activeLanguages = new ArrayList<>(languageDomainBridgeService.getAllActiveLanguages());
+        var activeLanguages = new HashMap<>(languageDomainBridgeService.getAllActiveLanguagesSimpleMap());
         var tag = tagRepository.findByPublicId(publicId).orElseThrow(
                 () -> new NoTagFoundException(publicId)
         );
@@ -144,8 +144,8 @@ public class TagServiceImpl implements ITagService {
         // Populate missing Translation array only if there are missing languages
         if(totalMissingLocalization > 0){
             // Remove from the activeLanguages list all languages that already have a translation for this tag
-            tag.getTranslations().forEach(t -> activeLanguages.removeIf(l -> l.code().equals(t.getLanguage().getCode())));
-            activeLanguages.forEach(al -> missingTranslation.add(new TagTranslationDetailsAdminDto(al.code(), al.name(), null)));
+            tag.getTranslations().forEach(t -> activeLanguages.remove(t.getLanguage().getCode()));
+            activeLanguages.forEach((code, name) -> missingTranslation.add(new TagTranslationDetailsAdminDto(code, name, null)));
         }
         return toAdminDetailsDto(tag,missingTranslation);
     }
@@ -298,7 +298,7 @@ public class TagServiceImpl implements ITagService {
                 () -> new NoTagFoundException(publicId)
         );
 
-        var totalActiveLanguages = languageDomainBridgeService.getAllActiveLanguages().size();
+        var totalActiveLanguages = languageDomainBridgeService.getAllActiveLanguagesSimpleMap().size();
         var labelPreview = tagToDelete.getTranslations().stream().findFirst().map(TagTranslation::getLabel).orElse(null);
 
         tagRepository.delete(tagToDelete);

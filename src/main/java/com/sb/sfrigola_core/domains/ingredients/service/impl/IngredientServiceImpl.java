@@ -61,7 +61,7 @@ public class IngredientServiceImpl implements IIngredientService {
 
     @Override
     public SCPagedResult<IngredientPreviewAdminDto> getAllAdmin(SCFilterQuery<IngredientSpecificFilter> filterQuery, @Nullable String locale) {
-        var totalActiveLanguages = languageDomainBridgeService.getAllActiveLanguages().size();
+        var totalActiveLanguages = languageDomainBridgeService.getAllActiveLanguagesSimpleMap().size();
 
         // SORT BY SWITCHER
         // CASE: SortBy is null or is NAME → "name" lives on the translation join, not on Ingredient,
@@ -132,7 +132,7 @@ public class IngredientServiceImpl implements IIngredientService {
 
     @Override
     public IngredientDetailsAdminDto getByPublicIdAdmin(UUID publicId) {
-        var activeLanguages = new ArrayList<>(languageDomainBridgeService.getAllActiveLanguages());
+        var activeLanguages = new HashMap<>(languageDomainBridgeService.getAllActiveLanguagesSimpleMap());
         var ingredient = ingredientRepository.findByPublicIdWithAllTranslation(publicId).orElseThrow(
                 () -> new NoIngredientFoundException(publicId)
         );
@@ -144,8 +144,8 @@ public class IngredientServiceImpl implements IIngredientService {
         // Populate missing Translation array only if there are missing languages
         if (totalMissingLocalization > 0) {
             // Remove from the activeLanguages list all languages that already have a translation for this ingredient
-            ingredient.getTranslations().forEach(t -> activeLanguages.removeIf(l -> l.code().equals(t.getLanguage().getCode())));
-            activeLanguages.forEach(al -> missingTranslation.add(new IngredientTranslationDetailsAdminDto(al.code(), al.name(), null)));
+            ingredient.getTranslations().forEach(t -> activeLanguages.remove(t.getLanguage().getCode()));
+            activeLanguages.forEach((code, name) -> missingTranslation.add(new IngredientTranslationDetailsAdminDto(code, name, null)));
         }
         return toAdminDetailsDto(ingredient, missingTranslation);
     }
@@ -260,7 +260,7 @@ public class IngredientServiceImpl implements IIngredientService {
                 () -> new NoIngredientFoundException(publicId)
         );
 
-        var totalActiveLanguages = languageDomainBridgeService.getAllActiveLanguages().size();
+        var totalActiveLanguages = languageDomainBridgeService.getAllActiveLanguagesSimpleMap().size();
         var namePreview = ingredientToDelete.getTranslations().stream().findFirst().map(IngredientTranslation::getName).orElse(null);
 
         ingredientRepository.delete(ingredientToDelete);

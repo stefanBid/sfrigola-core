@@ -1,8 +1,8 @@
-package com.sb.sfrigola_core.domains.categories.dto.admin;
+package com.sb.sfrigola_core.domains.categories.dto.view;
 
 import java.io.Serializable;
 
-public record CategoryPreviewTranslationAdminDto(
+public record CategoryTranslationAdminDto(
         String namePreview,
         String descriptionPreview
 ) implements Serializable {
