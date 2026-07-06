@@ -13,6 +13,7 @@ public class CategoryValidationCodeConstants {
     public static final String LANG_CODE_REQUIRED    = "LANG_CODE_REQUIRED";
 
     // --- TRANSLATION NAME ---
+    public static final String NAME_REQUIRED         = "NAME_REQUIRED";
     public static final String NAME_TOO_LONG         = "NAME_TOO_LONG";
 
     // --- TRANSLATION DESCRIPTION ---

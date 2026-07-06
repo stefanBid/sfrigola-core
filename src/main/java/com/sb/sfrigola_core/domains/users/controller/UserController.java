@@ -8,6 +8,7 @@ import com.sb.sfrigola_core.common.enums.SortDirection;
 import com.sb.sfrigola_core.domains.users.dto.SCUserDto;
 import com.sb.sfrigola_core.domains.users.dto.SetStatusDto;
 import com.sb.sfrigola_core.domains.users.dto.UpdateProfileDto;
+import com.sb.sfrigola_core.domains.users.enums.UserSortField;
 import com.sb.sfrigola_core.domains.users.service.ISCUserService;
 import jakarta.validation.Valid;
 import jakarta.validation.constraints.Max;
@@ -60,13 +61,13 @@ public class UserController {
             @RequestParam(value = "page", required = false, defaultValue = "0") int page,
             @Min(value = 1, message = SCRequestParamValidationCodeConstants.TAKE_MUST_BE_AT_LEAST_ONE) @Max(value = 100, message = SCRequestParamValidationCodeConstants.TAKE_MUST_BE_AT_MOST_HUNDRED)
             @RequestParam(value = "take", required = false, defaultValue = "10") int take,
-            @RequestParam(value = "sortBy", required = false, defaultValue = "firstName") String sortBy,
-            @Pattern(regexp = "asc|desc", message = SCRequestParamValidationCodeConstants.SORT_INVALID_VALUE)
+            @RequestParam(value = "sortBy", required = false) String sortBy,
             @RequestParam(value = "sort", required = false, defaultValue = "asc") String sort,
             @RequestParam(value = "searchKey", required = false) String searchKey,
             @RequestParam(value = "isActive", required = false) Boolean isActive
     ) {
-        var filterParams =  SCFilterQuery.essentialWithSearch(searchKey, sortBy, SortDirection.fromString(sort), take, page);
+        var sortField = sortBy != null ? UserSortField.fromString(sortBy) : UserSortField.LAST_NAME;
+        var filterParams =  SCFilterQuery.essentialWithSearch(searchKey, sortField, SortDirection.fromString(sort), take, page);
 
         var serviceResult = userService.getAllUsers(filterParams, isActive);
         return ResponseEntity.ok(SCGeneralResponseDto.success(serviceResult.content(), serviceResult.pagedOptionDto()));

@@ -1,9 +1,7 @@
 package com.sb.sfrigola_core.domains.languages.service;
 
-import com.sb.sfrigola_core.domains.languages.dto.LanguageDto;
 import com.sb.sfrigola_core.domains.languages.entity.Language;
 
-import java.util.List;
 import java.util.Map;
 
 /**
@@ -14,12 +12,13 @@ import java.util.Map;
 public interface ILanguageDomainBridgeService {
 
     /**
-     * Returns all languages currently marked as active in the system.
+     * Returns all active languages as a map keyed by BCP-47 language code, for cross-domain
+     * services that only need code/name pairs (no entity reference, no domain DTO leaking across boundaries).
      *
-     * @return a {@link java.util.List} of {@link com.sb.sfrigola_core.domains.languages.dto.LanguageDto}
-     *         representing every active language; never {@code null}, may be empty
+     * @return a {@link java.util.Map} from BCP-47 code (e.g. {@code "it"}, {@code "en"})
+     *         to the language's native name; never {@code null}, may be empty if no active languages exist
      */
-    List<LanguageDto> getAllActiveLanguages();
+    Map<String, String> getAllActiveLanguagesSimpleMap();
 
 
     /**
@@ -36,5 +35,15 @@ public interface ILanguageDomainBridgeService {
      *         never {@code null}, may be empty if no active languages exist
      */
     Map<String, Language> getActiveLanguageEntitiesMap();
+
+    /**
+     * Validates that {@code locale} matches an active language, for cross-domain services that
+     * only need to guard a single locale param and don't otherwise load the active languages map.
+     *
+     * @param locale BCP-47 code to validate (e.g. {@code "it"}, {@code "en"})
+     * @throws com.sb.sfrigola_core.domains.languages.exception.LocaleNotActiveException
+     *         if no active language exists with the given code
+     */
+    void validateLocaleIsActiveOrThrow(String locale);
 
 }

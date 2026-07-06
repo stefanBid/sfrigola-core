@@ -1,5 +1,8 @@
 package com.sb.sfrigola_core.common.enums;
 
+
+import java.util.Arrays;
+
 public enum SortDirection {
     ASC, DESC;
 
@@ -11,13 +14,8 @@ public enum SortDirection {
     }
 
     public static SortDirection fromString(String  direction) {
-        try {
-            return SortDirection.valueOf(direction.toUpperCase());
-        } catch (Exception e) {
-            throw new IllegalArgumentException("Invalid sort direction: " + direction + "It Has to be either 'asc' or 'desc' (case insensitive)", e);
-        }
+        return Arrays.stream(values()).filter(dir -> dir.name().equalsIgnoreCase(direction)).findFirst().orElseThrow(() -> new IllegalArgumentException("Invalid sort direction: " + direction + "It Has to be either 'asc' or 'desc' (case insensitive)"));
     }
-
 
 }
 

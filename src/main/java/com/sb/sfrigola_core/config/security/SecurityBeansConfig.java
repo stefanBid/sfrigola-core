@@ -1,10 +1,13 @@
 package com.sb.sfrigola_core.config.security;
 
 import com.sb.sfrigola_core.common.constant.SCGeneralConstants;
+import com.sb.sfrigola_core.common.enums.SCUserRole;
 import lombok.RequiredArgsConstructor;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
 import org.springframework.core.env.Environment;
+import org.springframework.security.access.hierarchicalroles.RoleHierarchy;
+import org.springframework.security.access.hierarchicalroles.RoleHierarchyImpl;
 import org.springframework.security.authentication.password.CompromisedPasswordChecker;
 import org.springframework.security.crypto.bcrypt.BCryptPasswordEncoder;
 import org.springframework.security.crypto.password.PasswordEncoder;
@@ -28,6 +31,16 @@ public class SecurityBeansConfig {
         return new HaveIBeenPwnedRestApiPasswordChecker();
     }
 
+    @Bean("scHierarchy")
+    public RoleHierarchy roleHierarchy() {
+        return RoleHierarchyImpl.fromHierarchy("""
+                %s > %s
+                %s > %s
+                """.formatted(SCUserRole.ROLE_ADMIN.getAuthority(), SCUserRole.ROLE_CONTRIBUTOR.getAuthority(),
+                        SCUserRole.ROLE_CONTRIBUTOR.getAuthority(), SCUserRole.ROLE_USER.getAuthority())
+        );
+    }
+
 
     @Bean("publicPath")
     public List<String> publicPath() {
@@ -36,29 +49,30 @@ public class SecurityBeansConfig {
                 "/api/auth/register",
                 "/api/languages/**",
                 "/api/categories",
-                "/api/tags",
                 "/error"
         );
     }
 
-    @Bean("onlyAdminPath")
+    @Bean("adminPath")
     public List<String> adminPath() {
         return List.of(
                 "/api/users/admin/**",
                 "/api/categories/admin/**",
-                "/api/tags/admin/**"
+                "/api/tags/admin/**",
+                "/api/ingredients/admin/**"
         );
     }
 
-    @Bean("onlyUserPath")
+    @Bean("userPath")
     public List<String> userPath() {
         return List.of();
     }
 
-    @Bean("onlyContributorPath")
+    @Bean("contributorPath")
     public List<String> contributorPath() {
         return List.of(
-                "/api/tags/contributor/**"
+                "/api/tags/**",
+                "/api/ingredients/**"
         );
     }
 

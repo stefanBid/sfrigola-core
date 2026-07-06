@@ -6,6 +6,7 @@ import com.sb.sfrigola_core.common.dto.response.SCGeneralResponseDto;
 import com.sb.sfrigola_core.common.models.contracts.SCFilterQuery;
 import com.sb.sfrigola_core.common.enums.SortDirection;
 import com.sb.sfrigola_core.domains.languages.dto.LanguageDto;
+import com.sb.sfrigola_core.domains.languages.enums.LanguageSortField;
 import com.sb.sfrigola_core.domains.languages.service.ILanguageService;
 import jakarta.validation.constraints.Max;
 import jakarta.validation.constraints.Min;
@@ -31,13 +32,12 @@ public class LanguagesController {
             @RequestParam(value = "page", required = false, defaultValue = "0") int page,
             @Min(value = 1, message = SCRequestParamValidationCodeConstants.TAKE_MUST_BE_AT_LEAST_ONE) @Max(value = 100, message = SCRequestParamValidationCodeConstants.TAKE_MUST_BE_AT_MOST_HUNDRED)
             @RequestParam(value = "take", required = false, defaultValue = "10") int take,
-            @RequestParam(value = "sortBy", required = false, defaultValue = "name") String sortBy,
-            @Pattern(regexp = "asc|desc", message = SCRequestParamValidationCodeConstants.SORT_INVALID_VALUE)
+            @RequestParam(value = "sortBy", required = false) String sortBy,
             @RequestParam(value = "sort", required = false, defaultValue = "asc") String sort,
             @RequestParam(value = "isActive", required = false) Boolean isActive
     ) {
-
-        var filterParams = SCFilterQuery.essential(sortBy, SortDirection.fromString(sort), take, page);
+        var sortField = sortBy != null ? LanguageSortField.fromString(sortBy) : LanguageSortField.NAME;
+        var filterParams = SCFilterQuery.essential(sortField, SortDirection.fromString(sort), take, page);
         var languagesPagedResult = languageService.getAllLanguages(filterParams, isActive);
         return ResponseEntity.ok( SCGeneralResponseDto.success(languagesPagedResult.content(), languagesPagedResult.pagedOptionDto()));
     }

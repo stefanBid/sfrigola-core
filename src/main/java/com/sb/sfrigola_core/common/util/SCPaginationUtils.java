@@ -22,9 +22,22 @@ public class SCPaginationUtils {
      * @return {@link Pageable} ready to pass to repository methods
      */
     public static Pageable toPageable(SCFilterQuery<?> filterQuery) {
-        if(filterQuery.sortBy() != null && filterQuery.sort() != null) {
+        return toPageable(filterQuery, false);
+    }
+
+    /**
+     * Converts a {@link SCFilterQuery} into a Spring Data {@link Pageable}, optionally
+     * ignoring any sort criteria carried by the filter query.
+     *
+     * @param filterQuery pagination and sorting parameters
+     * @param ignoreSort  when {@code true}, skips {@code filterQuery}'s sort even if present
+     *                    (e.g. when the caller enforces a fixed ordering downstream)
+     * @return {@link Pageable} ready to pass to repository methods
+     */
+    public static Pageable toPageable(SCFilterQuery<?> filterQuery, boolean ignoreSort) {
+        if(!ignoreSort && filterQuery.sortBy() != null && filterQuery.sort() != null) {
             Sort.Direction direction = filterQuery.sort().isAsc() ? Sort.Direction.ASC : Sort.Direction.DESC;
-            Sort sort = Sort.by(direction, filterQuery.sortBy());
+            Sort sort = Sort.by(direction, filterQuery.sortBy().getEntityFieldName());
             return PageRequest.of(filterQuery.page(), filterQuery.take(), sort);
         }
         return PageRequest.of(filterQuery.page(), filterQuery.take());

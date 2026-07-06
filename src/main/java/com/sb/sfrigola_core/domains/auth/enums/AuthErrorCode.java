@@ -1,6 +1,6 @@
 package com.sb.sfrigola_core.domains.auth.enums;
 
-import com.sb.sfrigola_core.common.exception.ISCErrorCode;
+import com.sb.sfrigola_core.common.interfaces.ISCErrorCode;
 
 public enum AuthErrorCode implements ISCErrorCode {
     COMPROMISED_PASSWORD,

@@ -1,4 +1,4 @@
-package com.sb.sfrigola_core.common.exception;
+package com.sb.sfrigola_core.common.interfaces;
 
 /**
  * Interface for error codes used in other custom exception that extends SCGeneralException.

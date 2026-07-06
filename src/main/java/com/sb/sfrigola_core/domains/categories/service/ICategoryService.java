@@ -2,12 +2,14 @@ package com.sb.sfrigola_core.domains.categories.service;
 
 import com.sb.sfrigola_core.common.models.contracts.SCFilterQuery;
 import com.sb.sfrigola_core.common.models.contracts.SCPagedResult;
-import com.sb.sfrigola_core.domains.categories.dto.admin.CategoryDetailsAdminDto;
-import com.sb.sfrigola_core.domains.categories.dto.CategoryDto;
-import com.sb.sfrigola_core.domains.categories.dto.admin.CategoryPreviewAdminDto;
-import com.sb.sfrigola_core.domains.categories.dto.admin.CategoryInputDto;
-import com.sb.sfrigola_core.domains.categories.dto.admin.CategoryReorderInputDto;
+import com.sb.sfrigola_core.domains.categories.dto.input.UpdateCategoryDto;
+import com.sb.sfrigola_core.domains.categories.dto.view.CategoryDetailsAdminDto;
+import com.sb.sfrigola_core.domains.categories.dto.view.CategoryPublicViewDto;
+import com.sb.sfrigola_core.domains.categories.dto.view.CategoryPreviewAdminDto;
+import com.sb.sfrigola_core.domains.categories.dto.input.AddCategoryDto;
+import com.sb.sfrigola_core.domains.categories.dto.input.ReorderedCategoriesTreeDto;
 import jakarta.annotation.Nullable;
+import org.jspecify.annotations.NonNull;
 
 import java.util.List;
 import java.util.UUID;
@@ -26,32 +28,46 @@ public interface ICategoryService {
      * @param filterQuery pagination and sorting parameters
      * @param locale      BCP-47 language code used to filter and localize results
      * @return a {@link com.sb.sfrigola_core.common.models.contracts.SCPagedResult} of
-     *         {@link com.sb.sfrigola_core.domains.categories.dto.CategoryDto}; never {@code null}
+     *         {@link CategoryPublicViewDto}; never {@code null}
+     * @throws com.sb.sfrigola_core.domains.languages.exception.LocaleNotActiveException
+     *         if {@code locale} does not match an active language
      */
-    SCPagedResult<CategoryDto> getAll(SCFilterQuery<Void> filterQuery, String locale);
+    SCPagedResult<CategoryPublicViewDto> getAll(SCFilterQuery<Void> filterQuery, String locale);
 
     /**
-     * Returns a paginated admin preview of categories, including localization coverage counts
-     * (present and missing) to support CMS overviews.
+     * Returns a paginated admin preview of ALL categories (regardless of translation coverage for
+     * {@code locale}), including localization coverage counts (present and missing) to support CMS overviews.
+     * <p>
+     * {@code locale} is mandatory — never filters out categories: it only selects which translation
+     * is used for the preview. If no translation exists for {@code locale}, the preview fields are {@code null}.
      *
      * @param filterQuery pagination, sorting, and optional search key
-     * @param locale      BCP-47 language code used for the name/description preview field
+     * @param locale      BCP-47 language code used for the name/description preview field; never {@code null}
      * @param isActive    when non-{@code null}, filters by active/inactive status
      * @return a {@link com.sb.sfrigola_core.common.models.contracts.SCPagedResult} of
      *         {@link CategoryPreviewAdminDto}; never {@code null}
+     * @throws com.sb.sfrigola_core.domains.categories.exception.InvalidCategoryLocaleException
+     *         if {@code locale} does not match an active language
      */
-    SCPagedResult<CategoryPreviewAdminDto> getAllAdmin(SCFilterQuery<Void> filterQuery, String locale, Boolean isActive);
+    SCPagedResult<CategoryPreviewAdminDto> getAllAdmin(SCFilterQuery<Void> filterQuery, @NonNull String locale, Boolean isActive);
 
     /**
-     * Returns the full admin detail of a single category, including all existing translations
-     * and the list of active languages that still lack a translation.
+     * Returns the admin detail of a single category, localized for the requested locale.
+     * <p>
+     * {@code locale} is mandatory and never filters — it only selects which translation is
+     * returned. If no translation exists for {@code locale}, {@code specificTranslation}'s
+     * fields are {@code null}. Coverage across all languages is exposed by {@link #getAllAdmin}
+     * ({@code translatedLanguages}), not here.
      *
      * @param publicId the UUID string identifying the category
+     * @param locale   BCP-47 language code used for the translation fields; never {@code null}
      * @return a {@link CategoryDetailsAdminDto}
      * @throws com.sb.sfrigola_core.domains.categories.exception.NoCategoryFoundException
      *         if no category exists with the given {@code publicId}
+     * @throws com.sb.sfrigola_core.domains.languages.exception.LocaleNotActiveException
+     *         if {@code locale} does not match an active language
      */
-    CategoryDetailsAdminDto getByPublicIdAdmin(UUID publicId);
+    CategoryDetailsAdminDto getByPublicIdAdmin(UUID publicId, @NonNull String locale);
 
 
     /**
@@ -61,8 +77,9 @@ public interface ICategoryService {
      * <p>
      * Translations provided in {@code dto} are inserted as-is; no merge occurs on create.
      *
-     * @param inputDto creation payload — slug, isActive, and at least one translation
+     * @param addCategoryDto creation payload — slug, isActive, and at least one translation
      * @param parentPublicId UUID of the parent category; {@code null} creates a root category
+     * @param locale BCP-47 language code used for the name/description preview field; never {@code null}
      * @return admin preview of the newly created category
      * @throws com.sb.sfrigola_core.domains.categories.exception.CategorySlugAlreadyExistsException
      *         if a category with the same slug already exists
@@ -72,18 +89,20 @@ public interface ICategoryService {
      *         if any translation references a locale that is not active
      * @throws com.sb.sfrigola_core.domains.categories.exception.DuplicateCategoryLocaleException
      *         if the same locale appears more than once in the translations list
+     * @throws com.sb.sfrigola_core.domains.categories.exception.MissingCategoryLocalesException
+     *         if the translations list does not cover all active languages
      */
-    CategoryPreviewAdminDto createNewCategory(CategoryInputDto inputDto, @Nullable UUID parentPublicId);
+    CategoryPreviewAdminDto createNewCategory(AddCategoryDto addCategoryDto, @Nullable UUID parentPublicId, @NonNull String locale);
 
     /**
      * Updates an existing category's slug, active status, and translations.
      * <p>
-     * Translations are merged: locales present in {@code dto} are added if missing or updated if existing;
-     * locales not included in {@code dto} are left untouched.
+     * Translations are merged: locales present in {@code updateCategoryDto} are added if missing or updated if existing;
+     * locales not included in {@code updateCategoryDto} are left untouched.
      * Parent and {@code sort_order} are never modified by this operation —
      * tree restructuring is handled exclusively by the dedicated reorder endpoint.
      *
-     * @param inputDto      update payload — slug, isActive, and translations to upsert
+     * @param updateCategoryDto update payload — slug, isActive, and translations to upsert
      * @param publicId UUID identifying the category to update
      * @return admin preview of the updated category
      * @throws com.sb.sfrigola_core.domains.categories.exception.NoCategoryFoundException
@@ -95,22 +114,24 @@ public interface ICategoryService {
      * @throws com.sb.sfrigola_core.domains.categories.exception.DuplicateCategoryLocaleException
      *         if the same locale appears more than once in the translations list
      */
-    CategoryPreviewAdminDto updateCategory(CategoryInputDto inputDto, UUID publicId);
+    CategoryPreviewAdminDto updateCategory(UpdateCategoryDto updateCategoryDto, UUID publicId);
 
     /**
      * Deletes a category and all its translations.
      * <p>
      * Deletion is blocked if the category has children; callers must reassign or delete
      * child categories first. Translations are removed via JPA cascade ({@code CascadeType.ALL}).
+     * No preview DTO is returned — the category no longer exists, so only its identifier
+     * is handed back (e.g. for the caller to remove it from a client-side list).
      *
      * @param publicId UUID identifying the category to delete
-     * @return admin preview of the deleted category (last known state)
+     * @return the {@code publicId} of the deleted category
      * @throws com.sb.sfrigola_core.domains.categories.exception.NoCategoryFoundException
      *         if no category exists with the given {@code publicId}
      * @throws com.sb.sfrigola_core.domains.categories.exception.CategoryHasChildrenException
      *         if the category has one or more child categories
      */
-    CategoryPreviewAdminDto deleteCategory(UUID publicId);
+    UUID deleteCategory(UUID publicId);
 
 
     /**
@@ -130,6 +151,6 @@ public interface ICategoryService {
      * @throws com.sb.sfrigola_core.domains.categories.exception.CategoryReorderMismatchException
      *         if {@code dto.orderedPublicIds} does not match exactly the categories in the target group
      */
-    List<CategoryPreviewAdminDto> reorderCategories(CategoryReorderInputDto reorderDto);
+    List<CategoryPreviewAdminDto> reorderCategories(ReorderedCategoriesTreeDto reorderDto);
 
 }

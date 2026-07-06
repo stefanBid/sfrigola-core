@@ -1,6 +1,6 @@
 package com.sb.sfrigola_core.config.security.exception;
 
-import com.sb.sfrigola_core.common.exception.ISCErrorCode;
+import com.sb.sfrigola_core.common.interfaces.ISCErrorCode;
 
 public enum SecurityErrorCode implements ISCErrorCode {
     NOT_AUTHORIZED,

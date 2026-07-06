@@ -10,6 +10,7 @@ import com.sb.sfrigola_core.domains.tags.dto.admin.*;
 import com.sb.sfrigola_core.domains.tags.dto.contributor.TagSuggestDto;
 import com.sb.sfrigola_core.domains.tags.entity.Tag;
 import com.sb.sfrigola_core.domains.tags.entity.TagTranslation;
+import com.sb.sfrigola_core.domains.tags.enums.TagSortField;
 import com.sb.sfrigola_core.domains.tags.enums.TagStatus;
 import com.sb.sfrigola_core.domains.tags.exception.DuplicateTagLocaleException;
 import com.sb.sfrigola_core.domains.tags.exception.NoTagFoundException;
@@ -23,6 +24,7 @@ import com.sb.sfrigola_core.domains.languages.service.ILanguageDomainBridgeServi
 import com.sb.sfrigola_core.config.security.exception.ex.SCAuthenticatedUserNotFoundException;
 import lombok.RequiredArgsConstructor;
 import org.jspecify.annotations.NonNull;
+import org.springframework.data.domain.Page;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -42,7 +44,7 @@ public class TagServiceImpl implements ITagService {
         var pageable = SCPaginationUtils.toPageable(filterQuery);
 
         // Step 1: Fetch IDs of Tags for the given locale — public endpoint returns only approved tags
-        var tagIds = tagRepository.findIdsByFiltersAndLocale(locale, filterQuery.searchKey(), TagStatus.APPROVED.getValue(), null, null, pageable);
+        var tagIds = tagRepository.findIdsByFiltersAndLocaleAsc(locale, filterQuery.searchKey(), TagStatus.APPROVED.getValue(), null, null, pageable);
 
         if (tagIds.hasContent()) {
             var ids = tagIds.getContent();
@@ -59,19 +61,49 @@ public class TagServiceImpl implements ITagService {
 
     @Override
     public SCPagedResult<TagPreviewAdminDto> getAllAdmin(SCFilterQuery<TagSpecificFilter> filterQuery, String locale) {
-        var pageable = SCPaginationUtils.toPageable(filterQuery);
-        var totalActiveLanguages = languageDomainBridgeService.getAllActiveLanguages().size();
+        var totalActiveLanguages = languageDomainBridgeService.getAllActiveLanguagesSimpleMap().size();
+
+        // SORT BY SWITCHER
+        // CASE: SortBy is null or is LABEL  use forced group-by on label (in another table)
+        // CASE: SortBy is not null and not LABEL use Pageable Sort  because these fields are present in the entity
+        boolean isSortByLabel = filterQuery.sortBy() == null ||  filterQuery.sortBy().getEntityFieldName().equals(TagSortField.LABEL.getEntityFieldName());
+
+        // SORT SWITCHER
+        // CASE: Sort is ASC call query with GOUP-BY ASC
+        // CASE: Sort is DESC call query with GOUP-BY DESC
+        boolean descending = filterQuery.sort() != null && !filterQuery.sort().isAsc();
 
         // LOCALE SWITCHER
-        // CASE: locale is null → all tags returned; preview = first translation in collection
-        // CASE: locale has value → only tags with a translation for that locale; preview = that specific translation
-        var filter = filterQuery.other();
-        var status = filter != null && filter.status() != null ? filter.status().getValue() : null;
-        var scope  = filter != null && filter.scope()  != null ? filter.scope().getValue()  : null;
-        var type   = filter != null && filter.type()   != null ? filter.type().getValue()   : null;
-        var tagIds = locale != null
-                ? tagRepository.findIdsByFiltersAndLocale(locale, filterQuery.searchKey(), status, scope, type, pageable)
-                : tagRepository.findIdsByFilters(filterQuery.searchKey(), status, scope, type, pageable);
+        // CASE: Locale is null
+        // RESULT: All tags returned; preview translation = first element of collection
+        // CASE: Locale has value
+        // RESULT: Only tags that have a translation for the given locale; preview = that specific translation
+        boolean hasLocale = locale != null && !locale.isBlank();
+
+        // STEP 1: Obtain ids
+        var filterOtherExtracted = filterQuery.other();
+
+        var status = filterOtherExtracted != null && filterOtherExtracted.status() != null ? filterOtherExtracted.status().getValue() : null;
+        var scope  = filterOtherExtracted != null && filterOtherExtracted.scope()  != null ? filterOtherExtracted.scope().getValue()  : null;
+        var type   = filterOtherExtracted != null && filterOtherExtracted.type()   != null ? filterOtherExtracted.type().getValue()   : null;
+
+        var pageable = SCPaginationUtils.toPageable(filterQuery, isSortByLabel);
+        Page<Long> tagIds;
+
+        if (isSortByLabel){
+            if (descending)
+                tagIds = hasLocale
+                        ? tagRepository.findIdsByFiltersAndLocaleDesc(locale, filterQuery.searchKey(), status, scope, type, pageable)
+                        : tagRepository.findIdsByFiltersDesc(filterQuery.searchKey(), status, scope, type, pageable);
+            else
+                tagIds = hasLocale
+                        ? tagRepository.findIdsByFiltersAndLocaleAsc(locale, filterQuery.searchKey(), status, scope, type, pageable)
+                        : tagRepository.findIdsByFiltersAsc(filterQuery.searchKey(), status, scope, type, pageable);
+        } else {
+            tagIds = hasLocale
+                    ? tagRepository.findIdsByFiltersAndLocaleOtherSort(locale, filterQuery.searchKey(), status, scope, type, pageable)
+                    : tagRepository.findIdsByFiltersOtherSort(filterQuery.searchKey(), status, scope, type, pageable);
+        }
 
         if (tagIds.hasContent()) {
             var ids = tagIds.getContent();
@@ -100,7 +132,7 @@ public class TagServiceImpl implements ITagService {
 
     @Override
     public TagDetailsAdminDto getByPublicIdAdmin(UUID publicId) {
-        var activeLanguages = new ArrayList<>(languageDomainBridgeService.getAllActiveLanguages());
+        var activeLanguages = new HashMap<>(languageDomainBridgeService.getAllActiveLanguagesSimpleMap());
         var tag = tagRepository.findByPublicId(publicId).orElseThrow(
                 () -> new NoTagFoundException(publicId)
         );
@@ -112,8 +144,8 @@ public class TagServiceImpl implements ITagService {
         // Populate missing Translation array only if there are missing languages
         if(totalMissingLocalization > 0){
             // Remove from the activeLanguages list all languages that already have a translation for this tag
-            tag.getTranslations().forEach(t -> activeLanguages.removeIf(l -> l.code().equals(t.getLanguage().getCode())));
-            activeLanguages.forEach(al -> missingTranslation.add(new TagTranslationDetailsAdminDto(al.code(), al.name(), null)));
+            tag.getTranslations().forEach(t -> activeLanguages.remove(t.getLanguage().getCode()));
+            activeLanguages.forEach((code, name) -> missingTranslation.add(new TagTranslationDetailsAdminDto(code, name, null)));
         }
         return toAdminDetailsDto(tag,missingTranslation);
     }
@@ -266,7 +298,7 @@ public class TagServiceImpl implements ITagService {
                 () -> new NoTagFoundException(publicId)
         );
 
-        var totalActiveLanguages = languageDomainBridgeService.getAllActiveLanguages().size();
+        var totalActiveLanguages = languageDomainBridgeService.getAllActiveLanguagesSimpleMap().size();
         var labelPreview = tagToDelete.getTranslations().stream().findFirst().map(TagTranslation::getLabel).orElse(null);
 
         tagRepository.delete(tagToDelete);

@@ -1,4 +1,4 @@
-package com.sb.sfrigola_core.domains.categories.dto.admin;
+package com.sb.sfrigola_core.domains.categories.dto.input;
 
 import com.sb.sfrigola_core.domains.categories.constants.CategoryValidationCodeConstants;
 import jakarta.annotation.Nullable;
@@ -20,7 +20,7 @@ import java.util.UUID;
  *   no additions, no omissions, no duplicates. The array index becomes the new sort_order.
  *   Example: ["uuid-risotto", "uuid-pasta", "uuid-soups"] → sort_order 0, 1, 2.
  */
-public record CategoryReorderInputDto(
+public record ReorderedCategoriesTreeDto(
         @Nullable
         UUID parentPublicId,
 

@@ -87,7 +87,7 @@ com.sb.sfrigola_core/
 │   │   └── AuditorAwareImpl.java
 │   ├── security/
 │   │   ├── SecurityConfig.java              # SecurityFilterChain, CORS, path-based authorization
-│   │   ├── SecurityBeansConfig.java         # beans: publicPath, authPath, onlyAdminPath, onlyUserPath, onlyContributorPath, allowedOriginsPaths
+│   │   ├── SecurityBeansConfig.java         # beans: publicPath, authPath, adminPath, userPath, contributorPath, allowedOriginsPaths, scHierarchy
 │   │   ├── authprovider/
 │   │   │   └── UsernamePwAuthenticationProvider.java
 │   │   ├── exception/
@@ -494,10 +494,12 @@ Spring Boot 4.x feature — `version = "1.0"` on mapping annotations:
 Paths configured as `List<String>` beans in `SecurityBeansConfig`:
 - `publicPath` — no auth required
 - `authPath` — any authenticated role
-- `onlyAdminPath` — ROLE_ADMIN only
-- `onlyUserPath` — ROLE_USER only
-- `onlyContributorPath` — ROLE_CONTRIBUTOR only
+- `adminPath` — minimum role ROLE_ADMIN
+- `userPath` — minimum role ROLE_USER
+- `contributorPath` — minimum role ROLE_CONTRIBUTOR
 - `allowedOriginsPaths` — CORS allowed origins
+
+A `RoleHierarchy` bean (`scHierarchy`) declares `ROLE_ADMIN > ROLE_CONTRIBUTOR > ROLE_USER`, applied via `AuthorityAuthorizationManager` in `SecurityConfig`. Higher roles automatically satisfy lower-role path checks (e.g. ROLE_ADMIN passes `contributorPath` and `userPath` too) — path beans express the *minimum* role required, not an exclusive match.
 
 Every new API endpoint must be registered in the correct bean in `SecurityBeansConfig`.
 

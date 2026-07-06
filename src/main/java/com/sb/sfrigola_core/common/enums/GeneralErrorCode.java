@@ -1,6 +1,6 @@
 package com.sb.sfrigola_core.common.enums;
 
-import com.sb.sfrigola_core.common.exception.ISCErrorCode;
+import com.sb.sfrigola_core.common.interfaces.ISCErrorCode;
 
 public enum GeneralErrorCode implements ISCErrorCode {
     DATA_CORRUPTED,

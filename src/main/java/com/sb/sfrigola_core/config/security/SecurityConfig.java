@@ -9,14 +9,18 @@ import org.springframework.beans.factory.annotation.Qualifier;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
 import org.springframework.core.env.Environment;
+import org.springframework.security.access.hierarchicalroles.RoleHierarchy;
 import org.springframework.security.authentication.AuthenticationManager;
 import org.springframework.security.authentication.AuthenticationProvider;
 import org.springframework.security.authentication.ProviderManager;
+import org.springframework.security.authorization.AuthorityAuthorizationManager;
+import org.springframework.security.authorization.AuthorizationManager;
 import org.springframework.security.config.Customizer;
 import org.springframework.security.config.annotation.web.builders.HttpSecurity;
 import org.springframework.security.config.annotation.web.configuration.EnableWebSecurity;
 import org.springframework.security.config.annotation.web.configurers.AbstractHttpConfigurer;
 import org.springframework.security.web.SecurityFilterChain;
+import org.springframework.security.web.access.intercept.RequestAuthorizationContext;
 import org.springframework.security.web.authentication.www.BasicAuthenticationFilter;
 import org.springframework.web.cors.UrlBasedCorsConfigurationSource;
 import org.springframework.web.cors.CorsConfiguration;
@@ -31,17 +35,21 @@ import java.util.List;
 @RequiredArgsConstructor
 public class SecurityConfig {
 
+    // Inject Hierarchy
+    @Qualifier("scHierarchy")
+    private final RoleHierarchy roleHierarchy;
+
     // Inject Paths
     @Qualifier("publicPath")
     private final List<String> publicPaths;
     @Qualifier("authPath")
     private final List<String> authPaths;
-    @Qualifier("onlyAdminPath")
-    private final List<String> onlyAdminPaths;
-    @Qualifier("onlyUserPath")
-    private final List<String> onlyUserPaths;
-    @Qualifier("onlyContributorPath")
-    private final List<String> onlyContributorPaths;
+    @Qualifier("adminPath")
+    private final List<String> adminPaths;
+    @Qualifier("userPath")
+    private final List<String> userPaths;
+    @Qualifier("contributorPath")
+    private final List<String> contributorPaths;
 
     @Qualifier("allowedOriginsPaths")
     private final List<String> allowedOriginsPaths;
@@ -64,9 +72,9 @@ public class SecurityConfig {
                 .cors(corsConfig -> corsConfig.configurationSource(corsConfigurationSource()))
                 .authorizeHttpRequests(request -> {
                     publicPaths.forEach(path -> request.requestMatchers(path).permitAll());
-                    onlyAdminPaths.forEach(path -> request.requestMatchers(path).hasAuthority(SCUserRole.ROLE_ADMIN.getAuthority()));
-                    onlyContributorPaths.forEach(path -> request.requestMatchers(path).hasAuthority(SCUserRole.ROLE_CONTRIBUTOR.getAuthority()));
-                    onlyUserPaths.forEach(path -> request.requestMatchers(path).hasAuthority(SCUserRole.ROLE_USER.getAuthority()));
+                    adminPaths.forEach(path -> request.requestMatchers(path).access(hasAuthorityWithHierarchy(SCUserRole.ROLE_ADMIN.getAuthority())));
+                    contributorPaths.forEach(path -> request.requestMatchers(path).access(hasAuthorityWithHierarchy(SCUserRole.ROLE_CONTRIBUTOR.getAuthority())));
+                    userPaths.forEach(path -> request.requestMatchers(path).access(hasAuthorityWithHierarchy(SCUserRole.ROLE_USER.getAuthority())));
                     authPaths.forEach(path -> request.requestMatchers(path).authenticated());
                     request.anyRequest().denyAll();
                 })
@@ -101,4 +109,9 @@ public class SecurityConfig {
     }
 
 
+    private AuthorizationManager<RequestAuthorizationContext> hasAuthorityWithHierarchy(String authority){
+        var manager = AuthorityAuthorizationManager.<RequestAuthorizationContext>hasAuthority(authority);
+        manager.setRoleHierarchy(roleHierarchy);
+        return manager;
+    }
 }

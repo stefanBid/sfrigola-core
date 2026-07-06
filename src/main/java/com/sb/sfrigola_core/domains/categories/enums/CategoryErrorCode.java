@@ -1,6 +1,6 @@
 package com.sb.sfrigola_core.domains.categories.enums;
 
-import com.sb.sfrigola_core.common.exception.ISCErrorCode;
+import com.sb.sfrigola_core.common.interfaces.ISCErrorCode;
 
 public enum CategoryErrorCode implements ISCErrorCode {
 
@@ -9,7 +9,8 @@ public enum CategoryErrorCode implements ISCErrorCode {
     CATEGORY_HAS_CHILDREN,
     INVALID_CATEGORY_LOCALE,
     DUPLICATE_CATEGORY_LOCALE,
-    CATEGORY_REORDER_MISMATCH;
+    CATEGORY_REORDER_MISMATCH,
+    MISSING_CATEGORY_LOCALES;
 
     @Override
     public String code() {

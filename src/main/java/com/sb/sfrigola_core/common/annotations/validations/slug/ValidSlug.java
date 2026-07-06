@@ -12,6 +12,9 @@ import java.lang.annotation.*;
 public @interface ValidSlug {
 
     String message() default SlugConstants.SLUG_REQUIRED;
+
+    int maxLength() default SlugConstants.MAX_LENGTH;
+
     Class<?>[] groups() default {};
 
     Class<? extends Payload>[] payload() default {};
