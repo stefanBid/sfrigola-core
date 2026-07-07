@@ -96,15 +96,15 @@
           "request": {
             "method": "GET",
             "url": {
-              "raw": "{{baseUrl}}/languages?page=0&take=10&sortBy=name&sort=asc&isActive=true",
+              "raw": "{{baseUrl}}/languages",
               "host": ["{{baseUrl}}"],
               "path": ["languages"],
               "query": [
-                { "key": "page", "value": "0" },
-                { "key": "take", "value": "10" },
-                { "key": "sortBy", "value": "name" },
-                { "key": "sort", "value": "asc" },
-                { "key": "isActive", "value": "true" }
+                { "key": "page", "value": "", "disabled": true },
+                { "key": "take", "value": "", "disabled": true },
+                { "key": "sortBy", "value": "", "disabled": true },
+                { "key": "sort", "value": "", "disabled": true },
+                { "key": "isActive", "value": "", "disabled": true }
               ]
             }
           },
@@ -153,16 +153,16 @@
           "request": {
             "method": "GET",
             "url": {
-              "raw": "{{baseUrl}}/users/admin?page=0&take=10&sortBy=lastName&sort=asc&searchKey=&isActive=true",
+              "raw": "{{baseUrl}}/users/admin",
               "host": ["{{baseUrl}}"],
               "path": ["users", "admin"],
               "query": [
-                { "key": "page", "value": "0" },
-                { "key": "take", "value": "10" },
-                { "key": "sortBy", "value": "lastName" },
-                { "key": "sort", "value": "asc" },
-                { "key": "searchKey", "value": "" },
-                { "key": "isActive", "value": "true" }
+                { "key": "page", "value": "", "disabled": true },
+                { "key": "take", "value": "", "disabled": true },
+                { "key": "sortBy", "value": "", "disabled": true },
+                { "key": "sort", "value": "", "disabled": true },
+                { "key": "searchKey", "value": "", "disabled": true },
+                { "key": "isActive", "value": "", "disabled": true }
               ]
             }
           },
@@ -192,13 +192,13 @@
           "request": {
             "method": "GET",
             "url": {
-              "raw": "{{baseUrl}}/categories?page=0&take=10&locale=it",
+              "raw": "{{baseUrl}}/categories",
               "host": ["{{baseUrl}}"],
               "path": ["categories"],
               "query": [
-                { "key": "page", "value": "0" },
-                { "key": "take", "value": "10" },
-                { "key": "locale", "value": "it" }
+                { "key": "page", "value": "", "disabled": true },
+                { "key": "take", "value": "", "disabled": true },
+                { "key": "locale", "value": "", "disabled": true }
               ]
             }
           },
@@ -209,16 +209,16 @@
           "request": {
             "method": "GET",
             "url": {
-              "raw": "{{baseUrl}}/categories/admin?page=0&take=10&sort=asc&searchKey=&isActive=true&locale=it",
+              "raw": "{{baseUrl}}/categories/admin",
               "host": ["{{baseUrl}}"],
               "path": ["categories", "admin"],
               "query": [
-                { "key": "page", "value": "0" },
-                { "key": "take", "value": "10" },
-                { "key": "sort", "value": "asc" },
-                { "key": "searchKey", "value": "" },
-                { "key": "isActive", "value": "true" },
-                { "key": "locale", "value": "it" }
+                { "key": "page", "value": "", "disabled": true },
+                { "key": "take", "value": "", "disabled": true },
+                { "key": "sort", "value": "", "disabled": true },
+                { "key": "searchKey", "value": "", "disabled": true },
+                { "key": "isActive", "value": "", "disabled": true },
+                { "key": "locale", "value": "", "disabled": true }
               ]
             }
           },
@@ -325,15 +325,15 @@
           "request": {
             "method": "GET",
             "url": {
-              "raw": "{{baseUrl}}/tags?page=0&take=10&locale=it&searchKey=&scope=recipe",
+              "raw": "{{baseUrl}}/tags",
               "host": ["{{baseUrl}}"],
               "path": ["tags"],
               "query": [
-                { "key": "page", "value": "0" },
-                { "key": "take", "value": "10" },
-                { "key": "locale", "value": "it" },
-                { "key": "searchKey", "value": "" },
-                { "key": "scope", "value": "recipe" }
+                { "key": "page", "value": "", "disabled": true },
+                { "key": "take", "value": "", "disabled": true },
+                { "key": "locale", "value": "", "disabled": true },
+                { "key": "searchKey", "value": "", "disabled": true },
+                { "key": "scope", "value": "", "disabled": true }
               ]
             }
           },
@@ -362,19 +362,19 @@
           "request": {
             "method": "GET",
             "url": {
-              "raw": "{{baseUrl}}/tags/admin?page=0&take=10&sort=asc&sortBy=label&locale=it&searchKey=&status=approved&type=flavor&scope=both",
+              "raw": "{{baseUrl}}/tags/admin",
               "host": ["{{baseUrl}}"],
               "path": ["tags", "admin"],
               "query": [
-                { "key": "page", "value": "0" },
-                { "key": "take", "value": "10" },
-                { "key": "sort", "value": "asc" },
-                { "key": "sortBy", "value": "label" },
-                { "key": "locale", "value": "it" },
-                { "key": "searchKey", "value": "" },
-                { "key": "status", "value": "approved" },
-                { "key": "type", "value": "flavor" },
-                { "key": "scope", "value": "both" }
+                { "key": "page", "value": "", "disabled": true },
+                { "key": "take", "value": "", "disabled": true },
+                { "key": "sort", "value": "", "disabled": true },
+                { "key": "sortBy", "value": "", "disabled": true },
+                { "key": "locale", "value": "", "disabled": true },
+                { "key": "searchKey", "value": "", "disabled": true },
+                { "key": "status", "value": "", "disabled": true },
+                { "key": "type", "value": "", "disabled": true },
+                { "key": "scope", "value": "", "disabled": true }
               ]
             }
           },
@@ -462,14 +462,14 @@
           "request": {
             "method": "GET",
             "url": {
-              "raw": "{{baseUrl}}/ingredients?page=0&take=10&searchKey=&locale=it",
+              "raw": "{{baseUrl}}/ingredients",
               "host": ["{{baseUrl}}"],
               "path": ["ingredients"],
               "query": [
-                { "key": "page", "value": "0" },
-                { "key": "take", "value": "10" },
-                { "key": "searchKey", "value": "" },
-                { "key": "locale", "value": "it" }
+                { "key": "page", "value": "", "disabled": true },
+                { "key": "take", "value": "", "disabled": true },
+                { "key": "searchKey", "value": "", "disabled": true },
+                { "key": "locale", "value": "", "disabled": true }
               ]
             }
           },
