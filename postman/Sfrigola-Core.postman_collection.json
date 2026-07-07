@@ -1,0 +1,520 @@
+{
+  "info": {
+    "_postman_id": "d3b1a6d2-0f1a-4a2e-9a3a-sfrigola-core-0001",
+    "name": "Sfrigola Core",
+    "description": "Full API surface for sfrigola-core, organized by domain (one folder per domain). Bearer token is set once at collection level and auto-filled by the Login request — no manual header editing needed.",
+    "schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json"
+  },
+  "auth": {
+    "type": "bearer",
+    "bearer": [{ "key": "token", "value": "{{token}}", "type": "string" }]
+  },
+  "variable": [
+    { "key": "baseUrl", "value": "http://localhost:8080/sfrigola-core/api", "type": "string" },
+    { "key": "token", "value": "", "type": "string" },
+    { "key": "publicId", "value": "", "type": "string" },
+    { "key": "parentPublicId", "value": "", "type": "string" }
+  ],
+  "item": [
+    {
+      "name": "Auth",
+      "item": [
+        {
+          "name": "Login",
+          "request": {
+            "auth": { "type": "noauth" },
+            "method": "POST",
+            "header": [{ "key": "Content-Type", "value": "application/json" }],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"username\": \"admin@sfrigola.com\",\n  \"password\": \"sfrigola\"\n}"
+            },
+            "url": { "raw": "{{baseUrl}}/auth/login", "host": ["{{baseUrl}}"], "path": ["auth", "login"] }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "if (pm.response.code === 200) {",
+                  "    const body = pm.response.json();",
+                  "    if (body && body.data && body.data.token) {",
+                  "        pm.collectionVariables.set('token', body.data.token);",
+                  "    }",
+                  "}"
+                ]
+              }
+            }
+          ],
+          "response": []
+        },
+        {
+          "name": "Register",
+          "request": {
+            "auth": { "type": "noauth" },
+            "method": "POST",
+            "header": [{ "key": "Content-Type", "value": "application/json" }],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"username\": \"mario.rossi\",\n  \"email\": \"mario.rossi@example.com\",\n  \"password\": \"Passw0rd!\",\n  \"confirmPassword\": \"Passw0rd!\",\n  \"preferredLang\": \"it\",\n  \"firstName\": \"Mario\",\n  \"lastName\": \"Rossi\"\n}"
+            },
+            "url": { "raw": "{{baseUrl}}/auth/register", "host": ["{{baseUrl}}"], "path": ["auth", "register"] }
+          },
+          "response": []
+        },
+        {
+          "name": "Change Email",
+          "request": {
+            "method": "PATCH",
+            "header": [{ "key": "Content-Type", "value": "application/json" }],
+            "body": { "mode": "raw", "raw": "{\n  \"newEmail\": \"mario.new@example.com\"\n}" },
+            "url": { "raw": "{{baseUrl}}/auth/change-email", "host": ["{{baseUrl}}"], "path": ["auth", "change-email"] }
+          },
+          "response": []
+        },
+        {
+          "name": "Change Password",
+          "request": {
+            "method": "PATCH",
+            "header": [{ "key": "Content-Type", "value": "application/json" }],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"oldPassword\": \"Passw0rd!\",\n  \"newPassword\": \"NewPassw0rd!\",\n  \"confirmNewPassword\": \"NewPassw0rd!\"\n}"
+            },
+            "url": { "raw": "{{baseUrl}}/auth/change-password", "host": ["{{baseUrl}}"], "path": ["auth", "change-password"] }
+          },
+          "response": []
+        }
+      ]
+    },
+    {
+      "name": "Languages",
+      "item": [
+        {
+          "name": "Get Languages",
+          "request": {
+            "method": "GET",
+            "url": {
+              "raw": "{{baseUrl}}/languages?page=0&take=10&sortBy=name&sort=asc&isActive=true",
+              "host": ["{{baseUrl}}"],
+              "path": ["languages"],
+              "query": [
+                { "key": "page", "value": "0" },
+                { "key": "take", "value": "10" },
+                { "key": "sortBy", "value": "name" },
+                { "key": "sort", "value": "asc" },
+                { "key": "isActive", "value": "true" }
+              ]
+            }
+          },
+          "response": []
+        }
+      ]
+    },
+    {
+      "name": "Users",
+      "item": [
+        {
+          "name": "Change Preferred Lang",
+          "request": {
+            "method": "PATCH",
+            "url": {
+              "raw": "{{baseUrl}}/users/settings/change-preferred-lang/it",
+              "host": ["{{baseUrl}}"],
+              "path": ["users", "settings", "change-preferred-lang", "it"]
+            }
+          },
+          "response": []
+        },
+        {
+          "name": "Update Profile",
+          "request": {
+            "method": "PATCH",
+            "header": [{ "key": "Content-Type", "value": "application/json" }],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"firstName\": \"Mario\",\n  \"lastName\": \"Rossi\",\n  \"avatarUrl\": \"https://example.com/avatar.png\",\n  \"bio\": \"Home cook, pasta enthusiast.\"\n}"
+            },
+            "url": { "raw": "{{baseUrl}}/users/profile/update", "host": ["{{baseUrl}}"], "path": ["users", "profile", "update"] }
+          },
+          "response": []
+        },
+        {
+          "name": "Become Contributor",
+          "request": {
+            "method": "PATCH",
+            "url": { "raw": "{{baseUrl}}/users/profile/became-contributor", "host": ["{{baseUrl}}"], "path": ["users", "profile", "became-contributor"] }
+          },
+          "response": []
+        },
+        {
+          "name": "[Admin] Get All Users",
+          "request": {
+            "method": "GET",
+            "url": {
+              "raw": "{{baseUrl}}/users/admin?page=0&take=10&sortBy=lastName&sort=asc&searchKey=&isActive=true",
+              "host": ["{{baseUrl}}"],
+              "path": ["users", "admin"],
+              "query": [
+                { "key": "page", "value": "0" },
+                { "key": "take", "value": "10" },
+                { "key": "sortBy", "value": "lastName" },
+                { "key": "sort", "value": "asc" },
+                { "key": "searchKey", "value": "" },
+                { "key": "isActive", "value": "true" }
+              ]
+            }
+          },
+          "response": []
+        },
+        {
+          "name": "[Admin] Set User Active",
+          "request": {
+            "method": "PATCH",
+            "header": [{ "key": "Content-Type", "value": "application/json" }],
+            "body": { "mode": "raw", "raw": "{\n  \"active\": false\n}" },
+            "url": {
+              "raw": "{{baseUrl}}/users/admin/{{publicId}}/status",
+              "host": ["{{baseUrl}}"],
+              "path": ["users", "admin", "{{publicId}}", "status"]
+            }
+          },
+          "response": []
+        }
+      ]
+    },
+    {
+      "name": "Categories",
+      "item": [
+        {
+          "name": "Get Categories",
+          "request": {
+            "method": "GET",
+            "url": {
+              "raw": "{{baseUrl}}/categories?page=0&take=10&locale=it",
+              "host": ["{{baseUrl}}"],
+              "path": ["categories"],
+              "query": [
+                { "key": "page", "value": "0" },
+                { "key": "take", "value": "10" },
+                { "key": "locale", "value": "it" }
+              ]
+            }
+          },
+          "response": []
+        },
+        {
+          "name": "[Admin] Get All Categories",
+          "request": {
+            "method": "GET",
+            "url": {
+              "raw": "{{baseUrl}}/categories/admin?page=0&take=10&sort=asc&searchKey=&isActive=true&locale=it",
+              "host": ["{{baseUrl}}"],
+              "path": ["categories", "admin"],
+              "query": [
+                { "key": "page", "value": "0" },
+                { "key": "take", "value": "10" },
+                { "key": "sort", "value": "asc" },
+                { "key": "searchKey", "value": "" },
+                { "key": "isActive", "value": "true" },
+                { "key": "locale", "value": "it" }
+              ]
+            }
+          },
+          "response": []
+        },
+        {
+          "name": "[Admin] Get Category By Id",
+          "request": {
+            "method": "GET",
+            "url": {
+              "raw": "{{baseUrl}}/categories/admin/{{publicId}}?locale=it",
+              "host": ["{{baseUrl}}"],
+              "path": ["categories", "admin", "{{publicId}}"],
+              "query": [{ "key": "locale", "value": "it" }]
+            }
+          },
+          "response": []
+        },
+        {
+          "name": "[Admin] Create Category",
+          "request": {
+            "method": "POST",
+            "header": [{ "key": "Content-Type", "value": "application/json" }],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"slug\": \"desserts\",\n  \"isActive\": true,\n  \"translations\": [\n    { \"langCode\": \"it\", \"name\": \"Dolci\", \"description\": \"Ricette di dolci\" },\n    { \"langCode\": \"en\", \"name\": \"Desserts\", \"description\": \"Dessert recipes\" }\n  ]\n}"
+            },
+            "url": {
+              "raw": "{{baseUrl}}/categories/admin?locale=it",
+              "host": ["{{baseUrl}}"],
+              "path": ["categories", "admin"],
+              "query": [{ "key": "locale", "value": "it" }]
+            }
+          },
+          "response": []
+        },
+        {
+          "name": "[Admin] Create Child Category",
+          "request": {
+            "method": "POST",
+            "header": [{ "key": "Content-Type", "value": "application/json" }],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"slug\": \"cakes\",\n  \"isActive\": true,\n  \"translations\": [\n    { \"langCode\": \"it\", \"name\": \"Torte\", \"description\": \"Ricette di torte\" },\n    { \"langCode\": \"en\", \"name\": \"Cakes\", \"description\": \"Cake recipes\" }\n  ]\n}"
+            },
+            "url": {
+              "raw": "{{baseUrl}}/categories/admin/{{parentPublicId}}?locale=it",
+              "host": ["{{baseUrl}}"],
+              "path": ["categories", "admin", "{{parentPublicId}}"],
+              "query": [{ "key": "locale", "value": "it" }]
+            }
+          },
+          "response": []
+        },
+        {
+          "name": "[Admin] Update Category",
+          "request": {
+            "method": "PUT",
+            "header": [{ "key": "Content-Type", "value": "application/json" }],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"slug\": \"desserts\",\n  \"isActive\": true,\n  \"specificTranslation\": { \"langCode\": \"it\", \"name\": \"Dolci\", \"description\": \"Ricette dolci aggiornate\" }\n}"
+            },
+            "url": {
+              "raw": "{{baseUrl}}/categories/admin/{{publicId}}",
+              "host": ["{{baseUrl}}"],
+              "path": ["categories", "admin", "{{publicId}}"]
+            }
+          },
+          "response": []
+        },
+        {
+          "name": "[Admin] Reorder Categories",
+          "request": {
+            "method": "PUT",
+            "header": [{ "key": "Content-Type", "value": "application/json" }],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"parentPublicId\": null,\n  \"orderedPublicIds\": [\n    \"00000000-0000-0000-0000-000000000001\",\n    \"00000000-0000-0000-0000-000000000002\"\n  ]\n}"
+            },
+            "url": { "raw": "{{baseUrl}}/categories/admin/reorder", "host": ["{{baseUrl}}"], "path": ["categories", "admin", "reorder"] }
+          },
+          "response": []
+        },
+        {
+          "name": "[Admin] Delete Category",
+          "request": {
+            "method": "DELETE",
+            "url": {
+              "raw": "{{baseUrl}}/categories/admin/{{publicId}}",
+              "host": ["{{baseUrl}}"],
+              "path": ["categories", "admin", "{{publicId}}"]
+            }
+          },
+          "response": []
+        }
+      ]
+    },
+    {
+      "name": "Tags",
+      "item": [
+        {
+          "name": "Get Tags",
+          "request": {
+            "method": "GET",
+            "url": {
+              "raw": "{{baseUrl}}/tags?page=0&take=10&locale=it&searchKey=&scope=recipe",
+              "host": ["{{baseUrl}}"],
+              "path": ["tags"],
+              "query": [
+                { "key": "page", "value": "0" },
+                { "key": "take", "value": "10" },
+                { "key": "locale", "value": "it" },
+                { "key": "searchKey", "value": "" },
+                { "key": "scope", "value": "recipe" }
+              ]
+            }
+          },
+          "response": []
+        },
+        {
+          "name": "Suggest Tag",
+          "request": {
+            "method": "POST",
+            "header": [{ "key": "Content-Type", "value": "application/json" }],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"slug\": \"spicy\",\n  \"type\": \"flavor\",\n  \"scope\": \"both\",\n  \"translationByConsumerLang\": \"Piccante\"\n}"
+            },
+            "url": {
+              "raw": "{{baseUrl}}/tags/suggest?locale=it",
+              "host": ["{{baseUrl}}"],
+              "path": ["tags", "suggest"],
+              "query": [{ "key": "locale", "value": "it" }]
+            }
+          },
+          "response": []
+        },
+        {
+          "name": "[Admin] Get All Tags",
+          "request": {
+            "method": "GET",
+            "url": {
+              "raw": "{{baseUrl}}/tags/admin?page=0&take=10&sort=asc&sortBy=label&locale=it&searchKey=&status=approved&type=flavor&scope=both",
+              "host": ["{{baseUrl}}"],
+              "path": ["tags", "admin"],
+              "query": [
+                { "key": "page", "value": "0" },
+                { "key": "take", "value": "10" },
+                { "key": "sort", "value": "asc" },
+                { "key": "sortBy", "value": "label" },
+                { "key": "locale", "value": "it" },
+                { "key": "searchKey", "value": "" },
+                { "key": "status", "value": "approved" },
+                { "key": "type", "value": "flavor" },
+                { "key": "scope", "value": "both" }
+              ]
+            }
+          },
+          "response": []
+        },
+        {
+          "name": "[Admin] Get Tag By Id",
+          "request": {
+            "method": "GET",
+            "url": {
+              "raw": "{{baseUrl}}/tags/admin/{{publicId}}?locale=it",
+              "host": ["{{baseUrl}}"],
+              "path": ["tags", "admin", "{{publicId}}"],
+              "query": [{ "key": "locale", "value": "it" }]
+            }
+          },
+          "response": []
+        },
+        {
+          "name": "[Admin] Create Tag",
+          "request": {
+            "method": "POST",
+            "header": [{ "key": "Content-Type", "value": "application/json" }],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"slug\": \"spicy\",\n  \"type\": \"flavor\",\n  \"scope\": \"both\",\n  \"translations\": [\n    { \"langCode\": \"it\", \"label\": \"Piccante\" },\n    { \"langCode\": \"en\", \"label\": \"Spicy\" }\n  ]\n}"
+            },
+            "url": {
+              "raw": "{{baseUrl}}/tags/admin?locale=it",
+              "host": ["{{baseUrl}}"],
+              "path": ["tags", "admin"],
+              "query": [{ "key": "locale", "value": "it" }]
+            }
+          },
+          "response": []
+        },
+        {
+          "name": "[Admin] Update Tag Status",
+          "request": {
+            "method": "PATCH",
+            "url": {
+              "raw": "{{baseUrl}}/tags/admin/{{publicId}}/status/approved",
+              "host": ["{{baseUrl}}"],
+              "path": ["tags", "admin", "{{publicId}}", "status", "approved"]
+            }
+          },
+          "response": []
+        },
+        {
+          "name": "[Admin] Update Tag",
+          "request": {
+            "method": "PUT",
+            "header": [{ "key": "Content-Type", "value": "application/json" }],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"slug\": \"spicy\",\n  \"type\": \"flavor\",\n  \"scope\": \"both\",\n  \"specificTranslation\": { \"langCode\": \"it\", \"label\": \"Molto Piccante\" }\n}"
+            },
+            "url": {
+              "raw": "{{baseUrl}}/tags/admin/{{publicId}}",
+              "host": ["{{baseUrl}}"],
+              "path": ["tags", "admin", "{{publicId}}"]
+            }
+          },
+          "response": []
+        },
+        {
+          "name": "[Admin] Delete Tag",
+          "request": {
+            "method": "DELETE",
+            "url": {
+              "raw": "{{baseUrl}}/tags/admin/{{publicId}}",
+              "host": ["{{baseUrl}}"],
+              "path": ["tags", "admin", "{{publicId}}"]
+            }
+          },
+          "response": []
+        }
+      ]
+    },
+    {
+      "name": "Ingredients",
+      "item": [
+        {
+          "name": "Get Ingredients",
+          "request": {
+            "method": "GET",
+            "url": {
+              "raw": "{{baseUrl}}/ingredients?page=0&take=10&searchKey=&locale=it",
+              "host": ["{{baseUrl}}"],
+              "path": ["ingredients"],
+              "query": [
+                { "key": "page", "value": "0" },
+                { "key": "take", "value": "10" },
+                { "key": "searchKey", "value": "" },
+                { "key": "locale", "value": "it" }
+              ]
+            }
+          },
+          "response": []
+        },
+        {
+          "name": "[Admin] Get All Ingredients",
+          "request": {
+            "method": "GET",
+            "url": {
+              "raw": "{{baseUrl}}/ingredients/admin?page=0&take=10&sortBy=name&sort=asc&searchKey=&locale=it&category=vegetable&isVegetarian=true&isVegan=false&isGlutenFree=false&minCalories=0&maxCalories=500",
+              "host": ["{{baseUrl}}"],
+              "path": ["ingredients", "admin"],
+              "query": [
+                { "key": "page", "value": "0" },
+                { "key": "take", "value": "10" },
+                { "key": "sortBy", "value": "name" },
+                { "key": "sort", "value": "asc" },
+                { "key": "searchKey", "value": "" },
+                { "key": "locale", "value": "it" },
+                { "key": "category", "value": "vegetable" },
+                { "key": "isVegetarian", "value": "true" },
+                { "key": "isVegan", "value": "false" },
+                { "key": "isGlutenFree", "value": "false" },
+                { "key": "minCalories", "value": "0" },
+                { "key": "maxCalories", "value": "500" }
+              ]
+            }
+          },
+          "response": []
+        },
+        {
+          "name": "[Admin] Create Ingredient",
+          "request": {
+            "method": "POST",
+            "header": [{ "key": "Content-Type", "value": "application/json" }],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"slug\": \"tomato\",\n  \"category\": \"vegetable\",\n  \"caloriesPer100g\": 18.0,\n  \"allergens\": [],\n  \"isVegetarian\": true,\n  \"isVegan\": true,\n  \"isGlutenFree\": true,\n  \"translations\": [\n    { \"langCode\": \"it\", \"name\": \"Pomodoro\" },\n    { \"langCode\": \"en\", \"name\": \"Tomato\" }\n  ],\n  \"ingredientTagsIds\": []\n}"
+            },
+            "url": { "raw": "{{baseUrl}}/ingredients/admin", "host": ["{{baseUrl}}"], "path": ["ingredients", "admin"] }
+          },
+          "response": []
+        }
+      ]
+    }
+  ]
+}

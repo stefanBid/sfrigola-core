@@ -56,6 +56,41 @@ http://localhost:{SERVER_PORT}/sfrigola-core
 
 ---
 
+## API Docs (Swagger)
+
+Interactive OpenAPI docs, generated automatically from the controllers.
+
+| What | URL |
+|---|---|
+| Swagger UI | `http://localhost:{SERVER_PORT}/sfrigola-core/swagger-ui/index.html` |
+| OpenAPI JSON | `http://localhost:{SERVER_PORT}/sfrigola-core/api/v3/api-docs` |
+
+Both are public (no JWT needed to view). To try authenticated endpoints from the UI, click **Authorize** and paste a JWT obtained from `POST /auth/login` (no `Bearer ` prefix needed, Swagger adds it).
+
+> Note: `/swagger-ui/index.html` has **no** `/api` prefix (it's a static resource, not a controller); `/api/v3/api-docs` **does** (it's served by a real `@RestController`, prefixed like everything else via `WebConfig`).
+
+---
+
+## Postman
+
+A ready-to-import collection covering every endpoint in the project lives at:
+
+```
+postman/Sfrigola-Core.postman_collection.json
+```
+
+**Setup:**
+1. Postman → **Import** → select the file above.
+2. Open the collection → tab **Variables** → set `baseUrl` (defaults to `http://localhost:8080/sfrigola-core/api`) to match your `SERVER_PORT`.
+3. Run **Auth → Login** once with valid credentials. Its test script auto-saves the JWT into the collection variable `token`.
+4. Every other request inherits `Authorization: Bearer {{token}}` from the collection-level auth — no manual header editing, no re-pasting tokens.
+
+To switch user (e.g. test as admin vs. regular user), just re-run **Login** with different credentials — `token` is overwritten automatically and every request picks up the new one immediately.
+
+Requests are organized one folder per domain: **Auth, Languages, Users, Categories, Tags, Ingredients**. Admin-only requests are prefixed `[Admin]`. `{{publicId}}` / `{{parentPublicId}}` are empty placeholder variables — fill them in manually with real UUIDs returned by a prior create/list call.
+
+---
+
 ## API Overview
 
 ### Auth — `/auth`

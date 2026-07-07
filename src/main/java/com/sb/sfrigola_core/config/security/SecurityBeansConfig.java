@@ -49,7 +49,9 @@ public class SecurityBeansConfig {
                 "/api/auth/register",
                 "/api/languages/**",
                 "/api/categories",
-                "/error"
+                "/error",
+                "/api/v3/api-docs/**",
+                "/swagger-ui/**"
         );
     }
 
