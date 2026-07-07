@@ -10,7 +10,8 @@ public enum GeneralErrorCode implements ISCErrorCode {
     ILLEGAL_ARGUMENT,
     MALFORMED_JSON,
     VALIDATION_FAILED,
-    SERVER_ERROR;
+    SERVER_ERROR,
+    LOCALE_NOT_ACTIVE;
 
 
     @Override

@@ -1,10 +1,11 @@
-package com.sb.sfrigola_core.domains.tags.dto.admin;
+package com.sb.sfrigola_core.domains.tags.dto.view;
 
 import com.sb.sfrigola_core.domains.tags.enums.TagScope;
 import com.sb.sfrigola_core.domains.tags.enums.TagStatus;
 import com.sb.sfrigola_core.domains.tags.enums.TagType;
 
 import java.io.Serializable;
+import java.util.Map;
 import java.util.UUID;
 
 public record TagPreviewAdminDto(
@@ -14,7 +15,5 @@ public record TagPreviewAdminDto(
         TagScope scope,
         TagStatus status,
         String labelPreview,
-        int totalLocalization,
-        int totalMissingLocalization
-) implements Serializable {
-}
+        Map<String, String> translatedLanguages
+) implements Serializable {}

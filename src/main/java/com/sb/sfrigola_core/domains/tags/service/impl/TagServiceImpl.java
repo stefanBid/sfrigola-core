@@ -2,26 +2,29 @@ package com.sb.sfrigola_core.domains.tags.service.impl;
 
 import com.sb.sfrigola_core.common.models.contracts.SCFilterQuery;
 import com.sb.sfrigola_core.common.models.contracts.SCPagedResult;
-import com.sb.sfrigola_core.common.util.SCAuthenticationUtils;
 import com.sb.sfrigola_core.common.util.SCPaginationUtils;
 import com.sb.sfrigola_core.domains.languages.entity.Language;
-import com.sb.sfrigola_core.domains.tags.dto.TagDto;
-import com.sb.sfrigola_core.domains.tags.dto.admin.*;
-import com.sb.sfrigola_core.domains.tags.dto.contributor.TagSuggestDto;
+import com.sb.sfrigola_core.domains.tags.dto.input.AddTagDto;
+import com.sb.sfrigola_core.domains.tags.dto.input.SuggestTagDto;
+import com.sb.sfrigola_core.domains.tags.dto.input.TagTranslationInputDto;
+import com.sb.sfrigola_core.domains.tags.dto.input.UpdateTagDto;
+import com.sb.sfrigola_core.domains.tags.dto.view.TagDetailsAdminDto;
+import com.sb.sfrigola_core.domains.tags.dto.view.TagDto;
+import com.sb.sfrigola_core.domains.tags.dto.view.TagPreviewAdminDto;
 import com.sb.sfrigola_core.domains.tags.entity.Tag;
 import com.sb.sfrigola_core.domains.tags.entity.TagTranslation;
 import com.sb.sfrigola_core.domains.tags.enums.TagSortField;
 import com.sb.sfrigola_core.domains.tags.enums.TagStatus;
 import com.sb.sfrigola_core.domains.tags.exception.DuplicateTagLocaleException;
+import com.sb.sfrigola_core.domains.tags.exception.MissingTagLocalesException;
 import com.sb.sfrigola_core.domains.tags.exception.NoTagFoundException;
 import com.sb.sfrigola_core.domains.tags.exception.TagLabelAlreadyExistsException;
-import com.sb.sfrigola_core.domains.tags.exception.TagLanguageNotActiveException;
 import com.sb.sfrigola_core.domains.tags.exception.TagSlugAlreadyExistsException;
 import com.sb.sfrigola_core.domains.tags.models.TagSpecificFilter;
 import com.sb.sfrigola_core.domains.tags.repository.ITagRepository;
 import com.sb.sfrigola_core.domains.tags.service.ITagService;
 import com.sb.sfrigola_core.domains.languages.service.ILanguageDomainBridgeService;
-import com.sb.sfrigola_core.config.security.exception.ex.SCAuthenticatedUserNotFoundException;
+import jakarta.annotation.Nullable;
 import lombok.RequiredArgsConstructor;
 import org.jspecify.annotations.NonNull;
 import org.springframework.data.domain.Page;
@@ -40,12 +43,17 @@ public class TagServiceImpl implements ITagService {
     private final ILanguageDomainBridgeService languageDomainBridgeService;
 
     @Override
-    public SCPagedResult<TagDto> getAll(SCFilterQuery<Void> filterQuery, String locale) {
+    public SCPagedResult<TagDto> getAll(SCFilterQuery<TagSpecificFilter> filterQuery, String locale) {
+        languageDomainBridgeService.validateLocaleIsActiveOrThrow(locale);
+
         var pageable = SCPaginationUtils.toPageable(filterQuery);
+        var filterOtherExtracted = filterQuery.other();
+        var scope  = filterOtherExtracted != null && filterOtherExtracted.scope()  != null ? filterOtherExtracted.scope().getValue()  : null;
 
         // Step 1: Fetch IDs of Tags for the given locale — public endpoint returns only approved tags
-        var tagIds = tagRepository.findIdsByFiltersAndLocaleAsc(locale, filterQuery.searchKey(), TagStatus.APPROVED.getValue(), null, null, pageable);
+        var tagIds = tagRepository.findIdsByFiltersAndLocaleAsc(locale, filterQuery.searchKey(), TagStatus.APPROVED.getValue(), scope, null, pageable);
 
+        // Step 2: Fetch and restore the ordered ID sequence from step 1
         if (tagIds.hasContent()) {
             var ids = tagIds.getContent();
             Map<Long, Tag> byId = tagRepository.findByIdsWithSpecificTranslation(ids, locale)
@@ -61,7 +69,10 @@ public class TagServiceImpl implements ITagService {
 
     @Override
     public SCPagedResult<TagPreviewAdminDto> getAllAdmin(SCFilterQuery<TagSpecificFilter> filterQuery, String locale) {
-        var totalActiveLanguages = languageDomainBridgeService.getAllActiveLanguagesSimpleMap().size();
+        Map<String, String> activeLanguagesSimpleMap = languageDomainBridgeService.getAllActiveLanguagesSimpleMap();
+
+        // LOCALE CHECK
+        languageDomainBridgeService.validateLocaleIsActiveByActiveLanguagesMapKeysOrThrow(activeLanguagesSimpleMap.keySet(), locale);
 
         // SORT BY SWITCHER
         // CASE: SortBy is null or is LABEL  use forced group-by on label (in another table)
@@ -72,13 +83,6 @@ public class TagServiceImpl implements ITagService {
         // CASE: Sort is ASC call query with GOUP-BY ASC
         // CASE: Sort is DESC call query with GOUP-BY DESC
         boolean descending = filterQuery.sort() != null && !filterQuery.sort().isAsc();
-
-        // LOCALE SWITCHER
-        // CASE: Locale is null
-        // RESULT: All tags returned; preview translation = first element of collection
-        // CASE: Locale has value
-        // RESULT: Only tags that have a translation for the given locale; preview = that specific translation
-        boolean hasLocale = locale != null && !locale.isBlank();
 
         // STEP 1: Obtain ids
         var filterOtherExtracted = filterQuery.other();
@@ -92,17 +96,11 @@ public class TagServiceImpl implements ITagService {
 
         if (isSortByLabel){
             if (descending)
-                tagIds = hasLocale
-                        ? tagRepository.findIdsByFiltersAndLocaleDesc(locale, filterQuery.searchKey(), status, scope, type, pageable)
-                        : tagRepository.findIdsByFiltersDesc(filterQuery.searchKey(), status, scope, type, pageable);
+                tagIds = tagRepository.findIdsByFiltersAndLocaleDesc(locale, filterQuery.searchKey(), status, scope, type, pageable);
             else
-                tagIds = hasLocale
-                        ? tagRepository.findIdsByFiltersAndLocaleAsc(locale, filterQuery.searchKey(), status, scope, type, pageable)
-                        : tagRepository.findIdsByFiltersAsc(filterQuery.searchKey(), status, scope, type, pageable);
+                tagIds = tagRepository.findIdsByFiltersAndLocaleAsc(locale, filterQuery.searchKey(), status, scope, type, pageable);
         } else {
-            tagIds = hasLocale
-                    ? tagRepository.findIdsByFiltersAndLocaleOtherSort(locale, filterQuery.searchKey(), status, scope, type, pageable)
-                    : tagRepository.findIdsByFiltersOtherSort(filterQuery.searchKey(), status, scope, type, pageable);
+            tagIds = tagRepository.findIdsByFiltersAndLocaleOtherSort(locale, filterQuery.searchKey(), status, scope, type, pageable);
         }
 
         if (tagIds.hasContent()) {
@@ -113,16 +111,11 @@ public class TagServiceImpl implements ITagService {
 
             return new SCPagedResult<>(
                     ordered.stream().map(tag -> {
-                        TagTranslation tagTranslation;
-                        if (locale != null)
-                            tagTranslation = tag.getTranslations().stream()
-                                    .filter(t -> t.getLanguage().getCode().equals(locale))
-                                    .findFirst().orElse(null);
-                        else
-                            tagTranslation = tag.getTranslations().stream().findFirst().orElse(null);
+                        TagTranslation tagTranslation = tag.getTranslations().stream()
+                                .filter(t -> t.getLanguage().getCode().equals(locale))
+                                .findFirst().orElse(null);
 
-                        String translationLabelPreview = tagTranslation != null ? tagTranslation.getLabel() : null;
-                        return toAdminDto(tag, translationLabelPreview, totalActiveLanguages);
+                        return toAdminDto(tag, tagTranslation, activeLanguagesSimpleMap);
                     }).toList(),
                     SCPaginationUtils.toPagedOption(tagIds)
             );
@@ -131,79 +124,82 @@ public class TagServiceImpl implements ITagService {
     }
 
     @Override
-    public TagDetailsAdminDto getByPublicIdAdmin(UUID publicId) {
-        var activeLanguages = new HashMap<>(languageDomainBridgeService.getAllActiveLanguagesSimpleMap());
+        public TagDetailsAdminDto getByPublicIdAdmin(UUID publicId, @NonNull String locale) {
+        languageDomainBridgeService.validateLocaleIsActiveOrThrow(locale);
+
+        // ID CHECK:
         var tag = tagRepository.findByPublicId(publicId).orElseThrow(
                 () -> new NoTagFoundException(publicId)
         );
-        // Preparing Details for this Tag
-        int totalLocalization = tag.getTranslations().size();
-        int totalMissingLocalization = activeLanguages.size() - totalLocalization;
-        ArrayList<TagTranslationDetailsAdminDto> missingTranslation = new ArrayList<>();
 
-        // Populate missing Translation array only if there are missing languages
-        if(totalMissingLocalization > 0){
-            // Remove from the activeLanguages list all languages that already have a translation for this tag
-            tag.getTranslations().forEach(t -> activeLanguages.remove(t.getLanguage().getCode()));
-            activeLanguages.forEach((code, name) -> missingTranslation.add(new TagTranslationDetailsAdminDto(code, name, null)));
-        }
-        return toAdminDetailsDto(tag,missingTranslation);
+        var tagTranslation = tag.getTranslations().stream()
+                .filter(t -> t.getLanguage().getCode().equals(locale))
+                .findFirst().orElse(null);
+
+        return toAdminDetailsDto(tag, tagTranslation);
     }
 
     @Override
     @Transactional
-    public TagPreviewAdminDto createNewTag(TagInputDto inputDto) {
-        // Guard for existing slug
-        if(tagRepository.existsBySlug(inputDto.slug()))
-            throw new TagSlugAlreadyExistsException(inputDto.slug());
+    public TagPreviewAdminDto createNewTag(AddTagDto addTagDto, @NonNull String locale) {
+        // SLUG CHECK:
+        if(tagRepository.existsBySlug(addTagDto.slug()))
+            throw new TagSlugAlreadyExistsException(addTagDto.slug());
 
-        // Guard for duplicate locale in input — fail fast before building entities
+        // TRANSLATION CHECKS:
+        // 1) No duplicated translation
+        // 2) A new tag must have all active languages covered in translation, otherwise it is not valid
+        var activeLanguageMap = languageDomainBridgeService.getActiveLanguageEntitiesMap();
+        var activeCodeSet = activeLanguageMap.keySet().stream().map(String::toLowerCase).collect(Collectors.toSet());
+
         Set<String> seenLocales = new HashSet<>();
-        inputDto.translations().forEach(t -> {
+        addTagDto.translations().forEach(t -> {
             if(!seenLocales.add(t.langCode()))
                 throw new DuplicateTagLocaleException(t.langCode());
         });
 
+        if(!activeCodeSet.containsAll(seenLocales) || activeCodeSet.size() != seenLocales.size())
+            throw new MissingTagLocalesException();
+
         Tag newTag = new Tag();
 
-        var activeLanguageMap = languageDomainBridgeService.getActiveLanguageEntitiesMap();
-        List<TagTranslation> translations = inputDto.translations().stream()
+        List<TagTranslation> translations = addTagDto.translations().stream()
                 .map(t -> {
-                    Language lang = activeLanguageMap.get(t.langCode());
-                    if(lang == null) throw new TagLanguageNotActiveException(t.langCode());
+                    Language lang = languageDomainBridgeService.getLangFromEntitiesMapFromKeyOrThrow(activeLanguageMap, t.langCode());
                     return toTagTranslation(t, lang);
                 })
                 .collect(Collectors.toCollection(ArrayList::new));
         translations.forEach(t -> t.setTag(newTag));
 
-        newTag.setSlug(inputDto.slug());
-        newTag.setType(inputDto.type());
-        newTag.setScope(inputDto.scope());
+        newTag.setSlug(addTagDto.slug());
+        newTag.setType(addTagDto.type());
+        newTag.setScope(addTagDto.scope());
         newTag.setTranslations(translations);
 
         tagRepository.save(newTag);
 
-        var dataForTranslationPreview = inputDto.translations().stream().findFirst().orElse(null);
-        var labelPreview = dataForTranslationPreview != null ? dataForTranslationPreview.label() : null;
-
-        return toAdminDto(newTag, labelPreview, activeLanguageMap.size());
+        return toAdminDto(
+                newTag,
+                translations.stream().filter(t -> t.getLanguage().getCode().equals(locale)).findFirst().orElse(null),
+                toSimpleLanguagesMap(activeLanguageMap)
+        );
     }
 
     @Override
     @Transactional
-    public TagSuggestDto suggestNewTag(TagSuggestDto newTagSuggested) {
-        // Obtain lang code from authUser
-        Language lang = getLanguageOrThrow();
+    public SuggestTagDto suggestNewTag(SuggestTagDto newTagSuggested, @NonNull String locale) {
+        // LANG RESOLVE:
+        var activeLanguagesMap = languageDomainBridgeService.getActiveLanguageEntitiesMap();
+        Language lang = languageDomainBridgeService.getLangFromEntitiesMapFromKeyOrThrow(activeLanguagesMap, locale);
 
-        // Check: suggested slug already exists in the system (case-insensitive)
+        // SLUG CHECK:
         var existingTag = tagRepository.existsBySlug(newTagSuggested.slug());
         if(existingTag) throw new TagSlugAlreadyExistsException(newTagSuggested.slug());
 
-        //Check: suggested label already exists in the system (case-insensitive)
+        // LABEL CHECK:
         var existingLabel = tagRepository.existsByLabelAndLanguage(newTagSuggested.translationByConsumerLang(), lang.getCode());
         if(existingLabel) throw new TagLabelAlreadyExistsException(newTagSuggested.translationByConsumerLang(), lang.getCode());
 
-        // Prepare Entities
         Tag newSuggestedTag = new Tag();
         TagTranslation newSuggestedTagTranslation = new TagTranslation();
 
@@ -224,7 +220,8 @@ public class TagServiceImpl implements ITagService {
 
     @Override
     @Transactional
-    public boolean updateTagStatus(TagStatus newStatus, UUID publicId) {
+    public boolean updateTagStatus(UUID publicId, TagStatus newStatus) {
+        // ID CHECK:
         var existingTag = tagRepository.findByPublicId(publicId).orElseThrow(
                 () -> new NoTagFoundException(publicId)
         );
@@ -236,91 +233,58 @@ public class TagServiceImpl implements ITagService {
 
     @Override
     @Transactional
-    public TagPreviewAdminDto updateTag(UUID publicId, TagInputDto inputDto) {
+    public TagPreviewAdminDto updateTag(UUID publicId, UpdateTagDto updateTagDto) {
+        // ID CHECK:
         var tagToUpdate = tagRepository.findByPublicIdWithAllTranslation(publicId).orElseThrow(
                 () -> new NoTagFoundException(publicId)
         );
 
-        // Check: new slug not already used by a different tag
-        if(!inputDto.slug().equals(tagToUpdate.getSlug()) && tagRepository.existsBySlug(inputDto.slug()))
-            throw new TagSlugAlreadyExistsException(inputDto.slug());
+        // SLUG CHECK:
+        if(!updateTagDto.slug().equals(tagToUpdate.getSlug()) && tagRepository.existsBySlug(updateTagDto.slug()))
+            throw new TagSlugAlreadyExistsException(updateTagDto.slug());
 
-        // Check: duplicate locale in input — fail fast before touching any translation
-        Set<String> seenLocales = new HashSet<>();
-        inputDto.translations().forEach(t -> {
-            if(!seenLocales.add(t.langCode())) throw new DuplicateTagLocaleException(t.langCode());
-        });
+        // TRANSLATION CHECK: Update translation is of an active locale
+        var activeLangMap = languageDomainBridgeService.getActiveLanguageEntitiesMap();
+        Language lang = languageDomainBridgeService.getLangFromEntitiesMapFromKeyOrThrow(activeLangMap, updateTagDto.specificTranslation().langCode());
 
-        // Prepare Translation update
-        var activeLanguagesMap = languageDomainBridgeService.getActiveLanguageEntitiesMap();
-        Map<String, TagTranslation> tagToUpdateTranslationMapped = tagToUpdate.getTranslations().stream()
-                .collect(Collectors.toMap(t -> t.getLanguage().getCode(), t-> t));
+        var tagTranslationToUpdate = tagToUpdate.getTranslations().stream()
+                .filter(t -> t.getLanguage().getCode().equals(updateTagDto.specificTranslation().langCode()))
+                .findFirst().orElse(null);
 
-        List<TagTranslation> toRemove = new ArrayList<>();
-
-        for(TagTranslationInputDto input : inputDto.translations()) {
-            Language lang = activeLanguagesMap.get(input.langCode());
-            if(lang == null) throw new TagLanguageNotActiveException(input.langCode());
-
-            boolean deleteSignal = input.label() == null || input.label().isBlank();
-            TagTranslation extractedTagTranslation = tagToUpdateTranslationMapped.get(input.langCode());
-            if(deleteSignal){
-                if(extractedTagTranslation != null) toRemove.add(extractedTagTranslation);
-            } else if (extractedTagTranslation != null) {
-                // Update existing translatio
-                if(Objects.equals(extractedTagTranslation.getLabel(), input.label())) continue; // No change
-                extractedTagTranslation.setLabel(input.label());
-            } else {
-                // Create new translation
-                TagTranslation newTranslation = new TagTranslation();
-                newTranslation.setTag(tagToUpdate);
-                newTranslation.setLanguage(lang);
-                newTranslation.setLabel(input.label());
-                tagToUpdate.getTranslations().add(newTranslation);
-
-            }
+        if(tagTranslationToUpdate == null) {
+            // New Translation
+            tagTranslationToUpdate = new TagTranslation();
+            tagTranslationToUpdate.setTag(tagToUpdate);
+            tagTranslationToUpdate.setLanguage(lang);
+            tagTranslationToUpdate.setLabel(updateTagDto.specificTranslation().label());
+            tagToUpdate.getTranslations().add(tagTranslationToUpdate);
+        } else if (!tagTranslationToUpdate.getLabel().equals(updateTagDto.specificTranslation().label())) {
+            // Update existing translation — only touch fields that actually changed
+            tagTranslationToUpdate.setLabel(updateTagDto.specificTranslation().label());
         }
 
-        tagToUpdate.getTranslations().removeAll(toRemove);
-        tagToUpdate.setSlug(inputDto.slug());
-        tagToUpdate.setType(inputDto.type());
-        tagToUpdate.setScope(inputDto.scope());
+        tagToUpdate.setSlug(updateTagDto.slug());
+        tagToUpdate.setType(updateTagDto.type());
+        tagToUpdate.setScope(updateTagDto.scope());
 
-        var labelPreview = tagToUpdate.getTranslations().stream().findFirst().map(TagTranslation::getLabel).orElse(null);
-
-        return toAdminDto(tagToUpdate, labelPreview, activeLanguagesMap.size());
+        return toAdminDto(tagToUpdate, tagTranslationToUpdate, toSimpleLanguagesMap(activeLangMap));
     }
 
     @Override
     @Transactional
-    public TagPreviewAdminDto deleteTag(UUID publicId) {
-        var tagToDelete = tagRepository.findByPublicIdWithAllTranslation(publicId).orElseThrow(
+    public UUID deleteTag(UUID publicId) {
+        // ID CHECK:
+        var tagToDelete = tagRepository.findByPublicId(publicId).orElseThrow(
                 () -> new NoTagFoundException(publicId)
         );
 
-        var totalActiveLanguages = languageDomainBridgeService.getAllActiveLanguagesSimpleMap().size();
-        var labelPreview = tagToDelete.getTranslations().stream().findFirst().map(TagTranslation::getLabel).orElse(null);
-
         tagRepository.delete(tagToDelete);
-        return toAdminDto(tagToDelete, labelPreview, totalActiveLanguages);
+        return tagToDelete.getPublicId();
     }
 
     // =========================================================
     // PRIVATE
     // =========================================================
-
-    private @NonNull Language getLanguageOrThrow() {
-        var authUser = SCAuthenticationUtils.getAuthUserByContextHolder();
-        if(authUser.preferredLang() == null){
-            throw new SCAuthenticatedUserNotFoundException("Only authenticated users can suggest new tags");
-        }
-        // Check: preferredLang is active in the system
-        var activeLanguagesMap = languageDomainBridgeService.getActiveLanguageEntitiesMap();
-        Language lang = activeLanguagesMap.get(authUser.preferredLang());
-        if(lang == null)
-            throw new TagLanguageNotActiveException(authUser.preferredLang());
-        return lang;
-    }
 
     private TagDto toDto(Tag tag) {
         // We have only one item in the list of translations — the first query filters by locale
@@ -332,8 +296,13 @@ public class TagServiceImpl implements ITagService {
         );
     }
 
-    private TagPreviewAdminDto toAdminDto(Tag tag, String translationLabelPreview, int totalActiveLanguages) {
-        var translationCount = tag.getTranslations().size();
+    private TagPreviewAdminDto toAdminDto(Tag tag, TagTranslation tagTranslation, Map<String, String> activeLanguagesMap) {
+        Map<String, String> translatedLanguages = tag.getTranslations().stream()
+                .map(t -> t.getLanguage().getCode())
+                .filter(activeLanguagesMap::containsKey)
+                .collect(Collectors.toMap(code -> code, activeLanguagesMap::get));
+
+        String translationLabelPreview = tagTranslation != null ? tagTranslation.getLabel() : null;
         return new TagPreviewAdminDto(
                 tag.getPublicId(),
                 tag.getSlug(),
@@ -341,22 +310,24 @@ public class TagServiceImpl implements ITagService {
                 tag.getScope(),
                 tag.getStatus(),
                 translationLabelPreview,
-                translationCount,
-                totalActiveLanguages - translationCount
+                translatedLanguages
         );
     }
 
-    private TagDetailsAdminDto toAdminDetailsDto(Tag tag, ArrayList<TagTranslationDetailsAdminDto> missingTranslation) {
-        var extractLabelPreview = tag.getTranslations().stream().findFirst().map(TagTranslation::getLabel).orElse(null);
+    private Map<String, String> toSimpleLanguagesMap(Map<String, Language> languageEntitiesMap) {
+        return languageEntitiesMap.entrySet().stream()
+                .collect(Collectors.toMap(Map.Entry::getKey, e -> e.getValue().getName()));
+    }
+
+    private TagDetailsAdminDto toAdminDetailsDto(Tag tag, @Nullable TagTranslation tagTranslation) {
+        var extractLabelPreview = tagTranslation != null ? tagTranslation.getLabel() : null;
         return new TagDetailsAdminDto(
                 tag.getPublicId(),
                 tag.getSlug(),
                 tag.getType(),
                 tag.getScope(),
                 tag.getStatus(),
-                extractLabelPreview,
-                tag.getTranslations().stream().map(this::toTagTranslationDetails).toList(),
-                missingTranslation
+                extractLabelPreview
         );
     }
 
@@ -366,13 +337,5 @@ public class TagServiceImpl implements ITagService {
         translation.setLanguage(lang);
         translation.setLabel(translationInputDto.label());
         return translation;
-    }
-
-    private TagTranslationDetailsAdminDto toTagTranslationDetails(TagTranslation translation) {
-        return new TagTranslationDetailsAdminDto(
-                translation.getLanguage().getCode(),
-                translation.getLanguage().getName(),
-                translation.getLabel()
-        );
     }
 }

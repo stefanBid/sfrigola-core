@@ -510,6 +510,33 @@ Every new API endpoint must be registered in the correct bean in `SecurityBeansC
 
 Example: `ISCUserService` (controller-facing) vs `ISCUserDomainBridgeService` (bridge used by auth).
 
+### Translatable Entities Pattern
+
+Applies to every entity with a `*_translations` child table (`categories`, `tags`, and future `ingredients` / `recipes`). Modeled first on `categories`/`tags` in sprint 4/5 — follow this exactly for new translatable domains instead of re-deriving it.
+
+**Locale validation/resolution always goes through `ILanguageDomainBridgeService`** — never inline a `Language`/locale null-check that duplicates it:
+- `validateLocaleIsActiveOrThrow(locale)` — single locale, no map loaded yet.
+- `validateLocaleIsActiveByActiveLanguagesMapKeysOrThrow(activeLanguagesKeys, locale)` — guard a locale when the active-languages map is already in memory (avoids a second query).
+- `getLangFromEntitiesMapFromKeyOrThrow(activeLanguagesMap, locale)` — resolve **and** validate a `Language` entity in one call, when the map of entities is already loaded.
+- All three throw `common.exception.ex.SCLocaleNotActiveException` — domains must not keep their own `LocaleNotActiveException`/`InvalidXLocaleException`.
+
+**Create (`createNewX`)** — payload carries a `List<XTranslationInputDto>` that must cover **every** active language, no more no less:
+1. Reject duplicate `langCode` in the list → `DuplicateXLocaleException`.
+2. Reject if the set of `langCode`s doesn't exactly match the active-languages set → `MissingXLocalesException`.
+3. Resolve each `Language` via `getLangFromEntitiesMapFromKeyOrThrow`, build translation entities, set the owning-entity back-reference on each before save.
+4. The endpoint/service also takes a `locale` param used **only** to pick which translation to show in the response preview (filter the just-built list by `locale`) — it has no bearing on validation.
+
+**Update (`updateX`)** — payload carries a **single** `specificTranslation` (one locale per call), never a list:
+1. Resolve+validate that locale via `getLangFromEntitiesMapFromKeyOrThrow`.
+2. Look up an existing translation for that locale on the entity: if absent, create it (set the back-reference, add to the collection); if present, patch only the fields that actually changed.
+3. No "cover all locales" check on update (unlike create) — partial edits are expected.
+4. To touch N locales, the caller makes N calls. No `locale` query param needed — the response preview is always the translation just upserted.
+5. No delete-of-a-single-translation capability via update. If a domain ever needs that, it must be a separate explicit endpoint/method — don't overload update with a "blank label ⇒ delete" convention.
+
+**Delete (`deleteX`)** — no `locale` param, no translation preview, no admin-preview DTO returned:
+- Delete the parent row; translations cascade via `CascadeType.ALL` on the JPA relation (and DB `ON DELETE CASCADE`) — never touch/query translations explicitly in the delete method.
+- Return only the deleted entity's `publicId` (`UUID`), not a DTO.
+
 ### BaseEntity
 
 `@MappedSuperclass` with automatic auditing via Spring Data JPA Auditing:

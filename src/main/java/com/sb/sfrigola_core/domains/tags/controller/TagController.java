@@ -5,11 +5,12 @@ import com.sb.sfrigola_core.common.dto.option.SCPagedOptionDto;
 import com.sb.sfrigola_core.common.dto.response.SCGeneralResponseDto;
 import com.sb.sfrigola_core.common.enums.SortDirection;
 import com.sb.sfrigola_core.common.models.contracts.SCFilterQuery;
-import com.sb.sfrigola_core.domains.tags.dto.TagDto;
-import com.sb.sfrigola_core.domains.tags.dto.admin.TagDetailsAdminDto;
-import com.sb.sfrigola_core.domains.tags.dto.admin.TagInputDto;
-import com.sb.sfrigola_core.domains.tags.dto.admin.TagPreviewAdminDto;
-import com.sb.sfrigola_core.domains.tags.dto.contributor.TagSuggestDto;
+import com.sb.sfrigola_core.domains.tags.dto.input.AddTagDto;
+import com.sb.sfrigola_core.domains.tags.dto.input.SuggestTagDto;
+import com.sb.sfrigola_core.domains.tags.dto.input.UpdateTagDto;
+import com.sb.sfrigola_core.domains.tags.dto.view.TagDetailsAdminDto;
+import com.sb.sfrigola_core.domains.tags.dto.view.TagDto;
+import com.sb.sfrigola_core.domains.tags.dto.view.TagPreviewAdminDto;
 import com.sb.sfrigola_core.domains.tags.enums.TagScope;
 import com.sb.sfrigola_core.domains.tags.enums.TagSortField;
 import com.sb.sfrigola_core.domains.tags.enums.TagStatus;
@@ -45,20 +46,26 @@ public class TagController {
             @Min(value = 1, message = SCRequestParamValidationCodeConstants.TAKE_MUST_BE_AT_LEAST_ONE) @Max(value = 100, message = SCRequestParamValidationCodeConstants.TAKE_MUST_BE_AT_MOST_HUNDRED)
             @RequestParam(value = "take", required = false, defaultValue = "10") int take,
             @RequestParam(required = false) @NotBlank(message = SCRequestParamValidationCodeConstants.LOCALE_MUST_NOT_BE_BLANK) String locale,
-            @RequestParam(value = "searchKey", required = false) String searchKey
+            @RequestParam(value = "searchKey", required = false) String searchKey,
+            @RequestParam(required = false) String scope
     ) {
-
-        var filterQuery = SCFilterQuery.pageWithSearch(searchKey, take, page);
+        var tagSpecificFilter = new TagSpecificFilter(
+                null,
+                null,
+                scope != null ? TagScope.fromValue(scope) : null
+        );
+        var filterQuery = SCFilterQuery.powerful(searchKey, null, null, take, page, tagSpecificFilter);
         var paginatedTags = tagService.getAll(filterQuery, locale);
 
         return ResponseEntity.ok(SCGeneralResponseDto.success(paginatedTags.content(), paginatedTags.pagedOptionDto()));
     }
 
     @PostMapping(value = "/suggest", version = "1.0")
-    public ResponseEntity<SCGeneralResponseDto<TagSuggestDto, Void>> suggestNewTag(
-            @RequestBody @Valid TagSuggestDto newTagSuggested
+    public ResponseEntity<SCGeneralResponseDto<SuggestTagDto, Void>> suggestNewTag(
+            @RequestBody @Valid SuggestTagDto newTagSuggested,
+            @RequestParam @NotBlank(message = SCRequestParamValidationCodeConstants.LOCALE_MUST_NOT_BE_BLANK) String locale
     ) {
-        var suggested = tagService.suggestNewTag(newTagSuggested);
+        var suggested = tagService.suggestNewTag(newTagSuggested, locale);
         return ResponseEntity.ok(SCGeneralResponseDto.success(suggested));
     }
 
@@ -91,17 +98,19 @@ public class TagController {
 
     @GetMapping(value = "/admin/{publicId}", version = "1.0")
     public ResponseEntity<SCGeneralResponseDto<TagDetailsAdminDto, Void>> getTagByPublicIdAdmin(
-            @PathVariable("publicId") UUID publicId
+            @PathVariable("publicId") UUID publicId,
+            @RequestParam @NotBlank(message = SCRequestParamValidationCodeConstants.LOCALE_MUST_NOT_BE_BLANK) String locale
     ){
-      var tagDetails = tagService.getByPublicIdAdmin(publicId);
+      var tagDetails = tagService.getByPublicIdAdmin(publicId, locale);
       return ResponseEntity.ok(SCGeneralResponseDto.success(tagDetails));
     }
 
     @PostMapping(value = "/admin", version = "1.0")
     public ResponseEntity<SCGeneralResponseDto<TagPreviewAdminDto, Void>> createTag(
-            @RequestBody @Valid TagInputDto tagInputDto
+            @RequestBody @Valid AddTagDto addTagDto,
+            @RequestParam @NotBlank(message = SCRequestParamValidationCodeConstants.LOCALE_MUST_NOT_BE_BLANK) String locale
     ) {
-        var createdTag = tagService.createNewTag(tagInputDto);
+        var createdTag = tagService.createNewTag(addTagDto, locale);
         return ResponseEntity.ok(SCGeneralResponseDto.success(createdTag));
     }
 
@@ -110,21 +119,21 @@ public class TagController {
             @PathVariable("publicId") UUID publicId,
             @PathVariable("status") String status
     ) {
-        tagService.updateTagStatus(TagStatus.fromValue(status), publicId);
+        tagService.updateTagStatus(publicId, TagStatus.fromValue(status));
         return ResponseEntity.ok(SCGeneralResponseDto.successMutation("Tag status updated successfully"));
     }
 
     @PutMapping(value = "/admin/{publicId}", version = "1.0")
     public ResponseEntity<SCGeneralResponseDto<TagPreviewAdminDto, Void>> updateTag(
             @PathVariable("publicId") UUID publicId,
-            @RequestBody @Valid TagInputDto tagInputDto
+            @RequestBody @Valid UpdateTagDto updateTagDto
     ) {
-        var updated = tagService.updateTag(publicId, tagInputDto);
+        var updated = tagService.updateTag(publicId, updateTagDto);
         return ResponseEntity.ok(SCGeneralResponseDto.success(updated));
     }
 
     @DeleteMapping(value = "/admin/{publicId}", version = "1.0")
-    public ResponseEntity<SCGeneralResponseDto<TagPreviewAdminDto, Void>> deleteTag(
+    public ResponseEntity<SCGeneralResponseDto<UUID, Void>> deleteTag(
             @PathVariable("publicId") UUID publicId
     ) {
         var deleted = tagService.deleteTag(publicId);

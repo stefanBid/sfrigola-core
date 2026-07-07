@@ -1,4 +1,4 @@
-package com.sb.sfrigola_core.domains.tags.dto.admin;
+package com.sb.sfrigola_core.domains.tags.dto.input;
 
 import com.sb.sfrigola_core.domains.tags.constants.TagValidationCodeConstants;
 import jakarta.validation.constraints.NotBlank;
@@ -13,5 +13,4 @@ public record TagTranslationInputDto(
         @NotBlank(message = TagValidationCodeConstants.LABEL_REQUIRED)
         @Size(max = 100, message = TagValidationCodeConstants.LABEL_TOO_LONG)
         String label
-) implements Serializable {
-}
+) implements Serializable {}

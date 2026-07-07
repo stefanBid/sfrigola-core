@@ -1,8 +1,10 @@
 package com.sb.sfrigola_core.domains.languages.service;
 
 import com.sb.sfrigola_core.domains.languages.entity.Language;
+import com.sb.sfrigola_core.domains.languages.exception.LocaleNotActiveException;
 
 import java.util.Map;
+import java.util.Set;
 
 /**
  * Internal bridge contract for the languages' domain.
@@ -41,9 +43,34 @@ public interface ILanguageDomainBridgeService {
      * only need to guard a single locale param and don't otherwise load the active languages map.
      *
      * @param locale BCP-47 code to validate (e.g. {@code "it"}, {@code "en"})
-     * @throws com.sb.sfrigola_core.domains.languages.exception.LocaleNotActiveException
+     * @throws LocaleNotActiveException
      *         if no active language exists with the given code
      */
     void validateLocaleIsActiveOrThrow(String locale);
+
+    /**
+     * Validates that {@code locale} is present among {@code activeLanguagesKeys}, for cross-domain
+     * services that already loaded the active languages map (e.g. via {@link #getAllActiveLanguagesSimpleMap()}
+     * or {@link #getActiveLanguageEntitiesMap()}) and want to guard a locale without an extra query.
+     *
+     * @param activeLanguagesKeys BCP-47 codes of the currently active languages, previously loaded by the caller
+     * @param locale              BCP-47 code to validate (e.g. {@code "it"}, {@code "en"})
+     * @throws LocaleNotActiveException
+     *         if {@code locale} is not contained in {@code activeLanguagesKeys}
+     */
+    void validateLocaleIsActiveByActiveLanguagesMapKeysOrThrow(Set<String> activeLanguagesKeys, String locale);
+
+    /**
+     * Returns the {@link com.sb.sfrigola_core.domains.languages.entity.Language} entity for {@code locale}
+     * from {@code activeLanguagesMap}, for cross-domain services that already loaded the active languages map
+     * (e.g. via {@link #getActiveLanguageEntitiesMap()}) and want to resolve a locale to an entity without an extra query.
+     *
+     * @param activeLanguagesMap a map of active languages keyed by BCP-47 code
+     * @param locale             BCP-47 code to resolve (e.g. {@code "it"}, {@code "en"})
+     * @return the corresponding {@link com.sb.sfrigola_core.domains.languages.entity.Language} entity
+     * @throws LocaleNotActiveException
+     *        if {@code locale} is not contained in {@code activeLanguagesMap}
+     */
+    Language getLangFromEntitiesMapFromKeyOrThrow(Map<String, Language> activeLanguagesMap, String locale);
 
 }

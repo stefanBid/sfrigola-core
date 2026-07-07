@@ -68,8 +68,7 @@ public class CategoryServiceImpl implements ICategoryService {
         Map<String, String> activeLanguagesMap = languageDomainBridgeService.getAllActiveLanguagesSimpleMap();
 
         // LOCALE CHECK
-        if(!activeLanguagesMap.containsKey(locale))
-            throw new InvalidCategoryLocaleException(locale);
+        languageDomainBridgeService.validateLocaleIsActiveByActiveLanguagesMapKeysOrThrow(activeLanguagesMap.keySet(), locale);
 
         // SORT SWITCHER
         // CASE: Sort is ASC call query with GOUP-BY ASC
@@ -155,8 +154,7 @@ public class CategoryServiceImpl implements ICategoryService {
         // Set Translation
         ArrayList<CategoryTranslation> translations = addCategoryDto.translations().stream()
                 .map(t -> {
-                    Language lang = activeLanguagesMap.get(t.langCode());
-                    if (lang == null) throw new InvalidCategoryLocaleException(t.langCode());
+                    Language lang = languageDomainBridgeService.getLangFromEntitiesMapFromKeyOrThrow(activeLanguagesMap, t.langCode());
                     return this.toCategoryTranslation(t, lang);
                 })
                 .collect(Collectors.toCollection(ArrayList::new));
@@ -197,9 +195,7 @@ public class CategoryServiceImpl implements ICategoryService {
 
         // TRANSLATION CHECK: Update translation is of an active locale
         var activeLangMap = languageDomainBridgeService.getActiveLanguageEntitiesMap();
-        Language lang = activeLangMap.get(updateCategoryDto.specificTranslation().langCode());
-        if(lang == null)
-            throw new InvalidCategoryLocaleException(updateCategoryDto.specificTranslation().langCode());
+        Language lang = languageDomainBridgeService.getLangFromEntitiesMapFromKeyOrThrow(activeLangMap, updateCategoryDto.specificTranslation().langCode());
 
         var categoryTranslationToUpdate = categoryToUpdate.getTranslations().stream()
                 .filter(t -> t.getLanguage().getCode().equals(updateCategoryDto.specificTranslation().langCode()))
