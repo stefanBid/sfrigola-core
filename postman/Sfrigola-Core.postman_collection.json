@@ -13,7 +13,9 @@
     { "key": "baseUrl", "value": "http://localhost:8080/sfrigola-core/api", "type": "string" },
     { "key": "token", "value": "", "type": "string" },
     { "key": "publicId", "value": "", "type": "string" },
-    { "key": "parentPublicId", "value": "", "type": "string" }
+    { "key": "parentPublicId", "value": "", "type": "string" },
+    { "key": "it", "value": "it", "type": "string" },
+    { "key": "approved", "value": "approved", "type": "string" }
   ],
   "item": [
     {
@@ -96,14 +98,14 @@
           "request": {
             "method": "GET",
             "url": {
-              "raw": "{{baseUrl}}/languages",
+              "raw": "{{baseUrl}}/languages?page=0&take=10&sortBy=name&sort=asc",
               "host": ["{{baseUrl}}"],
               "path": ["languages"],
               "query": [
-                { "key": "page", "value": "", "disabled": true },
-                { "key": "take", "value": "", "disabled": true },
-                { "key": "sortBy", "value": "", "disabled": true },
-                { "key": "sort", "value": "", "disabled": true },
+                { "key": "page", "value": "0" },
+                { "key": "take", "value": "10" },
+                { "key": "sortBy", "value": "name" },
+                { "key": "sort", "value": "asc" },
                 { "key": "isActive", "value": "", "disabled": true }
               ]
             }
@@ -120,9 +122,9 @@
           "request": {
             "method": "PATCH",
             "url": {
-              "raw": "{{baseUrl}}/users/settings/change-preferred-lang/it",
+              "raw": "{{baseUrl}}/users/settings/change-preferred-lang/{{it}}",
               "host": ["{{baseUrl}}"],
-              "path": ["users", "settings", "change-preferred-lang", "it"]
+              "path": ["users", "settings", "change-preferred-lang", "{{it}}"]
             }
           },
           "response": []
@@ -153,14 +155,14 @@
           "request": {
             "method": "GET",
             "url": {
-              "raw": "{{baseUrl}}/users/admin",
+              "raw": "{{baseUrl}}/users/admin?page=0&take=10&sortBy=lastName&sort=asc",
               "host": ["{{baseUrl}}"],
               "path": ["users", "admin"],
               "query": [
-                { "key": "page", "value": "", "disabled": true },
-                { "key": "take", "value": "", "disabled": true },
-                { "key": "sortBy", "value": "", "disabled": true },
-                { "key": "sort", "value": "", "disabled": true },
+                { "key": "page", "value": "0" },
+                { "key": "take", "value": "10" },
+                { "key": "sortBy", "value": "lastName" },
+                { "key": "sort", "value": "asc" },
                 { "key": "searchKey", "value": "", "disabled": true },
                 { "key": "isActive", "value": "", "disabled": true }
               ]
@@ -192,13 +194,13 @@
           "request": {
             "method": "GET",
             "url": {
-              "raw": "{{baseUrl}}/categories",
+              "raw": "{{baseUrl}}/categories?page=0&take=10&locale=en",
               "host": ["{{baseUrl}}"],
               "path": ["categories"],
               "query": [
-                { "key": "page", "value": "", "disabled": true },
-                { "key": "take", "value": "", "disabled": true },
-                { "key": "locale", "value": "", "disabled": true }
+                { "key": "page", "value": "0" },
+                { "key": "take", "value": "10" },
+                { "key": "locale", "value": "en" }
               ]
             }
           },
@@ -209,16 +211,16 @@
           "request": {
             "method": "GET",
             "url": {
-              "raw": "{{baseUrl}}/categories/admin",
+              "raw": "{{baseUrl}}/categories/admin?page=0&take=10&sort=asc&locale=en",
               "host": ["{{baseUrl}}"],
               "path": ["categories", "admin"],
               "query": [
-                { "key": "page", "value": "", "disabled": true },
-                { "key": "take", "value": "", "disabled": true },
-                { "key": "sort", "value": "", "disabled": true },
+                { "key": "page", "value": "0" },
+                { "key": "take", "value": "10" },
+                { "key": "sort", "value": "asc" },
                 { "key": "searchKey", "value": "", "disabled": true },
                 { "key": "isActive", "value": "", "disabled": true },
-                { "key": "locale", "value": "", "disabled": true }
+                { "key": "locale", "value": "en" }
               ]
             }
           },
@@ -229,10 +231,10 @@
           "request": {
             "method": "GET",
             "url": {
-              "raw": "{{baseUrl}}/categories/admin/{{publicId}}?locale=it",
+              "raw": "{{baseUrl}}/categories/admin/{{publicId}}?locale=en",
               "host": ["{{baseUrl}}"],
               "path": ["categories", "admin", "{{publicId}}"],
-              "query": [{ "key": "locale", "value": "it" }]
+              "query": [{ "key": "locale", "value": "en" }]
             }
           },
           "response": []
@@ -244,13 +246,13 @@
             "header": [{ "key": "Content-Type", "value": "application/json" }],
             "body": {
               "mode": "raw",
-              "raw": "{\n  \"slug\": \"desserts\",\n  \"isActive\": true,\n  \"translations\": [\n    { \"langCode\": \"it\", \"name\": \"Dolci\", \"description\": \"Ricette di dolci\" },\n    { \"langCode\": \"en\", \"name\": \"Desserts\", \"description\": \"Dessert recipes\" }\n  ]\n}"
+              "raw": "{\n  \"slug\": \"test-category\",\n  \"isActive\": true,\n  \"translations\": [\n    { \"langCode\": \"it\", \"name\": \"Test\", \"description\": \"Test\" },\n    { \"langCode\": \"en\", \"name\": \"Test\", \"description\": \"Test\" }\n  ]\n}"
             },
             "url": {
-              "raw": "{{baseUrl}}/categories/admin?locale=it",
+              "raw": "{{baseUrl}}/categories/admin?locale=en",
               "host": ["{{baseUrl}}"],
               "path": ["categories", "admin"],
-              "query": [{ "key": "locale", "value": "it" }]
+              "query": [{ "key": "locale", "value": "en" }]
             }
           },
           "response": []
@@ -262,13 +264,13 @@
             "header": [{ "key": "Content-Type", "value": "application/json" }],
             "body": {
               "mode": "raw",
-              "raw": "{\n  \"slug\": \"cakes\",\n  \"isActive\": true,\n  \"translations\": [\n    { \"langCode\": \"it\", \"name\": \"Torte\", \"description\": \"Ricette di torte\" },\n    { \"langCode\": \"en\", \"name\": \"Cakes\", \"description\": \"Cake recipes\" }\n  ]\n}"
+              "raw": "{\n  \"slug\": \"test-category-child\",\n  \"isActive\": true,\n  \"translations\": [\n    { \"langCode\": \"it\", \"name\": \"Test\", \"description\": \"Test\" },\n    { \"langCode\": \"en\", \"name\": \"Test\", \"description\": \"Test\" }\n  ]\n}"
             },
             "url": {
-              "raw": "{{baseUrl}}/categories/admin/{{parentPublicId}}?locale=it",
+              "raw": "{{baseUrl}}/categories/admin/{{parentPublicId}}?locale=en",
               "host": ["{{baseUrl}}"],
               "path": ["categories", "admin", "{{parentPublicId}}"],
-              "query": [{ "key": "locale", "value": "it" }]
+              "query": [{ "key": "locale", "value": "en" }]
             }
           },
           "response": []
@@ -280,7 +282,7 @@
             "header": [{ "key": "Content-Type", "value": "application/json" }],
             "body": {
               "mode": "raw",
-              "raw": "{\n  \"slug\": \"desserts\",\n  \"isActive\": true,\n  \"specificTranslation\": { \"langCode\": \"it\", \"name\": \"Dolci\", \"description\": \"Ricette dolci aggiornate\" }\n}"
+              "raw": "{\n  \"slug\": \"test-category\",\n  \"isActive\": true,\n  \"specificTranslation\": { \"langCode\": \"it\", \"name\": \"Test\", \"description\": \"Test\" }\n}"
             },
             "url": {
               "raw": "{{baseUrl}}/categories/admin/{{publicId}}",
@@ -325,13 +327,13 @@
           "request": {
             "method": "GET",
             "url": {
-              "raw": "{{baseUrl}}/tags",
+              "raw": "{{baseUrl}}/tags?page=0&take=10&locale=en",
               "host": ["{{baseUrl}}"],
               "path": ["tags"],
               "query": [
-                { "key": "page", "value": "", "disabled": true },
-                { "key": "take", "value": "", "disabled": true },
-                { "key": "locale", "value": "", "disabled": true },
+                { "key": "page", "value": "0" },
+                { "key": "take", "value": "10" },
+                { "key": "locale", "value": "en" },
                 { "key": "searchKey", "value": "", "disabled": true },
                 { "key": "scope", "value": "", "disabled": true }
               ]
@@ -346,13 +348,13 @@
             "header": [{ "key": "Content-Type", "value": "application/json" }],
             "body": {
               "mode": "raw",
-              "raw": "{\n  \"slug\": \"spicy\",\n  \"type\": \"flavor\",\n  \"scope\": \"both\",\n  \"translationByConsumerLang\": \"Piccante\"\n}"
+              "raw": "{\n  \"slug\": \"test-tag-suggest\",\n  \"type\": \"flavor\",\n  \"scope\": \"both\",\n  \"translationByConsumerLang\": \"Test\"\n}"
             },
             "url": {
-              "raw": "{{baseUrl}}/tags/suggest?locale=it",
+              "raw": "{{baseUrl}}/tags/suggest?locale=en",
               "host": ["{{baseUrl}}"],
               "path": ["tags", "suggest"],
-              "query": [{ "key": "locale", "value": "it" }]
+              "query": [{ "key": "locale", "value": "en" }]
             }
           },
           "response": []
@@ -362,15 +364,15 @@
           "request": {
             "method": "GET",
             "url": {
-              "raw": "{{baseUrl}}/tags/admin",
+              "raw": "{{baseUrl}}/tags/admin?page=0&take=10&sort=asc&sortBy=label&locale=en",
               "host": ["{{baseUrl}}"],
               "path": ["tags", "admin"],
               "query": [
-                { "key": "page", "value": "", "disabled": true },
-                { "key": "take", "value": "", "disabled": true },
-                { "key": "sort", "value": "", "disabled": true },
-                { "key": "sortBy", "value": "", "disabled": true },
-                { "key": "locale", "value": "", "disabled": true },
+                { "key": "page", "value": "0" },
+                { "key": "take", "value": "10" },
+                { "key": "sort", "value": "asc" },
+                { "key": "sortBy", "value": "label" },
+                { "key": "locale", "value": "en" },
                 { "key": "searchKey", "value": "", "disabled": true },
                 { "key": "status", "value": "", "disabled": true },
                 { "key": "type", "value": "", "disabled": true },
@@ -385,10 +387,10 @@
           "request": {
             "method": "GET",
             "url": {
-              "raw": "{{baseUrl}}/tags/admin/{{publicId}}?locale=it",
+              "raw": "{{baseUrl}}/tags/admin/{{publicId}}?locale=en",
               "host": ["{{baseUrl}}"],
               "path": ["tags", "admin", "{{publicId}}"],
-              "query": [{ "key": "locale", "value": "it" }]
+              "query": [{ "key": "locale", "value": "en" }]
             }
           },
           "response": []
@@ -400,13 +402,13 @@
             "header": [{ "key": "Content-Type", "value": "application/json" }],
             "body": {
               "mode": "raw",
-              "raw": "{\n  \"slug\": \"spicy\",\n  \"type\": \"flavor\",\n  \"scope\": \"both\",\n  \"translations\": [\n    { \"langCode\": \"it\", \"label\": \"Piccante\" },\n    { \"langCode\": \"en\", \"label\": \"Spicy\" }\n  ]\n}"
+              "raw": "{\n  \"slug\": \"test-tag\",\n  \"type\": \"flavor\",\n  \"scope\": \"both\",\n  \"translations\": [\n    { \"langCode\": \"it\", \"label\": \"Test\" },\n    { \"langCode\": \"en\", \"label\": \"Test\" }\n  ]\n}"
             },
             "url": {
-              "raw": "{{baseUrl}}/tags/admin?locale=it",
+              "raw": "{{baseUrl}}/tags/admin?locale=en",
               "host": ["{{baseUrl}}"],
               "path": ["tags", "admin"],
-              "query": [{ "key": "locale", "value": "it" }]
+              "query": [{ "key": "locale", "value": "en" }]
             }
           },
           "response": []
@@ -416,9 +418,9 @@
           "request": {
             "method": "PATCH",
             "url": {
-              "raw": "{{baseUrl}}/tags/admin/{{publicId}}/status/approved",
+              "raw": "{{baseUrl}}/tags/admin/{{publicId}}/status/{{approved}}",
               "host": ["{{baseUrl}}"],
-              "path": ["tags", "admin", "{{publicId}}", "status", "approved"]
+              "path": ["tags", "admin", "{{publicId}}", "status", "{{approved}}"]
             }
           },
           "response": []
@@ -430,7 +432,7 @@
             "header": [{ "key": "Content-Type", "value": "application/json" }],
             "body": {
               "mode": "raw",
-              "raw": "{\n  \"slug\": \"spicy\",\n  \"type\": \"flavor\",\n  \"scope\": \"both\",\n  \"specificTranslation\": { \"langCode\": \"it\", \"label\": \"Molto Piccante\" }\n}"
+              "raw": "{\n  \"slug\": \"test-tag\",\n  \"type\": \"flavor\",\n  \"scope\": \"both\",\n  \"specificTranslation\": { \"langCode\": \"it\", \"label\": \"Test\" }\n}"
             },
             "url": {
               "raw": "{{baseUrl}}/tags/admin/{{publicId}}",
@@ -462,14 +464,14 @@
           "request": {
             "method": "GET",
             "url": {
-              "raw": "{{baseUrl}}/ingredients",
+              "raw": "{{baseUrl}}/ingredients?page=0&take=10&locale=en",
               "host": ["{{baseUrl}}"],
               "path": ["ingredients"],
               "query": [
-                { "key": "page", "value": "", "disabled": true },
-                { "key": "take", "value": "", "disabled": true },
+                { "key": "page", "value": "0" },
+                { "key": "take", "value": "10" },
                 { "key": "searchKey", "value": "", "disabled": true },
-                { "key": "locale", "value": "", "disabled": true }
+                { "key": "locale", "value": "en" }
               ]
             }
           },
@@ -480,7 +482,7 @@
           "request": {
             "method": "GET",
             "url": {
-              "raw": "{{baseUrl}}/ingredients/admin?page=0&take=10&sortBy=name&sort=asc&searchKey=&locale=it&category=vegetable&isVegetarian=true&isVegan=false&isGlutenFree=false&minCalories=0&maxCalories=500",
+              "raw": "{{baseUrl}}/ingredients/admin?page=0&take=10&sortBy=name&sort=asc&locale=en",
               "host": ["{{baseUrl}}"],
               "path": ["ingredients", "admin"],
               "query": [
@@ -488,14 +490,14 @@
                 { "key": "take", "value": "10" },
                 { "key": "sortBy", "value": "name" },
                 { "key": "sort", "value": "asc" },
-                { "key": "searchKey", "value": "" },
-                { "key": "locale", "value": "it" },
-                { "key": "category", "value": "vegetable" },
-                { "key": "isVegetarian", "value": "true" },
-                { "key": "isVegan", "value": "false" },
-                { "key": "isGlutenFree", "value": "false" },
-                { "key": "minCalories", "value": "0" },
-                { "key": "maxCalories", "value": "500" }
+                { "key": "searchKey", "value": "", "disabled": true },
+                { "key": "locale", "value": "en" },
+                { "key": "category", "value": "", "disabled": true },
+                { "key": "isVegetarian", "value": "", "disabled": true },
+                { "key": "isVegan", "value": "", "disabled": true },
+                { "key": "isGlutenFree", "value": "", "disabled": true },
+                { "key": "minCalories", "value": "", "disabled": true },
+                { "key": "maxCalories", "value": "", "disabled": true }
               ]
             }
           },
@@ -508,7 +510,7 @@
             "header": [{ "key": "Content-Type", "value": "application/json" }],
             "body": {
               "mode": "raw",
-              "raw": "{\n  \"slug\": \"tomato\",\n  \"category\": \"vegetable\",\n  \"caloriesPer100g\": 18.0,\n  \"allergens\": [],\n  \"isVegetarian\": true,\n  \"isVegan\": true,\n  \"isGlutenFree\": true,\n  \"translations\": [\n    { \"langCode\": \"it\", \"name\": \"Pomodoro\" },\n    { \"langCode\": \"en\", \"name\": \"Tomato\" }\n  ],\n  \"ingredientTagsIds\": []\n}"
+              "raw": "{\n  \"slug\": \"test-ingredient\",\n  \"category\": \"vegetable\",\n  \"caloriesPer100g\": 18.0,\n  \"allergens\": [],\n  \"isVegetarian\": true,\n  \"isVegan\": true,\n  \"isGlutenFree\": true,\n  \"translations\": [\n    { \"langCode\": \"it\", \"name\": \"Test\" },\n    { \"langCode\": \"en\", \"name\": \"Test\" }\n  ],\n  \"ingredientTagsIds\": []\n}"
             },
             "url": { "raw": "{{baseUrl}}/ingredients/admin", "host": ["{{baseUrl}}"], "path": ["ingredients", "admin"] }
           },

@@ -263,9 +263,12 @@ public class TagServiceImpl implements ITagService {
             tagTranslationToUpdate.setLabel(updateTagDto.specificTranslation().label());
         }
 
-        tagToUpdate.setSlug(updateTagDto.slug());
-        tagToUpdate.setType(updateTagDto.type());
-        tagToUpdate.setScope(updateTagDto.scope());
+        if(!tagToUpdate.getSlug().equals(updateTagDto.slug()))
+            tagToUpdate.setSlug(updateTagDto.slug());
+        if(!tagToUpdate.getType().equals(updateTagDto.type()))
+            tagToUpdate.setType(updateTagDto.type());
+        if(!tagToUpdate.getScope().equals(updateTagDto.scope()))
+            tagToUpdate.setScope(updateTagDto.scope());
 
         return toAdminDto(tagToUpdate, tagTranslationToUpdate, toSimpleLanguagesMap(activeLangMap));
     }

@@ -215,8 +215,11 @@ public class CategoryServiceImpl implements ICategoryService {
                 categoryTranslationToUpdate.setDescription(updateCategoryDto.specificTranslation().description());
         }
 
-        categoryToUpdate.setSlug(updateCategoryDto.slug());
-        categoryToUpdate.setActive(updateCategoryDto.isActive());
+        if(!categoryToUpdate.getSlug().equals(updateCategoryDto.slug()))
+            categoryToUpdate.setSlug(updateCategoryDto.slug());
+
+        if(categoryToUpdate.isActive() != updateCategoryDto.isActive())
+            categoryToUpdate.setActive(updateCategoryDto.isActive());
 
         return toAdminDto(categoryToUpdate, categoryTranslationToUpdate, toSimpleLanguagesMap(activeLangMap));
     }
