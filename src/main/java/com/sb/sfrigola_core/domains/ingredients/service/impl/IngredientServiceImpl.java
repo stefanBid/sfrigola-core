@@ -23,6 +23,7 @@ import com.sb.sfrigola_core.domains.ingredients.repository.IIngredientRepository
 import com.sb.sfrigola_core.domains.ingredients.service.IIngredientService;
 import com.sb.sfrigola_core.domains.languages.entity.Language;
 import com.sb.sfrigola_core.domains.languages.service.ILanguageDomainBridgeService;
+import com.sb.sfrigola_core.domains.tags.dto.view.TagDto;
 import com.sb.sfrigola_core.domains.tags.entity.Tag;
 import com.sb.sfrigola_core.domains.tags.service.ITagDomainBridgeService;
 import jakarta.annotation.Nullable;
@@ -140,7 +141,7 @@ public class IngredientServiceImpl implements IIngredientService {
                 .findFirst().orElse(null);
 
 
-        return toAdminDetailsDto(ingredient, ingredientTranslation);
+        return toAdminDetailsDto(ingredient, ingredientTranslation, locale);
     }
 
     @Override
@@ -311,7 +312,21 @@ public class IngredientServiceImpl implements IIngredientService {
                 .collect(Collectors.toMap(Map.Entry::getKey, e -> e.getValue().getName()));
     }
 
-    private IngredientDetailsAdminDto toAdminDetailsDto(Ingredient ingredient, @Nullable IngredientTranslation specificTranslation) {
+    private IngredientDetailsAdminDto toAdminDetailsDto(Ingredient ingredient, @Nullable IngredientTranslation specificTranslation, @NonNull String locale) {
+        var tagList = ingredient.getIngredientTags().stream()
+                .map(IngredientTag::getTag)
+                .map(tag -> {
+                    var tagTranslation = tag.getTranslations().stream()
+                            .filter(t -> t.getLanguage().getCode().equals(locale))
+                            .findFirst().orElse(null);
+                    return new TagDto(
+                            tag.getPublicId(),
+                            tag.getSlug(),
+                            tagTranslation != null ? tagTranslation.getLabel() : null
+                    );
+                })
+                .toList();
+
         return new IngredientDetailsAdminDto(
                 ingredient.getPublicId(),
                 ingredient.getSlug(),
@@ -321,7 +336,8 @@ public class IngredientServiceImpl implements IIngredientService {
                 ingredient.isVegetarian(),
                 ingredient.isVegan(),
                 ingredient.isGlutenFree(),
-                specificTranslation != null ? specificTranslation.getName() : null
+                specificTranslation != null ? specificTranslation.getName() : null,
+                tagList
         );
     }
 

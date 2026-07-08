@@ -45,6 +45,7 @@ public class TagDomainBridgeServiceImpl implements ITagDomainBridgeService {
             throw new NoTagFoundException(missingIds);
         }
 
+
         tags.forEach(tag -> {
             if (!allowedScopes.contains(tag.getScope())) {
                 throw new TagScopeNotAllowedException(tag.getPublicId(), tag.getScope());
