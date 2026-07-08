@@ -43,6 +43,8 @@ public class SecurityConfig {
     // Inject Paths
     @Qualifier("publicPath")
     private final List<String> publicPaths;
+    @Qualifier("publicGetPath")
+    private final List<String> publicGetPaths;
     @Qualifier("authPath")
     private final List<String> authPaths;
     @Qualifier("adminPath")
@@ -75,6 +77,7 @@ public class SecurityConfig {
                 .cors(corsConfig -> corsConfig.configurationSource(corsConfigurationSource()))
                 .authorizeHttpRequests(request -> {
                     publicPaths.forEach(path -> request.requestMatchers(path).permitAll());
+                    publicGetPaths.forEach(path -> request.requestMatchers(HttpMethod.GET, path).permitAll());
                     adminPaths.forEach(path -> request.requestMatchers(path).access(hasAuthorityWithHierarchy(SCUserRole.ROLE_ADMIN.getAuthority())));
                     authenticatedGetPaths.forEach(path -> request.requestMatchers(HttpMethod.GET, path).authenticated());
                     contributorPaths.forEach(path -> request.requestMatchers(path).access(hasAuthorityWithHierarchy(SCUserRole.ROLE_CONTRIBUTOR.getAuthority())));
@@ -86,7 +89,7 @@ public class SecurityConfig {
                         .authenticationEntryPoint(customAuthenticationEntryPoint)
                         .accessDeniedHandler(customAccessDeniedHandler)
                 )
-                .addFilterBefore(new JwtValidationFilter(env, objectMapper, publicPaths), BasicAuthenticationFilter.class)
+                .addFilterBefore(new JwtValidationFilter(env, objectMapper, publicPaths, publicGetPaths), BasicAuthenticationFilter.class)
                 .formLogin(AbstractHttpConfigurer::disable)
                 .httpBasic(Customizer.withDefaults())
                 .build();

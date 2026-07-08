@@ -37,7 +37,7 @@ public class RecipeController {
 
     private final IRecipeService recipeService;
 
-    // [Any authenticated role — USER, Contributor, Admin]
+    // [Public]
     @GetMapping(version = "1.0")
     public ResponseEntity<SCGeneralResponseDto<List<RecipeDto>, SCPagedOptionDto>> getAllRecipes(
             @Min(value = 0, message = SCRequestParamValidationCodeConstants.PAGE_MUST_BE_AT_LEAST_ZERO)

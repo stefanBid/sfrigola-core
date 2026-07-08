@@ -55,6 +55,18 @@ public class SecurityBeansConfig {
         );
     }
 
+    /**
+     * GET-only paths open to anyone, unauthenticated included. Checked before
+     * {@code contributorPath}/{@code adminPath} so a broader mutating rule on the
+     * same path (e.g. {@code POST /api/recipes}) does not get exposed as public too.
+     */
+    @Bean("publicGetPath")
+    public List<String> publicGetPath() {
+        return List.of(
+                "/api/recipes"
+        );
+    }
+
     @Bean("adminPath")
     public List<String> adminPath() {
         return List.of(

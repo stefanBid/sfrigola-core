@@ -45,6 +45,9 @@ public class JwtValidationFilter extends OncePerRequestFilter {
     @Qualifier("publicPath")
     private final List<String> publicPaths;
 
+    @Qualifier("publicGetPath")
+    private final List<String> publicGetPaths;
+
     @Override
     protected void doFilterInternal(@NonNull HttpServletRequest request, @NonNull HttpServletResponse response, @NonNull FilterChain filterChain) throws ServletException, IOException {
         if(env == null ){
@@ -115,7 +118,10 @@ public class JwtValidationFilter extends OncePerRequestFilter {
     @Override
     protected boolean shouldNotFilter(HttpServletRequest request) {
         String path = request.getServletPath();
-        return publicPaths.stream().anyMatch(publicPath -> pathMatcher.match(publicPath, path));
+        boolean isPublic = publicPaths.stream().anyMatch(publicPath -> pathMatcher.match(publicPath, path));
+        boolean isPublicGet = "GET".equalsIgnoreCase(request.getMethod())
+                && publicGetPaths.stream().anyMatch(publicGetPath -> pathMatcher.match(publicGetPath, path));
+        return isPublic || isPublicGet;
     }
 
 
