@@ -6,6 +6,7 @@ import com.sb.sfrigola_core.common.models.context.SCAuthUser;
 import com.sb.sfrigola_core.domains.users.entity.SCRole;
 import com.sb.sfrigola_core.domains.users.entity.SCUser;
 import com.sb.sfrigola_core.common.enums.SCUserRole;
+import com.sb.sfrigola_core.domains.users.exceptions.NoUserFoundException;
 import com.sb.sfrigola_core.domains.users.repository.ISCRoleRepository;
 import com.sb.sfrigola_core.domains.users.repository.ISCUserRepository;
 import com.sb.sfrigola_core.domains.users.service.ISCUserDomainBridgeService;
@@ -62,6 +63,13 @@ public class SCUserDomainBridgeServiceImpl implements ISCUserDomainBridgeService
         int updated = userRepository.updatePasswordByPublicId(publicId, newHashedPassword, Instant.now(), updatedBy);
         if (updated == 0)
             throw new SCNoRowsAffectedException("No rows were updated when trying to change password for user with id " + publicId);
+    }
+
+    @Override
+    public SCUser getUserEntityByPublicIdOrThrow(UUID publicId) {
+        return userRepository.findByPublicId(publicId).orElseThrow(
+                () -> new NoUserFoundException(publicId)
+        );
     }
 
     // =========================================================

@@ -152,6 +152,8 @@ public interface IIngredientRepository extends JpaRepository<Ingredient, Long> {
 
     Optional<Ingredient> findByPublicId(UUID publicId);
 
+    List<Ingredient> findByPublicIdIn(List<UUID> publicIds);
+
     @Query("""
             SELECT DISTINCT i FROM Ingredient i
             LEFT JOIN FETCH i.translations tr

@@ -61,7 +61,8 @@ public class SecurityBeansConfig {
                 "/api/users/admin/**",
                 "/api/categories/admin/**",
                 "/api/tags/admin/**",
-                "/api/ingredients/admin/**"
+                "/api/ingredients/admin/**",
+                "/api/recipes/admin/**"
         );
     }
 
@@ -70,11 +71,24 @@ public class SecurityBeansConfig {
         return List.of();
     }
 
+    /**
+     * GET-only paths accessible to any authenticated role (USER/CONTRIBUTOR/ADMIN),
+     * checked before {@code contributorPath}/{@code adminPath} so a broader mutating
+     * rule on the same path (e.g. {@code POST /api/recipes}) does not shadow it.
+     */
+    @Bean("authenticatedGetPath")
+    public List<String> authenticatedGetPath() {
+        return List.of(
+                "/api/recipes"
+        );
+    }
+
     @Bean("contributorPath")
     public List<String> contributorPath() {
         return List.of(
                 "/api/tags/**",
-                "/api/ingredients/**"
+                "/api/ingredients/**",
+                "/api/recipes/**"
         );
     }
 

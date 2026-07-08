@@ -9,6 +9,7 @@ import org.springframework.beans.factory.annotation.Qualifier;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
 import org.springframework.core.env.Environment;
+import org.springframework.http.HttpMethod;
 import org.springframework.security.access.hierarchicalroles.RoleHierarchy;
 import org.springframework.security.authentication.AuthenticationManager;
 import org.springframework.security.authentication.AuthenticationProvider;
@@ -50,6 +51,8 @@ public class SecurityConfig {
     private final List<String> userPaths;
     @Qualifier("contributorPath")
     private final List<String> contributorPaths;
+    @Qualifier("authenticatedGetPath")
+    private final List<String> authenticatedGetPaths;
 
     @Qualifier("allowedOriginsPaths")
     private final List<String> allowedOriginsPaths;
@@ -73,6 +76,7 @@ public class SecurityConfig {
                 .authorizeHttpRequests(request -> {
                     publicPaths.forEach(path -> request.requestMatchers(path).permitAll());
                     adminPaths.forEach(path -> request.requestMatchers(path).access(hasAuthorityWithHierarchy(SCUserRole.ROLE_ADMIN.getAuthority())));
+                    authenticatedGetPaths.forEach(path -> request.requestMatchers(HttpMethod.GET, path).authenticated());
                     contributorPaths.forEach(path -> request.requestMatchers(path).access(hasAuthorityWithHierarchy(SCUserRole.ROLE_CONTRIBUTOR.getAuthority())));
                     userPaths.forEach(path -> request.requestMatchers(path).access(hasAuthorityWithHierarchy(SCUserRole.ROLE_USER.getAuthority())));
                     authPaths.forEach(path -> request.requestMatchers(path).authenticated());
