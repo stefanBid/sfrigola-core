@@ -33,7 +33,7 @@ public interface ICategoryService {
      * @throws LocaleNotActiveException
      *         if {@code locale} does not match an active language (thrown by the languages domain bridge)
      */
-    SCPagedResult<CategoryPublicViewDto> getAll(SCFilterQuery<Void> filterQuery, String locale);
+    SCPagedResult<CategoryPublicViewDto> getAll(SCFilterQuery<Void> filterQuery, @NonNull String locale);
 
     /**
      * Returns a paginated admin preview of ALL categories (regardless of translation coverage for

@@ -37,7 +37,7 @@ public class CategoryServiceImpl implements ICategoryService {
     private final ILanguageDomainBridgeService languageDomainBridgeService;
 
     @Override
-    public SCPagedResult<CategoryPublicViewDto> getAll(SCFilterQuery<Void> filterQuery, String locale) {
+    public SCPagedResult<CategoryPublicViewDto> getAll(SCFilterQuery<Void> filterQuery, @NonNull String locale) {
         languageDomainBridgeService.validateLocaleIsActiveOrThrow(locale);
 
         var pageable = SCPaginationUtils.toPageable(filterQuery, true);

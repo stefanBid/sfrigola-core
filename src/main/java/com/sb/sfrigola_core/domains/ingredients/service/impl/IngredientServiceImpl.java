@@ -3,17 +3,19 @@ package com.sb.sfrigola_core.domains.ingredients.service.impl;
 import com.sb.sfrigola_core.common.models.contracts.SCFilterQuery;
 import com.sb.sfrigola_core.common.models.contracts.SCPagedResult;
 import com.sb.sfrigola_core.common.util.SCPaginationUtils;
-import com.sb.sfrigola_core.domains.ingredients.dto.IngredientDto;
-import com.sb.sfrigola_core.domains.ingredients.dto.admin.IngredientDetailsAdminDto;
-import com.sb.sfrigola_core.domains.ingredients.dto.admin.IngredientInputDto;
-import com.sb.sfrigola_core.domains.ingredients.dto.admin.IngredientPreviewAdminDto;
-import com.sb.sfrigola_core.domains.ingredients.dto.admin.IngredientTranslationDetailsAdminDto;
-import com.sb.sfrigola_core.domains.ingredients.dto.admin.IngredientTranslationInputDto;
+import com.sb.sfrigola_core.domains.ingredients.dto.view.IngredientDto;
+import com.sb.sfrigola_core.domains.ingredients.dto.view.IngredientDetailsAdminDto;
+import com.sb.sfrigola_core.domains.ingredients.dto.input.AddIngredientDto;
+import com.sb.sfrigola_core.domains.ingredients.dto.input.UpdateIngredientDto;
+import com.sb.sfrigola_core.domains.ingredients.dto.view.IngredientPreviewAdminDto;
+import com.sb.sfrigola_core.domains.ingredients.dto.input.IngredientTranslationInputDto;
 import com.sb.sfrigola_core.domains.ingredients.entity.Ingredient;
+import com.sb.sfrigola_core.domains.ingredients.entity.IngredientTag;
 import com.sb.sfrigola_core.domains.ingredients.entity.IngredientTranslation;
 import com.sb.sfrigola_core.domains.ingredients.exception.DuplicateIngredientLocaleException;
 import com.sb.sfrigola_core.domains.ingredients.exception.IngredientLanguageNotActiveException;
 import com.sb.sfrigola_core.domains.ingredients.exception.IngredientSlugAlreadyExistsException;
+import com.sb.sfrigola_core.domains.ingredients.exception.MissingIngredientLocalesException;
 import com.sb.sfrigola_core.domains.ingredients.exception.NoIngredientFoundException;
 import com.sb.sfrigola_core.domains.ingredients.enums.IngredientSortField;
 import com.sb.sfrigola_core.domains.ingredients.models.IngredientSpecificFilter;
@@ -21,8 +23,11 @@ import com.sb.sfrigola_core.domains.ingredients.repository.IIngredientRepository
 import com.sb.sfrigola_core.domains.ingredients.service.IIngredientService;
 import com.sb.sfrigola_core.domains.languages.entity.Language;
 import com.sb.sfrigola_core.domains.languages.service.ILanguageDomainBridgeService;
+import com.sb.sfrigola_core.domains.tags.entity.Tag;
+import com.sb.sfrigola_core.domains.tags.service.ITagDomainBridgeService;
 import jakarta.annotation.Nullable;
 import lombok.RequiredArgsConstructor;
+import org.jspecify.annotations.NonNull;
 import org.springframework.data.domain.Page;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
@@ -37,15 +42,21 @@ public class IngredientServiceImpl implements IIngredientService {
 
     private final IIngredientRepository ingredientRepository;
     private final ILanguageDomainBridgeService languageDomainBridgeService;
+    private final ITagDomainBridgeService tagDomainBridgeService;
 
     @Override
-    public SCPagedResult<IngredientDto> getAll(SCFilterQuery<Void> filterQuery, String locale) {
+    public SCPagedResult<IngredientDto> getAll(SCFilterQuery<Void> filterQuery, @NonNull String locale) {
+        // LOCALE CHECK
+        languageDomainBridgeService.validateLocaleIsActiveOrThrow(locale);
+
         var pageable = SCPaginationUtils.toPageable(filterQuery);
 
+        // Step 1: Fetch IDs of Ingredients for the given locale
         var ingredientIds = ingredientRepository.findIdsByFiltersAndLocaleAsc(
                 locale, filterQuery.searchKey(), null, null, null, null, null, null, pageable
         );
 
+        // Step 2: Fetch and restore the ordered ID sequence from step 1
         if (ingredientIds.hasContent()) {
             var ids = ingredientIds.getContent();
             Map<Long, Ingredient> byId = ingredientRepository.findByIdsWithSpecificTranslation(ids, locale)
@@ -60,8 +71,11 @@ public class IngredientServiceImpl implements IIngredientService {
     }
 
     @Override
-    public SCPagedResult<IngredientPreviewAdminDto> getAllAdmin(SCFilterQuery<IngredientSpecificFilter> filterQuery, @Nullable String locale) {
-        var totalActiveLanguages = languageDomainBridgeService.getAllActiveLanguagesSimpleMap().size();
+    public SCPagedResult<IngredientPreviewAdminDto> getAllAdmin(SCFilterQuery<IngredientSpecificFilter> filterQuery, @NonNull String locale) {
+        var activeLanguagesSimpleMap = languageDomainBridgeService.getAllActiveLanguagesSimpleMap();
+
+        // LOCALE CHECK
+        languageDomainBridgeService.validateLocaleIsActiveByActiveLanguagesMapKeysOrThrow(activeLanguagesSimpleMap.keySet(), locale);
 
         // SORT BY SWITCHER
         // CASE: SortBy is null or is NAME → "name" lives on the translation join, not on Ingredient,
@@ -75,16 +89,9 @@ public class IngredientServiceImpl implements IIngredientService {
         // CASE: Sort is DESC call query with hardcoded ORDER BY DESC
         boolean descending = filterQuery.sort() != null && !filterQuery.sort().isAsc();
 
-        // LOCALE SWITCHER
-        // CASE: Locale is null
-        // RESULT: All ingredients returned; preview = first translation in collection
-        // CASE: Locale has value
-        // RESULT: Only ingredients that have a translation for the given locale; preview = that specific translation
-        boolean hasLocale = locale != null && !locale.isBlank();
-
         // STEP 1: Obtain ids
         var filterOtherExtracted = filterQuery.other();
-        var category = filterOtherExtracted != null ? filterOtherExtracted.category() : null;
+        var foodGroup = filterOtherExtracted != null && filterOtherExtracted.foodGroup() != null ? filterOtherExtracted.foodGroup().getValue() : null;
         var isVegetarian = filterOtherExtracted != null ? filterOtherExtracted.isVegetarian() : null;
         var isVegan = filterOtherExtracted != null ? filterOtherExtracted.isVegan() : null;
         var isGlutenFree = filterOtherExtracted != null ? filterOtherExtracted.isGlutenFree() : null;
@@ -95,18 +102,11 @@ public class IngredientServiceImpl implements IIngredientService {
         Page<Long> idsPage;
 
         if (sortByName) {
-            if (descending)
-                idsPage = hasLocale
-                        ? ingredientRepository.findIdsByFiltersAndLocaleDesc(locale, filterQuery.searchKey(), category, isVegetarian, isVegan, isGlutenFree, minCalories, maxCalories, pageable)
-                        : ingredientRepository.findIdsByFiltersDesc(filterQuery.searchKey(), category, isVegetarian, isVegan, isGlutenFree, minCalories, maxCalories, pageable);
-            else
-                idsPage = hasLocale
-                        ? ingredientRepository.findIdsByFiltersAndLocaleAsc(locale, filterQuery.searchKey(), category, isVegetarian, isVegan, isGlutenFree, minCalories, maxCalories, pageable)
-                        : ingredientRepository.findIdsByFiltersAsc(filterQuery.searchKey(), category, isVegetarian, isVegan, isGlutenFree, minCalories, maxCalories, pageable);
+                idsPage = descending
+                        ? ingredientRepository.findIdsByFiltersAndLocaleDesc(locale, filterQuery.searchKey(), foodGroup, isVegetarian, isVegan, isGlutenFree, minCalories, maxCalories, pageable)
+                        : ingredientRepository.findIdsByFiltersAndLocaleAsc(locale, filterQuery.searchKey(), foodGroup, isVegetarian, isVegan, isGlutenFree, minCalories, maxCalories, pageable);
         } else {
-            idsPage = hasLocale
-                    ? ingredientRepository.findIdsByFiltersAndLocaleOtherSort(locale, filterQuery.searchKey(), category, isVegetarian, isVegan, isGlutenFree, minCalories, maxCalories, pageable)
-                    : ingredientRepository.findIdsByFiltersOtherSort(filterQuery.searchKey(), category, isVegetarian, isVegan, isGlutenFree, minCalories, maxCalories, pageable);
+            idsPage = ingredientRepository.findIdsByFiltersAndLocaleOtherSort(locale, filterQuery.searchKey(), foodGroup, isVegetarian, isVegan, isGlutenFree, minCalories, maxCalories, pageable);
         }
 
         if (idsPage.hasContent()) {
@@ -116,155 +116,153 @@ public class IngredientServiceImpl implements IIngredientService {
             List<Ingredient> ordered = ids.stream().map(byId::get).filter(Objects::nonNull).toList();
 
             return new SCPagedResult<>(
-                    ordered.stream().map(ingredient -> toAdminDto(ingredient, resolveNamePreview(ingredient, locale), totalActiveLanguages)).toList(),
+                    ordered.stream().map(ingredient -> {
+                        IngredientTranslation ingredientTranslation = ingredient.getTranslations().stream().filter(t -> t.getLanguage().getCode().equals(locale)).findFirst().orElse(null);
+                        return toAdminDto (ingredient, ingredientTranslation, activeLanguagesSimpleMap);
+                    }).toList(),
                     SCPaginationUtils.toPagedOption(idsPage)
             );
         }
         return SCPagedResult.empty();
     }
 
-    private String resolveNamePreview(Ingredient ingredient, @Nullable String locale) {
-        IngredientTranslation translation = locale != null
-                ? ingredient.getTranslations().stream().filter(t -> t.getLanguage().getCode().equals(locale)).findFirst().orElse(null)
-                : ingredient.getTranslations().stream().findFirst().orElse(null);
-        return translation != null ? translation.getName() : null;
-    }
-
     @Override
-    public IngredientDetailsAdminDto getByPublicIdAdmin(UUID publicId) {
-        var activeLanguages = new HashMap<>(languageDomainBridgeService.getAllActiveLanguagesSimpleMap());
-        var ingredient = ingredientRepository.findByPublicIdWithAllTranslation(publicId).orElseThrow(
+    public IngredientDetailsAdminDto getByPublicIdAdmin(UUID publicId, @NonNull String locale) {
+        languageDomainBridgeService.validateLocaleIsActiveOrThrow(locale);
+
+        // ID CHECK
+        var ingredient = ingredientRepository.findByPublicId(publicId).orElseThrow(
                 () -> new NoIngredientFoundException(publicId)
         );
-        // Preparing Details for this Ingredient
-        int totalLocalization = ingredient.getTranslations().size();
-        int totalMissingLocalization = activeLanguages.size() - totalLocalization;
-        ArrayList<IngredientTranslationDetailsAdminDto> missingTranslation = new ArrayList<>();
 
-        // Populate missing Translation array only if there are missing languages
-        if (totalMissingLocalization > 0) {
-            // Remove from the activeLanguages list all languages that already have a translation for this ingredient
-            ingredient.getTranslations().forEach(t -> activeLanguages.remove(t.getLanguage().getCode()));
-            activeLanguages.forEach((code, name) -> missingTranslation.add(new IngredientTranslationDetailsAdminDto(code, name, null)));
-        }
-        return toAdminDetailsDto(ingredient, missingTranslation);
+        var ingredientTranslation = ingredient.getTranslations().stream()
+                .filter(t -> t.getLanguage().getCode().equals(locale))
+                .findFirst().orElse(null);
+
+
+        return toAdminDetailsDto(ingredient, ingredientTranslation);
     }
 
     @Override
     @Transactional
-    public IngredientPreviewAdminDto createIngredient(IngredientInputDto inputDto) {
+    public IngredientPreviewAdminDto createNewIngredient(AddIngredientDto addIngredientDto, @NonNull String locale) {
         // Guard for existing slug
-        if (ingredientRepository.existsBySlug(inputDto.slug()))
-            throw new IngredientSlugAlreadyExistsException(inputDto.slug());
+        if (ingredientRepository.existsBySlug(addIngredientDto.slug()))
+            throw new IngredientSlugAlreadyExistsException(addIngredientDto.slug());
 
-        // Guard for duplicate locale in input — fail fast before building entities
+
+        // TRANSLATION CHECKS:
+        // 1) No duplicated translation
+        // 2) A new ingredient must have all active languages covered in translation, otherwise it is not valid
+        var activeLanguageMap = languageDomainBridgeService.getActiveLanguageEntitiesMap();
+        var activeCodeSet = activeLanguageMap.keySet().stream().map(String::toLowerCase).collect(Collectors.toSet());
+
         Set<String> seenLocales = new HashSet<>();
-        inputDto.translations().forEach(t -> {
+        addIngredientDto.translations().forEach(t -> {
             if (!seenLocales.add(t.langCode()))
                 throw new DuplicateIngredientLocaleException(t.langCode());
         });
 
+        if (!activeCodeSet.containsAll(seenLocales) || activeCodeSet.size() != seenLocales.size())
+            throw new MissingIngredientLocalesException();
+
         Ingredient newIngredient = new Ingredient();
 
-        var activeLanguageMap = languageDomainBridgeService.getActiveLanguageEntitiesMap();
-        List<IngredientTranslation> translations = inputDto.translations().stream()
+        List<IngredientTranslation> translations = addIngredientDto.translations().stream()
                 .map(t -> {
-                    Language lang = activeLanguageMap.get(t.langCode());
-                    if (lang == null) throw new IngredientLanguageNotActiveException(t.langCode());
+                    Language lang = languageDomainBridgeService.getLangFromEntitiesMapFromKeyOrThrow(activeLanguageMap, t.langCode());
                     return toIngredientTranslation(t, lang);
                 })
                 .collect(Collectors.toCollection(ArrayList::new));
         translations.forEach(t -> t.setIngredient(newIngredient));
 
-        newIngredient.setSlug(inputDto.slug());
-        newIngredient.setCategory(inputDto.category());
-        newIngredient.setCaloriesPer100g(inputDto.caloriesPer100g());
-        newIngredient.setAllergens(inputDto.allergens());
-        newIngredient.setVegetarian(inputDto.isVegetarian());
-        newIngredient.setVegan(inputDto.isVegan());
-        newIngredient.setGlutenFree(inputDto.isGlutenFree());
+        newIngredient.setSlug(addIngredientDto.slug());
+        newIngredient.setFoodGroup(addIngredientDto.foodGroup());
+        newIngredient.setCaloriesPer100g(addIngredientDto.caloriesPer100g());
+        newIngredient.setAllergens(addIngredientDto.allergens());
+        newIngredient.setVegetarian(addIngredientDto.isVegetarian());
+        newIngredient.setVegan(addIngredientDto.isVegan());
+        newIngredient.setGlutenFree(addIngredientDto.isGlutenFree());
         newIngredient.setTranslations(translations);
+
+        // TAGS MANAGEMENT
+        List<Tag> tagsForIngredient = tagDomainBridgeService.getTagsUsableForIngredients(addIngredientDto.ingredientTagsIds());
+        List<IngredientTag> ingredientTags = toIngredientTags(tagsForIngredient, newIngredient);
+        newIngredient.setIngredientTags(ingredientTags);
 
         ingredientRepository.save(newIngredient);
 
-        var dataForTranslationPreview = inputDto.translations().stream().findFirst().orElse(null);
-        var namePreview = dataForTranslationPreview != null ? dataForTranslationPreview.name() : null;
-
-        return toAdminDto(newIngredient, namePreview, activeLanguageMap.size());
+        return toAdminDto(
+                newIngredient,
+                translations.stream().filter(t -> t.getLanguage().getCode().equals(locale)).findFirst().orElse(null),
+                toSimpleLanguagesMap(activeLanguageMap));
     }
 
     @Override
     @Transactional
-    public IngredientPreviewAdminDto updateIngredient(UUID publicId, IngredientInputDto inputDto) {
+    public IngredientPreviewAdminDto updateIngredient(UUID publicId, UpdateIngredientDto updateIngredientDto) {
         var ingredientToUpdate = ingredientRepository.findByPublicIdWithAllTranslation(publicId).orElseThrow(
                 () -> new NoIngredientFoundException(publicId)
         );
 
-        // Check: new slug not already used by a different ingredient
-        if (!inputDto.slug().equals(ingredientToUpdate.getSlug()) && ingredientRepository.existsBySlug(inputDto.slug()))
-            throw new IngredientSlugAlreadyExistsException(inputDto.slug());
+        // SLUG CHECK:
+        if (!updateIngredientDto.slug().equals(ingredientToUpdate.getSlug()) && ingredientRepository.existsBySlug(updateIngredientDto.slug()))
+            throw new IngredientSlugAlreadyExistsException(updateIngredientDto.slug());
 
-        // Check: duplicate locale in input — fail fast before touching any translation
-        Set<String> seenLocales = new HashSet<>();
-        inputDto.translations().forEach(t -> {
-            if (!seenLocales.add(t.langCode())) throw new DuplicateIngredientLocaleException(t.langCode());
-        });
+        // TRANSLATION CHECK: Update translation is of an active locale
+        var activeLangMap = languageDomainBridgeService.getActiveLanguageEntitiesMap();
+        Language lang = activeLangMap.get(updateIngredientDto.specificTranslation().langCode());
+        if (lang == null) throw new IngredientLanguageNotActiveException(updateIngredientDto.specificTranslation().langCode());
 
-        // Prepare Translation update
-        var activeLanguagesMap = languageDomainBridgeService.getActiveLanguageEntitiesMap();
-        Map<String, IngredientTranslation> ingredientToUpdateTranslationMapped = ingredientToUpdate.getTranslations().stream()
-                .collect(Collectors.toMap(t -> t.getLanguage().getCode(), t -> t));
+        var ingredientTranslationToUpdate = ingredientToUpdate.getTranslations().stream()
+                .filter(t -> t.getLanguage().getCode().equals(updateIngredientDto.specificTranslation().langCode()))
+                .findFirst().orElse(null);
 
-        List<IngredientTranslation> toRemove = new ArrayList<>();
-
-        for (IngredientTranslationInputDto input : inputDto.translations()) {
-            Language lang = activeLanguagesMap.get(input.langCode());
-            if (lang == null) throw new IngredientLanguageNotActiveException(input.langCode());
-
-            boolean deleteSignal = input.name() == null || input.name().isBlank();
-            IngredientTranslation extractedIngredientTranslation = ingredientToUpdateTranslationMapped.get(input.langCode());
-            if (deleteSignal) {
-                if (extractedIngredientTranslation != null) toRemove.add(extractedIngredientTranslation);
-            } else if (extractedIngredientTranslation != null) {
-                // Update existing translation
-                if (Objects.equals(extractedIngredientTranslation.getName(), input.name())) continue; // No change
-                extractedIngredientTranslation.setName(input.name());
-            } else {
-                // Create new translation
-                IngredientTranslation newTranslation = new IngredientTranslation();
-                newTranslation.setIngredient(ingredientToUpdate);
-                newTranslation.setLanguage(lang);
-                newTranslation.setName(input.name());
-                ingredientToUpdate.getTranslations().add(newTranslation);
-            }
+        if (ingredientTranslationToUpdate == null) {
+            // New Translation
+            ingredientTranslationToUpdate = new IngredientTranslation();
+            ingredientTranslationToUpdate.setIngredient(ingredientToUpdate);
+            ingredientTranslationToUpdate.setLanguage(lang);
+            ingredientTranslationToUpdate.setName(updateIngredientDto.specificTranslation().name());
+            ingredientToUpdate.getTranslations().add(ingredientTranslationToUpdate);
+        } else if (!ingredientTranslationToUpdate.getName().equals(updateIngredientDto.specificTranslation().name())) {
+            // Update existing translation — only touch fields that actually changed
+            ingredientTranslationToUpdate.setName(updateIngredientDto.specificTranslation().name());
         }
 
-        ingredientToUpdate.getTranslations().removeAll(toRemove);
-        ingredientToUpdate.setSlug(inputDto.slug());
-        ingredientToUpdate.setCategory(inputDto.category());
-        ingredientToUpdate.setCaloriesPer100g(inputDto.caloriesPer100g());
-        ingredientToUpdate.setAllergens(inputDto.allergens());
-        ingredientToUpdate.setVegetarian(inputDto.isVegetarian());
-        ingredientToUpdate.setVegan(inputDto.isVegan());
-        ingredientToUpdate.setGlutenFree(inputDto.isGlutenFree());
+        if (!ingredientToUpdate.getSlug().equals(updateIngredientDto.slug()))
+            ingredientToUpdate.setSlug(updateIngredientDto.slug());
+        if (!Objects.equals(ingredientToUpdate.getFoodGroup(), updateIngredientDto.foodGroup()))
+            ingredientToUpdate.setFoodGroup(updateIngredientDto.foodGroup());
+        if (!Objects.equals(ingredientToUpdate.getCaloriesPer100g(), updateIngredientDto.caloriesPer100g()))
+            ingredientToUpdate.setCaloriesPer100g(updateIngredientDto.caloriesPer100g());
+        if (!Arrays.equals(ingredientToUpdate.getAllergens(), updateIngredientDto.allergens()))
+            ingredientToUpdate.setAllergens(updateIngredientDto.allergens());
+        if (ingredientToUpdate.isVegetarian() != updateIngredientDto.isVegetarian())
+            ingredientToUpdate.setVegetarian(updateIngredientDto.isVegetarian());
+        if (ingredientToUpdate.isVegan() != updateIngredientDto.isVegan())
+            ingredientToUpdate.setVegan(updateIngredientDto.isVegan());
+        if (ingredientToUpdate.isGlutenFree() != updateIngredientDto.isGlutenFree())
+            ingredientToUpdate.setGlutenFree(updateIngredientDto.isGlutenFree());
 
-        var namePreview = ingredientToUpdate.getTranslations().stream().findFirst().map(IngredientTranslation::getName).orElse(null);
+        // TAGS MANAGEMENT — full replace of the ingredient's tag set
+        List<Tag> tagsForIngredient = tagDomainBridgeService.getTagsUsableForIngredients(updateIngredientDto.ingredientTagsIds());
+        List<IngredientTag> newIngredientTags = toIngredientTags(tagsForIngredient, ingredientToUpdate);
+        ingredientToUpdate.getIngredientTags().clear();
+        ingredientToUpdate.getIngredientTags().addAll(newIngredientTags);
 
-        return toAdminDto(ingredientToUpdate, namePreview, activeLanguagesMap.size());
+        return toAdminDto(ingredientToUpdate, ingredientTranslationToUpdate, toSimpleLanguagesMap(activeLangMap));
     }
 
     @Override
     @Transactional
-    public IngredientPreviewAdminDto deleteIngredient(UUID publicId) {
-        var ingredientToDelete = ingredientRepository.findByPublicIdWithAllTranslation(publicId).orElseThrow(
+    public UUID deleteIngredient(UUID publicId) {
+        var ingredientToDelete = ingredientRepository.findByPublicId(publicId).orElseThrow(
                 () -> new NoIngredientFoundException(publicId)
         );
 
-        var totalActiveLanguages = languageDomainBridgeService.getAllActiveLanguagesSimpleMap().size();
-        var namePreview = ingredientToDelete.getTranslations().stream().findFirst().map(IngredientTranslation::getName).orElse(null);
-
         ingredientRepository.delete(ingredientToDelete);
-        return toAdminDto(ingredientToDelete, namePreview, totalActiveLanguages);
+        return ingredientToDelete.getPublicId();
     }
 
     // =========================================================
@@ -278,7 +276,7 @@ public class IngredientServiceImpl implements IIngredientService {
                 ingredient.getPublicId(),
                 ingredient.getSlug(),
                 translation.getName(),
-                ingredient.getCategory(),
+                ingredient.getFoodGroup(),
                 ingredient.getCaloriesPer100g(),
                 ingredient.getAllergens(),
                 ingredient.isVegetarian(),
@@ -287,38 +285,55 @@ public class IngredientServiceImpl implements IIngredientService {
         );
     }
 
-    private IngredientPreviewAdminDto toAdminDto(Ingredient ingredient, String namePreview, int totalActiveLanguages) {
-        var translationCount = ingredient.getTranslations().size();
+    private IngredientPreviewAdminDto toAdminDto(Ingredient ingredient, IngredientTranslation ingredientTranslation, Map<String, String> activeLanguageMap) {
+        Map<String, String> translatedLanguages = ingredient.getTranslations().stream()
+                .map(t -> t.getLanguage().getCode())
+                .filter(activeLanguageMap::containsKey)
+                .collect(Collectors.toMap(code -> code, activeLanguageMap::get));
+
+        String namePreview = ingredientTranslation != null ? ingredientTranslation.getName() : null;
         return new IngredientPreviewAdminDto(
                 ingredient.getPublicId(),
                 ingredient.getSlug(),
-                ingredient.getCategory(),
+                ingredient.getFoodGroup(),
                 ingredient.getCaloriesPer100g(),
                 ingredient.getAllergens(),
                 ingredient.isVegetarian(),
                 ingredient.isVegan(),
                 ingredient.isGlutenFree(),
                 namePreview,
-                translationCount,
-                totalActiveLanguages - translationCount
+                translatedLanguages
         );
     }
 
-    private IngredientDetailsAdminDto toAdminDetailsDto(Ingredient ingredient, List<IngredientTranslationDetailsAdminDto> missingTranslation) {
-        var extractedPreview = ingredient.getTranslations().stream().findFirst().orElse(null);
+    private Map<String, String> toSimpleLanguagesMap(Map<String, Language> languageEntitiesMap) {
+        return languageEntitiesMap.entrySet().stream()
+                .collect(Collectors.toMap(Map.Entry::getKey, e -> e.getValue().getName()));
+    }
+
+    private IngredientDetailsAdminDto toAdminDetailsDto(Ingredient ingredient, @Nullable IngredientTranslation specificTranslation) {
         return new IngredientDetailsAdminDto(
                 ingredient.getPublicId(),
                 ingredient.getSlug(),
-                ingredient.getCategory(),
+                ingredient.getFoodGroup(),
                 ingredient.getCaloriesPer100g(),
                 ingredient.getAllergens(),
                 ingredient.isVegetarian(),
                 ingredient.isVegan(),
                 ingredient.isGlutenFree(),
-                extractedPreview != null ? extractedPreview.getName() : null,
-                ingredient.getTranslations().stream().map(this::toIngredientTranslationDetails).toList(),
-                missingTranslation
+                specificTranslation != null ? specificTranslation.getName() : null
         );
+    }
+
+    private List<IngredientTag> toIngredientTags(List<Tag> tags, Ingredient ingredient) {
+        return tags.stream()
+                .map(tag -> {
+                    IngredientTag ingredientTag = new IngredientTag();
+                    ingredientTag.setIngredient(ingredient);
+                    ingredientTag.setTag(tag);
+                    return ingredientTag;
+                })
+                .collect(Collectors.toList());
     }
 
     private IngredientTranslation toIngredientTranslation(IngredientTranslationInputDto translationInputDto, Language lang) {
@@ -326,13 +341,5 @@ public class IngredientServiceImpl implements IIngredientService {
         translation.setLanguage(lang);
         translation.setName(translationInputDto.name());
         return translation;
-    }
-
-    private IngredientTranslationDetailsAdminDto toIngredientTranslationDetails(IngredientTranslation translation) {
-        return new IngredientTranslationDetailsAdminDto(
-                translation.getLanguage().getCode(),
-                translation.getLanguage().getName(),
-                translation.getName()
-        );
     }
 }

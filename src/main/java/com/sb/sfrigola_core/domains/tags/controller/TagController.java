@@ -37,8 +37,7 @@ public class TagController {
 
     private final ITagService tagService;
 
-    // CONTRIBUTOR CONTROLLER
-
+    // [Contributor, Admin]
     @GetMapping(version = "1.0")
     public ResponseEntity<SCGeneralResponseDto<List<TagDto>, SCPagedOptionDto>> getAllTags(
             @Min(value = 0, message = SCRequestParamValidationCodeConstants.PAGE_MUST_BE_AT_LEAST_ZERO)
@@ -60,6 +59,7 @@ public class TagController {
         return ResponseEntity.ok(SCGeneralResponseDto.success(paginatedTags.content(), paginatedTags.pagedOptionDto()));
     }
 
+    // [Contributor, Admin]
     @PostMapping(value = "/suggest", version = "1.0")
     public ResponseEntity<SCGeneralResponseDto<SuggestTagDto, Void>> suggestNewTag(
             @RequestBody @Valid SuggestTagDto newTagSuggested,
@@ -69,8 +69,7 @@ public class TagController {
         return ResponseEntity.ok(SCGeneralResponseDto.success(suggested));
     }
 
-    // ADMIN CONTROLLER
-
+    // [Admin]
     @GetMapping(value = "/admin", version = "1.0")
     public ResponseEntity<SCGeneralResponseDto<List<TagPreviewAdminDto>, SCPagedOptionDto>> getAllTagsAdmin(
             @Min(value = 0, message = SCRequestParamValidationCodeConstants.PAGE_MUST_BE_AT_LEAST_ZERO)
@@ -79,7 +78,7 @@ public class TagController {
             @RequestParam(value = "take", required = false, defaultValue = "10") int take,
             @RequestParam(value = "sort", required = false, defaultValue = "asc") String sort,
             @RequestParam(value = "sortBy", required = false) String sortBy,
-            @RequestParam(required = false) String locale,
+            @RequestParam(required = false) @NotBlank(message = SCRequestParamValidationCodeConstants.LOCALE_MUST_NOT_BE_BLANK) String locale,
             @RequestParam(value = "searchKey", required = false) String searchKey,
             @RequestParam(required = false) String status,
             @RequestParam(required = false) String type,
@@ -96,6 +95,7 @@ public class TagController {
         return ResponseEntity.ok(SCGeneralResponseDto.success(paginatedTags.content(), paginatedTags.pagedOptionDto()));
     }
 
+    // [Admin]
     @GetMapping(value = "/admin/{publicId}", version = "1.0")
     public ResponseEntity<SCGeneralResponseDto<TagDetailsAdminDto, Void>> getTagByPublicIdAdmin(
             @PathVariable("publicId") UUID publicId,
@@ -105,6 +105,7 @@ public class TagController {
       return ResponseEntity.ok(SCGeneralResponseDto.success(tagDetails));
     }
 
+    // [Admin]
     @PostMapping(value = "/admin", version = "1.0")
     public ResponseEntity<SCGeneralResponseDto<TagPreviewAdminDto, Void>> createTag(
             @RequestBody @Valid AddTagDto addTagDto,
@@ -114,6 +115,7 @@ public class TagController {
         return ResponseEntity.ok(SCGeneralResponseDto.success(createdTag));
     }
 
+    // [Admin]
     @PatchMapping(value = "/admin/{publicId}/status/{status}", version = "1.0")
     public ResponseEntity<SCGeneralResponseDto<String, Void>> updateTagStatus(
             @PathVariable("publicId") UUID publicId,
@@ -123,6 +125,7 @@ public class TagController {
         return ResponseEntity.ok(SCGeneralResponseDto.successMutation("Tag status updated successfully"));
     }
 
+    // [Admin]
     @PutMapping(value = "/admin/{publicId}", version = "1.0")
     public ResponseEntity<SCGeneralResponseDto<TagPreviewAdminDto, Void>> updateTag(
             @PathVariable("publicId") UUID publicId,
@@ -132,6 +135,7 @@ public class TagController {
         return ResponseEntity.ok(SCGeneralResponseDto.success(updated));
     }
 
+    // [Admin]
     @DeleteMapping(value = "/admin/{publicId}", version = "1.0")
     public ResponseEntity<SCGeneralResponseDto<UUID, Void>> deleteTag(
             @PathVariable("publicId") UUID publicId

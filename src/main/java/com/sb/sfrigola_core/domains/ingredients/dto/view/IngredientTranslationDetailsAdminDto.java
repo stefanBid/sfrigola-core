@@ -1,4 +1,4 @@
-package com.sb.sfrigola_core.domains.ingredients.dto.admin;
+package com.sb.sfrigola_core.domains.ingredients.dto.view;
 
 import java.io.Serializable;
 

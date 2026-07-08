@@ -2,6 +2,7 @@ package com.sb.sfrigola_core.domains.languages.service;
 
 import com.sb.sfrigola_core.domains.languages.entity.Language;
 import com.sb.sfrigola_core.domains.languages.exception.LocaleNotActiveException;
+import org.jspecify.annotations.NonNull;
 
 import java.util.Map;
 import java.util.Set;
@@ -46,7 +47,7 @@ public interface ILanguageDomainBridgeService {
      * @throws LocaleNotActiveException
      *         if no active language exists with the given code
      */
-    void validateLocaleIsActiveOrThrow(String locale);
+    void validateLocaleIsActiveOrThrow(@NonNull String locale);
 
     /**
      * Validates that {@code locale} is present among {@code activeLanguagesKeys}, for cross-domain
@@ -58,7 +59,7 @@ public interface ILanguageDomainBridgeService {
      * @throws LocaleNotActiveException
      *         if {@code locale} is not contained in {@code activeLanguagesKeys}
      */
-    void validateLocaleIsActiveByActiveLanguagesMapKeysOrThrow(Set<String> activeLanguagesKeys, String locale);
+    void validateLocaleIsActiveByActiveLanguagesMapKeysOrThrow(Set<String> activeLanguagesKeys, @NonNull String locale);
 
     /**
      * Returns the {@link com.sb.sfrigola_core.domains.languages.entity.Language} entity for {@code locale}
@@ -71,6 +72,6 @@ public interface ILanguageDomainBridgeService {
      * @throws LocaleNotActiveException
      *        if {@code locale} is not contained in {@code activeLanguagesMap}
      */
-    Language getLangFromEntitiesMapFromKeyOrThrow(Map<String, Language> activeLanguagesMap, String locale);
+    Language getLangFromEntitiesMapFromKeyOrThrow(Map<String, Language> activeLanguagesMap, @NonNull String locale);
 
 }

@@ -6,9 +6,6 @@ public class IngredientValidationCodeConstants {
         throw new AssertionError("Cannot instantiate IngredientValidationCodeConstants");
     }
 
-    // --- CATEGORY ---
-    public static final String CATEGORY_TOO_LONG           = "CATEGORY_TOO_LONG";
-
     // --- CALORIES ---
     public static final String CALORIES_MUST_BE_POSITIVE   = "CALORIES_MUST_BE_POSITIVE";
 

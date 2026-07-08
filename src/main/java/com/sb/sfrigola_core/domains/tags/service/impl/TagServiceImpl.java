@@ -43,7 +43,7 @@ public class TagServiceImpl implements ITagService {
     private final ILanguageDomainBridgeService languageDomainBridgeService;
 
     @Override
-    public SCPagedResult<TagDto> getAll(SCFilterQuery<TagSpecificFilter> filterQuery, String locale) {
+    public SCPagedResult<TagDto> getAll(SCFilterQuery<TagSpecificFilter> filterQuery, @NonNull String locale) {
         languageDomainBridgeService.validateLocaleIsActiveOrThrow(locale);
 
         var pageable = SCPaginationUtils.toPageable(filterQuery);
@@ -68,7 +68,7 @@ public class TagServiceImpl implements ITagService {
     }
 
     @Override
-    public SCPagedResult<TagPreviewAdminDto> getAllAdmin(SCFilterQuery<TagSpecificFilter> filterQuery, String locale) {
+    public SCPagedResult<TagPreviewAdminDto> getAllAdmin(SCFilterQuery<TagSpecificFilter> filterQuery, @NonNull String locale) {
         Map<String, String> activeLanguagesSimpleMap = languageDomainBridgeService.getAllActiveLanguagesSimpleMap();
 
         // LOCALE CHECK

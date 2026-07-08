@@ -7,7 +7,7 @@ import lombok.Getter;
 public enum IngredientSortField implements ISCSortField {
     NAME("name"),
     SLUG("slug"),
-    CATEGORY("category"),
+    FOOD_GROUP("foodGroup"),
     CALORIES_PER_100G("caloriesPer100g"),
     IS_VEGETARIAN("isVegetarian"),
     IS_VEGAN("isVegan"),

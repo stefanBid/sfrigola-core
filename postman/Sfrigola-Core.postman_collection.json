@@ -323,7 +323,7 @@
       "name": "Tags",
       "item": [
         {
-          "name": "Get Tags",
+          "name": "[Contributor, Admin] Get Tags",
           "request": {
             "method": "GET",
             "url": {
@@ -342,7 +342,7 @@
           "response": []
         },
         {
-          "name": "Suggest Tag",
+          "name": "[Contributor, Admin] Suggest Tag",
           "request": {
             "method": "POST",
             "header": [{ "key": "Content-Type", "value": "application/json" }],
@@ -460,7 +460,7 @@
       "name": "Ingredients",
       "item": [
         {
-          "name": "Get Ingredients",
+          "name": "[Contributor, Admin] Get Ingredients",
           "request": {
             "method": "GET",
             "url": {
@@ -492,7 +492,7 @@
                 { "key": "sort", "value": "asc" },
                 { "key": "searchKey", "value": "", "disabled": true },
                 { "key": "locale", "value": "en" },
-                { "key": "category", "value": "", "disabled": true },
+                { "key": "foodGroup", "value": "", "disabled": true },
                 { "key": "isVegetarian", "value": "", "disabled": true },
                 { "key": "isVegan", "value": "", "disabled": true },
                 { "key": "isGlutenFree", "value": "", "disabled": true },
@@ -504,15 +504,62 @@
           "response": []
         },
         {
+          "name": "[Admin] Get Ingredient By Id",
+          "request": {
+            "method": "GET",
+            "url": {
+              "raw": "{{baseUrl}}/ingredients/admin/{{publicId}}?locale=en",
+              "host": ["{{baseUrl}}"],
+              "path": ["ingredients", "admin", "{{publicId}}"],
+              "query": [{ "key": "locale", "value": "en" }]
+            }
+          },
+          "response": []
+        },
+        {
           "name": "[Admin] Create Ingredient",
           "request": {
             "method": "POST",
             "header": [{ "key": "Content-Type", "value": "application/json" }],
             "body": {
               "mode": "raw",
-              "raw": "{\n  \"slug\": \"test-ingredient\",\n  \"category\": \"vegetable\",\n  \"caloriesPer100g\": 18.0,\n  \"allergens\": [],\n  \"isVegetarian\": true,\n  \"isVegan\": true,\n  \"isGlutenFree\": true,\n  \"translations\": [\n    { \"langCode\": \"it\", \"name\": \"Test\" },\n    { \"langCode\": \"en\", \"name\": \"Test\" }\n  ],\n  \"ingredientTagsIds\": []\n}"
+              "raw": "{\n  \"slug\": \"test-ingredient\",\n  \"foodGroup\": \"vegetable\",\n  \"caloriesPer100g\": 18.0,\n  \"allergens\": [],\n  \"isVegetarian\": true,\n  \"isVegan\": true,\n  \"isGlutenFree\": true,\n  \"translations\": [\n    { \"langCode\": \"it\", \"name\": \"Test\" },\n    { \"langCode\": \"en\", \"name\": \"Test\" }\n  ],\n  \"ingredientTagsIds\": []\n}"
             },
-            "url": { "raw": "{{baseUrl}}/ingredients/admin", "host": ["{{baseUrl}}"], "path": ["ingredients", "admin"] }
+            "url": {
+              "raw": "{{baseUrl}}/ingredients/admin?locale=en",
+              "host": ["{{baseUrl}}"],
+              "path": ["ingredients", "admin"],
+              "query": [{ "key": "locale", "value": "en" }]
+            }
+          },
+          "response": []
+        },
+        {
+          "name": "[Admin] Update Ingredient",
+          "request": {
+            "method": "PUT",
+            "header": [{ "key": "Content-Type", "value": "application/json" }],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"slug\": \"test-ingredient\",\n  \"foodGroup\": \"vegetable\",\n  \"caloriesPer100g\": 20.0,\n  \"allergens\": [],\n  \"isVegetarian\": true,\n  \"isVegan\": true,\n  \"isGlutenFree\": true,\n  \"ingredientTagsIds\": [],\n  \"specificTranslation\": { \"langCode\": \"it\", \"name\": \"Test\" }\n}"
+            },
+            "url": {
+              "raw": "{{baseUrl}}/ingredients/admin/{{publicId}}",
+              "host": ["{{baseUrl}}"],
+              "path": ["ingredients", "admin", "{{publicId}}"]
+            }
+          },
+          "response": []
+        },
+        {
+          "name": "[Admin] Delete Ingredient",
+          "request": {
+            "method": "DELETE",
+            "url": {
+              "raw": "{{baseUrl}}/ingredients/admin/{{publicId}}",
+              "host": ["{{baseUrl}}"],
+              "path": ["ingredients", "admin", "{{publicId}}"]
+            }
           },
           "response": []
         }

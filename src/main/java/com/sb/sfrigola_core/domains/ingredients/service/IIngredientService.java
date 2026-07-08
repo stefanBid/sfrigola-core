@@ -2,12 +2,13 @@ package com.sb.sfrigola_core.domains.ingredients.service;
 
 import com.sb.sfrigola_core.common.models.contracts.SCFilterQuery;
 import com.sb.sfrigola_core.common.models.contracts.SCPagedResult;
-import com.sb.sfrigola_core.domains.ingredients.dto.IngredientDto;
-import com.sb.sfrigola_core.domains.ingredients.dto.admin.IngredientDetailsAdminDto;
-import com.sb.sfrigola_core.domains.ingredients.dto.admin.IngredientInputDto;
-import com.sb.sfrigola_core.domains.ingredients.dto.admin.IngredientPreviewAdminDto;
+import com.sb.sfrigola_core.domains.ingredients.dto.input.UpdateIngredientDto;
+import com.sb.sfrigola_core.domains.ingredients.dto.view.IngredientDto;
+import com.sb.sfrigola_core.domains.ingredients.dto.view.IngredientDetailsAdminDto;
+import com.sb.sfrigola_core.domains.ingredients.dto.input.AddIngredientDto;
+import com.sb.sfrigola_core.domains.ingredients.dto.view.IngredientPreviewAdminDto;
 import com.sb.sfrigola_core.domains.ingredients.models.IngredientSpecificFilter;
-import jakarta.annotation.Nullable;
+import org.jspecify.annotations.NonNull;
 
 import java.util.UUID;
 
@@ -29,40 +30,43 @@ public interface IIngredientService {
      * @param locale      BCP-47 language code used to filter and localize results
      * @return a {@link SCPagedResult} of {@link IngredientDto}; never {@code null}
      */
-    SCPagedResult<IngredientDto> getAll(SCFilterQuery<Void> filterQuery, String locale);
+    SCPagedResult<IngredientDto> getAll(SCFilterQuery<Void> filterQuery, @NonNull String locale);
 
     /**
      * Returns a paginated admin preview of ingredients, including localization coverage counts
      * (present and missing) to support CMS overviews.
-     * <p>
-     * When {@code locale} is {@code null}, all ingredients are returned and the name preview
-     * is taken from the first available translation in the collection.
-     * When {@code locale} is provided, only ingredients that have a translation for that locale
-     * are returned and the preview uses that specific translation.
+     * Only ingredients that have a translation for {@code locale} are returned; the preview
+     * uses that specific translation.
      *
      * @param filterQuery pagination, sorting, optional search key, and optional
      *                     {@link IngredientSpecificFilter} (category, dietary flags, calorie range)
-     * @param locale      BCP-47 language code for filtering and preview selection; {@code null} returns all ingredients
+     * @param locale      BCP-47 language code used to filter and select the preview translation; never {@code null}
      * @return a {@link SCPagedResult} of {@link IngredientPreviewAdminDto}; never {@code null}
      */
-    SCPagedResult<IngredientPreviewAdminDto> getAllAdmin(SCFilterQuery<IngredientSpecificFilter> filterQuery, @Nullable String locale);
+    SCPagedResult<IngredientPreviewAdminDto> getAllAdmin(SCFilterQuery<IngredientSpecificFilter> filterQuery, @NonNull String locale);
 
     /**
-     * Returns full admin details for a single ingredient, including every existing translation
-     * and the list of active languages still missing a translation.
+     * Returns full admin details for a single ingredient, including every existing translation,
+     * the list of active languages still missing a translation, and a preview of the translation
+     * for the requested locale.
+     * <p>
+     * {@code locale} is mandatory and never filters — it only selects which translation is
+     * returned as the preview. If no translation exists for {@code locale}, the preview is {@code null}.
      *
      * @param publicId public identifier of the ingredient
+     * @param locale   BCP-47 locale code used to select the translation for the preview; never {@code null}
      * @return {@link IngredientDetailsAdminDto} with translation coverage details
      * @throws com.sb.sfrigola_core.domains.ingredients.exception.NoIngredientFoundException
      *         if no ingredient exists with the given public ID
      */
-    IngredientDetailsAdminDto getByPublicIdAdmin(UUID publicId);
+    IngredientDetailsAdminDto getByPublicIdAdmin(UUID publicId, @NonNull String locale);
 
     /**
      * Creates a new ingredient. Translations provided in {@code inputDto} are inserted as-is;
      * no merge occurs on create.
      *
-     * @param inputDto creation payload — slug, category, nutritional/dietary fields and at least one translation
+     * @param addIngredientDto creation payload — slug, category, nutritional/dietary fields and at least one translation
+     * @param locale           BCP-47 locale code used to select the translation for the preview; never {@code null}
      * @return admin preview of the newly created ingredient
      * @throws com.sb.sfrigola_core.domains.ingredients.exception.IngredientSlugAlreadyExistsException
      *         if an ingredient with the same slug already exists
@@ -70,28 +74,28 @@ public interface IIngredientService {
      *         if the same locale appears more than once in {@code inputDto}
      * @throws com.sb.sfrigola_core.domains.ingredients.exception.IngredientLanguageNotActiveException
      *         if a translation references a language that is not active
+     * @throws com.sb.sfrigola_core.domains.ingredients.exception.MissingIngredientLocalesException
+     *         if {@code addIngredientDto.translations()} does not cover all active languages
      */
-    IngredientPreviewAdminDto createIngredient(IngredientInputDto inputDto);
+    IngredientPreviewAdminDto createNewIngredient(AddIngredientDto addIngredientDto, @NonNull String locale);
 
     /**
-     * Updates an existing ingredient's slug, category, nutritional/dietary fields and translations,
-     * merging the translation set per locale rather than replacing it wholesale: a locale already
-     * present is relabeled, a new locale is added, and a locale sent with a blank/{@code null} name
-     * is removed.
+     * Updates an existing ingredient's slug, category, nutritional/dietary fields and exactly one
+     * translation: {@code updateIngredientDto.specificTranslation()} either relabels the translation
+     * for that locale if one already exists, or adds a new one. Only one locale can be touched per
+     * call — to update multiple translations, call this method once per locale.
      *
      * @param publicId public identifier of the ingredient to update
-     * @param inputDto new slug, category, nutritional/dietary fields and the per-locale translation changes to apply
-     * @return admin preview of the updated ingredient
+     * @param updateIngredientDto new slug, category, nutritional/dietary fields, and the single translation to upsert
+     * @return admin preview of the updated ingredient, previewing the upserted translation
      * @throws com.sb.sfrigola_core.domains.ingredients.exception.NoIngredientFoundException
      *         if no ingredient exists with the given public ID
      * @throws com.sb.sfrigola_core.domains.ingredients.exception.IngredientSlugAlreadyExistsException
      *         if the new slug is already used by another ingredient
-     * @throws com.sb.sfrigola_core.domains.ingredients.exception.DuplicateIngredientLocaleException
-     *         if the same locale appears more than once in {@code inputDto}
      * @throws com.sb.sfrigola_core.domains.ingredients.exception.IngredientLanguageNotActiveException
-     *         if a translation references a language that is not active
+     *         if {@code updateIngredientDto.specificTranslation()} references a language that is not active
      */
-    IngredientPreviewAdminDto updateIngredient(UUID publicId, IngredientInputDto inputDto);
+    IngredientPreviewAdminDto updateIngredient(UUID publicId, UpdateIngredientDto updateIngredientDto);
 
     /**
      * Permanently deletes an ingredient and all of its translations (cascade). Rows in the
@@ -105,10 +109,10 @@ public interface IIngredientService {
      * entity/repository yet ({@code recipes} domain not implemented).
      *
      * @param publicId public identifier of the ingredient to delete
-     * @return admin preview snapshot of the ingredient as it was right before deletion
+     * @return public identifier of the deleted ingredient
      * @throws com.sb.sfrigola_core.domains.ingredients.exception.NoIngredientFoundException
      *         if no ingredient exists with the given public ID
      */
-    IngredientPreviewAdminDto deleteIngredient(UUID publicId);
+    UUID deleteIngredient(UUID publicId);
 
 }

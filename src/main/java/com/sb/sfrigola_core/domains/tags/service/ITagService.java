@@ -11,7 +11,6 @@ import com.sb.sfrigola_core.domains.tags.dto.view.TagDto;
 import com.sb.sfrigola_core.domains.tags.dto.view.TagPreviewAdminDto;
 import com.sb.sfrigola_core.domains.tags.enums.TagStatus;
 import com.sb.sfrigola_core.domains.tags.models.TagSpecificFilter;
-import jakarta.annotation.Nullable;
 import org.jspecify.annotations.NonNull;
 
 import java.util.UUID;
@@ -33,24 +32,21 @@ public interface ITagService {
      * @throws LocaleNotActiveException
      *         if {@code locale} does not match an active language (thrown by the languages domain bridge)
      */
-    SCPagedResult<TagDto> getAll(SCFilterQuery<TagSpecificFilter> filterQuery, String locale);
+    SCPagedResult<TagDto> getAll(SCFilterQuery<TagSpecificFilter> filterQuery, @NonNull String locale);
 
     /**
      * Returns a paginated admin preview of tags, including localization coverage counts
      * (present and missing) to support CMS overviews.
-     * <p>
-     * When {@code locale} is {@code null}, all tags are returned and the translation preview
-     * is taken from the first available translation in the collection.
-     * When {@code locale} is provided, only tags that have a translation for that locale
-     * are returned and the preview uses that specific translation.
+     * Only tags that have a translation for {@code locale} are returned; the preview uses
+     * that specific translation.
      *
      * @param filterQuery pagination parameters and optional {@code searchKey} (matched case-insensitively against the label)
-     * @param locale      BCP-47 locale code for filtering and preview selection; {@code null} returns all tags
+     * @param locale      BCP-47 locale code used to filter and select the preview translation; never {@code null}
      * @return paginated result wrapping a list of {@link TagPreviewAdminDto}
      * @throws LocaleNotActiveException
      *         if {@code locale} does not match an active language (thrown by the languages domain bridge)
      */
-    SCPagedResult<TagPreviewAdminDto> getAllAdmin(SCFilterQuery<TagSpecificFilter> filterQuery, @Nullable String locale);
+    SCPagedResult<TagPreviewAdminDto> getAllAdmin(SCFilterQuery<TagSpecificFilter> filterQuery, @NonNull String locale);
 
     /**
      * Returns admin details for a single tag, previewing its translation for the requested locale.

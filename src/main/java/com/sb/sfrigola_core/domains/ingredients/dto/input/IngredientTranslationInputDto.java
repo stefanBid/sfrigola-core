@@ -1,4 +1,4 @@
-package com.sb.sfrigola_core.domains.ingredients.dto.admin;
+package com.sb.sfrigola_core.domains.ingredients.dto.input;
 
 import com.sb.sfrigola_core.domains.ingredients.constants.IngredientValidationCodeConstants;
 import jakarta.validation.constraints.NotBlank;

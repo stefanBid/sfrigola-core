@@ -197,7 +197,7 @@ CREATE TABLE ingredients (
      id                  BIGSERIAL    PRIMARY KEY,
      public_id           UUID         NOT NULL UNIQUE DEFAULT gen_random_uuid(),
      slug                VARCHAR(150) NOT NULL UNIQUE,
-     category            VARCHAR(100),              -- 'vegetable', 'dairy', 'protein', 'grain'
+     food_group          VARCHAR(100),              -- 'vegetable', 'fruit', 'dairy', 'protein', 'grain', 'fat', 'herb', 'beverage', 'other'
      calories_per_100g   NUMERIC(7,2),
      allergens           TEXT[],                    -- ARRAY['gluten','milk','eggs','nuts']
      is_vegetarian       BOOLEAN      NOT NULL DEFAULT FALSE,
@@ -667,7 +667,7 @@ VALUES (
 -- ============================================================
 
 -- Ingredients
-INSERT INTO ingredients (id, slug, category, calories_per_100g, allergens, is_vegetarian, is_vegan, is_gluten_free) VALUES
+INSERT INTO ingredients (id, slug, food_group, calories_per_100g, allergens, is_vegetarian, is_vegan, is_gluten_free) VALUES
  (1,  'spaghetti',        'grain',     158.00, ARRAY['gluten'],        TRUE,  TRUE,  FALSE),
  (2,  'tomato',           'vegetable',  18.00, NULL,                   TRUE,  TRUE,  TRUE),
  (3,  'garlic',           'vegetable', 149.00, NULL,                   TRUE,  TRUE,  TRUE),
