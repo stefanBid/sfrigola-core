@@ -49,7 +49,6 @@ public class SecurityBeansConfig {
                 "/api/auth/register",
                 "/api/languages/**",
                 "/api/categories",
-                "/api/recipes/category/**",
                 "/error",
                 "/api/v3/api-docs/**",
                 "/swagger-ui/**"
@@ -64,7 +63,10 @@ public class SecurityBeansConfig {
     @Bean("publicGetPath")
     public List<String> publicGetPath() {
         return List.of(
-                "/api/recipes"
+                "/api/recipes",
+                "/api/recipes/home/category/**",
+                "/api/recipes/search/**",
+                "/api/recipes/details/**"
         );
     }
 

@@ -6,6 +6,7 @@ import com.sb.sfrigola_core.domains.languages.exception.LocaleNotActiveException
 import com.sb.sfrigola_core.domains.recipes.dto.input.AddRecipeDto;
 import com.sb.sfrigola_core.domains.recipes.dto.input.UpdateRecipeDto;
 import com.sb.sfrigola_core.domains.recipes.dto.view.RecipeDetailsAdminDto;
+import com.sb.sfrigola_core.domains.recipes.dto.view.RecipeDetailsDto;
 import com.sb.sfrigola_core.domains.recipes.dto.view.RecipeDto;
 import com.sb.sfrigola_core.domains.recipes.dto.view.RecipePreviewAdminDto;
 import com.sb.sfrigola_core.domains.recipes.dto.view.RecipesFeedDto;
@@ -23,20 +24,6 @@ import java.util.UUID;
  * All methods succeed or throw a subclass of {@link com.sb.sfrigola_core.common.exception.ex.SCGeneralException}.
  */
 public interface IRecipeService {
-
-    /**
-     * Returns a paginated list of published recipes localized for the requested locale.
-     * Only recipes that are {@code isPublished = true} and have a translation for {@code locale}
-     * are included — draft recipes are never visible through this method.
-     *
-     * @param filterQuery pagination and sorting parameters, with optional {@code searchKey}
-     *                     matched case-insensitively against the translated title
-     * @param locale      BCP-47 language code used to filter and localize results
-     * @return a {@link SCPagedResult} of {@link RecipeDto}; never {@code null}
-     * @throws LocaleNotActiveException
-     *         if {@code locale} does not match an active language (thrown by the languages domain bridge)
-     */
-    SCPagedResult<RecipeDto> getAll(SCFilterQuery<Void> filterQuery, @NonNull String locale);
 
     /**
      * Returns the home-page feed for a selected category: a fixed set of short, unpaginated
@@ -69,12 +56,33 @@ public interface IRecipeService {
      *
      * @param filterQuery pagination, sorting, optional search key, and optional
      *                     {@link RecipeSpecificFilter} (difficulty, meal type, season, dietary flags, publish status)
+     * @param categoryId  optional public identifier of the category to filter by; {@code null} means no category filter
      * @param locale      BCP-47 language code used to filter and select the preview translation; never {@code null}
      * @return a {@link SCPagedResult} of {@link RecipePreviewAdminDto}; never {@code null}
+     * @throws com.sb.sfrigola_core.domains.categories.exception.NoCategoryFoundException
+     *         if {@code categoryId} is non-{@code null} but no matching category exists
      * @throws LocaleNotActiveException
      *         if {@code locale} does not match an active language (thrown by the languages domain bridge)
      */
-    SCPagedResult<RecipePreviewAdminDto> getAllAdmin(SCFilterQuery<RecipeSpecificFilter> filterQuery, @NonNull String locale);
+    SCPagedResult<RecipePreviewAdminDto> getAllAdmin(SCFilterQuery<RecipeSpecificFilter> filterQuery, UUID categoryId, @NonNull String locale);
+
+    /**
+     * Returns a paginated list of published recipes whose translated title and/or description
+     * match {@code filterQuery.searchKey()} (case-insensitive substring match), optionally
+     * restricted to one category. Only recipes with a translation for {@code locale} are
+     * included — draft recipes are never visible through this method.
+     *
+     * @param filterQuery pagination, with optional {@code searchKey} matched against the
+     *                    translated title and/or description; sorting/other filters are ignored
+     * @param categoryId  optional public identifier of the category to filter by; {@code null} means no category filter
+     * @param locale      BCP-47 language code used to filter and localize results
+     * @return a {@link SCPagedResult} of {@link RecipeDto}; never {@code null}
+     * @throws com.sb.sfrigola_core.domains.categories.exception.NoCategoryFoundException
+     *         if {@code categoryId} is non-{@code null} but no matching category exists
+     * @throws LocaleNotActiveException
+     *         if {@code locale} does not match an active language (thrown by the languages domain bridge)
+     */
+    SCPagedResult<RecipeDto> searchRecipes(SCFilterQuery<Void> filterQuery, UUID categoryId, @NonNull String locale);
 
     /**
      * Returns full admin details for a single recipe (published or draft), including its
@@ -90,6 +98,26 @@ public interface IRecipeService {
      *         if no recipe exists with the given public ID
      */
     RecipeDetailsAdminDto getByPublicIdAdmin(UUID publicId, @NonNull String locale);
+
+    /**
+     * Returns public details for a single published recipe, including its ingredient list,
+     * tag list, and a preview of the translation for the requested locale. Unlike
+     * {@link #getByPublicIdAdmin}, draft recipes ({@code isPublished = false}) are never
+     * returned — they surface as {@link com.sb.sfrigola_core.domains.recipes.exception.NoRecipeFoundException}
+     * exactly like a missing recipe, so drafts are never distinguishable from non-existence.
+     * <p>
+     * {@code locale} is mandatory and never filters — it only selects which translation is
+     * returned. If no translation exists for {@code locale}, the translation preview fields are {@code null}.
+     *
+     * @param publicId public identifier of the recipe
+     * @param locale   BCP-47 locale code used to select the translation for the preview; never {@code null}
+     * @return {@link RecipeDetailsDto} with the translation preview, ingredients and tags
+     * @throws com.sb.sfrigola_core.domains.recipes.exception.NoRecipeFoundException
+     *         if no published recipe exists with the given public ID
+     * @throws LocaleNotActiveException
+     *         if {@code locale} does not match an active language (thrown by the languages domain bridge)
+     */
+    RecipeDetailsDto getByPublicId(UUID publicId, @NonNull String locale);
 
     /**
      * Creates a new recipe authored by the currently authenticated user (resolved from the

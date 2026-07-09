@@ -60,29 +60,6 @@ public class RecipeServiceImpl implements IRecipeService {
     private final ISCUserDomainBridgeService userDomainBridgeService;
 
     @Override
-    public SCPagedResult<RecipeDto> getAll(SCFilterQuery<Void> filterQuery, @NonNull String locale) {
-        languageDomainBridgeService.validateLocaleIsActiveOrThrow(locale);
-
-        var pageable = SCPaginationUtils.toPageable(filterQuery);
-
-        var recipeIds = recipeRepository.findIdsByFiltersAndLocaleAsc(
-                locale, filterQuery.searchKey(), true, null, null, null, null, null, null, pageable
-        );
-
-        if (recipeIds.hasContent()) {
-            var ids = recipeIds.getContent();
-            Map<Long, Recipe> byId = recipeRepository.findByIdsWithSpecificTranslation(ids, locale)
-                    .stream().collect(Collectors.toMap(Recipe::getId, r -> r));
-            List<Recipe> ordered = ids.stream().map(byId::get).filter(Objects::nonNull).toList();
-            return new SCPagedResult<>(
-                    ordered.stream().map(this::toDto).toList(),
-                    SCPaginationUtils.toPagedOption(recipeIds)
-            );
-        }
-        return SCPagedResult.empty();
-    }
-
-    @Override
     public Map<FeedType, RecipesFeedDto> getAllHomeFeed(@NonNull UUID categoryId, @NonNull String locale) {
         // Check Locale is active
         languageDomainBridgeService.validateLocaleIsActiveOrThrow(locale);
@@ -114,10 +91,12 @@ public class RecipeServiceImpl implements IRecipeService {
     }
 
     @Override
-    public SCPagedResult<RecipePreviewAdminDto> getAllAdmin(SCFilterQuery<RecipeSpecificFilter> filterQuery, @NonNull String locale) {
+    public SCPagedResult<RecipePreviewAdminDto> getAllAdmin(SCFilterQuery<RecipeSpecificFilter> filterQuery, UUID categoryId, @NonNull String locale) {
         var activeLanguagesSimpleMap = languageDomainBridgeService.getAllActiveLanguagesSimpleMap();
 
         languageDomainBridgeService.validateLocaleIsActiveByActiveLanguagesMapKeysOrThrow(activeLanguagesSimpleMap.keySet(), locale);
+
+        Long categoryDbId = categoryId != null ? categoryDomainBridgeService.getCategoryEntityByPublicIdOrThrow(categoryId).getId() : null;
 
         boolean sortByTitle = filterQuery.sortBy() == null || filterQuery.sortBy() == RecipeSortField.TITLE;
         boolean descending = filterQuery.sort() != null && !filterQuery.sort().isAsc();
@@ -136,10 +115,10 @@ public class RecipeServiceImpl implements IRecipeService {
 
         if (sortByTitle) {
             idsPage = descending
-                    ? recipeRepository.findIdsByFiltersAndLocaleDesc(locale, filterQuery.searchKey(), isPublished, difficulty, mealType, season, isVegetarian, isVegan, isGlutenFree, pageable)
-                    : recipeRepository.findIdsByFiltersAndLocaleAsc(locale, filterQuery.searchKey(), isPublished, difficulty, mealType, season, isVegetarian, isVegan, isGlutenFree, pageable);
+                    ? recipeRepository.findIdsByFiltersAndLocaleDesc(locale, filterQuery.searchKey(), isPublished, difficulty, mealType, season, isVegetarian, isVegan, isGlutenFree, categoryDbId, pageable)
+                    : recipeRepository.findIdsByFiltersAndLocaleAsc(locale, filterQuery.searchKey(), isPublished, difficulty, mealType, season, isVegetarian, isVegan, isGlutenFree, categoryDbId, pageable);
         } else {
-            idsPage = recipeRepository.findIdsByFiltersAndLocaleOtherSort(locale, filterQuery.searchKey(), isPublished, difficulty, mealType, season, isVegetarian, isVegan, isGlutenFree, null, pageable);
+            idsPage = recipeRepository.findIdsByFiltersAndLocaleOtherSort(locale, filterQuery.searchKey(), isPublished, difficulty, mealType, season, isVegetarian, isVegan, isGlutenFree, categoryDbId, pageable);
         }
 
         if (idsPage.hasContent()) {
@@ -162,6 +141,29 @@ public class RecipeServiceImpl implements IRecipeService {
     }
 
     @Override
+    public SCPagedResult<RecipeDto> searchRecipes(SCFilterQuery<Void> filterQuery, UUID categoryId, @NonNull String locale) {
+        languageDomainBridgeService.validateLocaleIsActiveOrThrow(locale);
+
+        Long categoryDbId = categoryId != null ? categoryDomainBridgeService.getCategoryEntityByPublicIdOrThrow(categoryId).getId() : null;
+
+        var pageable = SCPaginationUtils.toPageable(filterQuery);
+
+        var recipeIds = recipeRepository.findIdsBySearchKeyAndLocale(locale, filterQuery.searchKey(), categoryDbId, pageable);
+
+        if (recipeIds.hasContent()) {
+            var ids = recipeIds.getContent();
+            Map<Long, Recipe> byId = recipeRepository.findByIdsWithSpecificTranslation(ids, locale)
+                    .stream().collect(Collectors.toMap(Recipe::getId, r -> r));
+            List<Recipe> ordered = ids.stream().map(byId::get).filter(Objects::nonNull).toList();
+            return new SCPagedResult<>(
+                    ordered.stream().map(this::toDto).toList(),
+                    SCPaginationUtils.toPagedOption(recipeIds)
+            );
+        }
+        return SCPagedResult.empty();
+    }
+
+    @Override
     public RecipeDetailsAdminDto getByPublicIdAdmin(UUID publicId, @NonNull String locale) {
         languageDomainBridgeService.validateLocaleIsActiveOrThrow(locale);
 
@@ -174,6 +176,21 @@ public class RecipeServiceImpl implements IRecipeService {
                 .findFirst().orElse(null);
 
         return toAdminDetailsDto(recipe, recipeTranslation, locale);
+    }
+
+    @Override
+    public RecipeDetailsDto getByPublicId(UUID publicId, @NonNull String locale) {
+        languageDomainBridgeService.validateLocaleIsActiveOrThrow(locale);
+
+        var recipe = recipeRepository.findByPublicId(publicId)
+                .filter(Recipe::isPublished)
+                .orElseThrow(() -> new NoRecipeFoundException(publicId));
+
+        var recipeTranslation = recipe.getTranslations().stream()
+                .filter(t -> t.getLanguage().getCode().equals(locale))
+                .findFirst().orElse(null);
+
+        return toDetailsDto(recipe, recipeTranslation, locale);
     }
 
     @Override
@@ -390,17 +407,13 @@ public class RecipeServiceImpl implements IRecipeService {
         var translation = recipe.getTranslations().getFirst();
         return new RecipeDto(
                 recipe.getPublicId(),
+                recipe.getAuthor().getPublicId(),
                 recipe.getCategory() != null ? recipe.getCategory().getPublicId() : null,
-                recipe.getDifficulty(),
-                recipe.getMealType(),
-                recipe.getSeason(),
-                recipe.getPrepTimeMin(),
-                recipe.getCookTimeMin(),
-                recipe.getServings(),
-                recipe.isVegetarian(),
-                recipe.isVegan(),
-                recipe.isGlutenFree(),
-                translation.getTitle()
+                translation.getTitle(),
+                translation.getDescription(),
+                false, // isFavourite — favorites domain not implemented yet
+                recipe.getTotalTimeMin(),
+                recipe.getEconomicalRatio()
         );
     }
 
@@ -436,36 +449,6 @@ public class RecipeServiceImpl implements IRecipeService {
     }
 
     private RecipeDetailsAdminDto toAdminDetailsDto(Recipe recipe, @Nullable RecipeTranslation specificTranslation, @NonNull String locale) {
-        var tagList = recipe.getRecipeTags().stream()
-                .map(RecipeTag::getTag)
-                .map(tag -> {
-                    var tagTranslation = tag.getTranslations().stream()
-                            .filter(t -> t.getLanguage().getCode().equals(locale))
-                            .findFirst().orElse(null);
-                    return new TagDto(
-                            tag.getPublicId(),
-                            tag.getSlug(),
-                            tagTranslation != null ? tagTranslation.getLabel() : null
-                    );
-                })
-                .toList();
-
-        var ingredientList = recipe.getRecipeIngredients().stream()
-                .map(ri -> {
-                    var ingredientTranslation = ri.getIngredient().getTranslations().stream()
-                            .filter(t -> t.getLanguage().getCode().equals(locale))
-                            .findFirst().orElse(null);
-                    return new RecipeIngredientDto(
-                            ri.getIngredient().getPublicId(),
-                            ingredientTranslation != null ? ingredientTranslation.getName() : null,
-                            ri.getQuantity(),
-                            ri.getUnit(),
-                            ri.getPreparationNote(),
-                            ri.getSortOrder()
-                    );
-                })
-                .toList();
-
         return new RecipeDetailsAdminDto(
                 recipe.getPublicId(),
                 recipe.getAuthor().getPublicId(),
@@ -483,9 +466,65 @@ public class RecipeServiceImpl implements IRecipeService {
                 specificTranslation != null ? specificTranslation.getTitle() : null,
                 specificTranslation != null ? specificTranslation.getDescription() : null,
                 specificTranslation != null ? specificTranslation.getInstructions() : null,
-                ingredientList,
-                tagList
+                buildIngredientList(recipe, locale),
+                buildTagList(recipe, locale)
         );
+    }
+
+    private RecipeDetailsDto toDetailsDto(Recipe recipe, @Nullable RecipeTranslation specificTranslation, @NonNull String locale) {
+        return new RecipeDetailsDto(
+                recipe.getPublicId(),
+                recipe.getAuthor().getPublicId(),
+                recipe.getCategory() != null ? recipe.getCategory().getPublicId() : null,
+                recipe.getDifficulty(),
+                recipe.getMealType(),
+                recipe.getSeason(),
+                recipe.getPrepTimeMin(),
+                recipe.getCookTimeMin(),
+                recipe.getServings(),
+                recipe.isVegetarian(),
+                recipe.isVegan(),
+                recipe.isGlutenFree(),
+                specificTranslation != null ? specificTranslation.getTitle() : null,
+                specificTranslation != null ? specificTranslation.getDescription() : null,
+                specificTranslation != null ? specificTranslation.getInstructions() : null,
+                buildIngredientList(recipe, locale),
+                buildTagList(recipe, locale)
+        );
+    }
+
+    private List<TagDto> buildTagList(Recipe recipe, String locale) {
+        return recipe.getRecipeTags().stream()
+                .map(RecipeTag::getTag)
+                .map(tag -> {
+                    var tagTranslation = tag.getTranslations().stream()
+                            .filter(t -> t.getLanguage().getCode().equals(locale))
+                            .findFirst().orElse(null);
+                    return new TagDto(
+                            tag.getPublicId(),
+                            tag.getSlug(),
+                            tagTranslation != null ? tagTranslation.getLabel() : null
+                    );
+                })
+                .toList();
+    }
+
+    private List<RecipeIngredientDto> buildIngredientList(Recipe recipe, String locale) {
+        return recipe.getRecipeIngredients().stream()
+                .map(ri -> {
+                    var ingredientTranslation = ri.getIngredient().getTranslations().stream()
+                            .filter(t -> t.getLanguage().getCode().equals(locale))
+                            .findFirst().orElse(null);
+                    return new RecipeIngredientDto(
+                            ri.getIngredient().getPublicId(),
+                            ingredientTranslation != null ? ingredientTranslation.getName() : null,
+                            ri.getQuantity(),
+                            ri.getUnit(),
+                            ri.getPreparationNote(),
+                            ri.getSortOrder()
+                    );
+                })
+                .toList();
     }
 
     private List<RecipeTag> toRecipeTags(List<Tag> tags, Recipe recipe) {

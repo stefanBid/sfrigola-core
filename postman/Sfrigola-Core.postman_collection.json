@@ -14,6 +14,7 @@
     { "key": "token", "value": "", "type": "string" },
     { "key": "publicId", "value": "", "type": "string" },
     { "key": "parentPublicId", "value": "", "type": "string" },
+    { "key": "categoryId", "value": "", "type": "string" },
     { "key": "it", "value": "it", "type": "string" },
     { "key": "approved", "value": "approved", "type": "string" }
   ],
@@ -559,6 +560,183 @@
               "raw": "{{baseUrl}}/ingredients/admin/{{publicId}}",
               "host": ["{{baseUrl}}"],
               "path": ["ingredients", "admin", "{{publicId}}"]
+            }
+          },
+          "response": []
+        }
+      ]
+    },
+    {
+      "name": "Recipes",
+      "item": [
+        {
+          "name": "[Public] Home Feed By Category",
+          "request": {
+            "auth": { "type": "noauth" },
+            "method": "GET",
+            "url": {
+              "raw": "{{baseUrl}}/recipes/home/category/{{categoryId}}?locale=en",
+              "host": ["{{baseUrl}}"],
+              "path": ["recipes", "home", "category", "{{categoryId}}"],
+              "query": [{ "key": "locale", "value": "en" }]
+            }
+          },
+          "response": []
+        },
+        {
+          "name": "[Public] Search Recipes",
+          "request": {
+            "auth": { "type": "noauth" },
+            "method": "GET",
+            "url": {
+              "raw": "{{baseUrl}}/recipes/search?page=0&take=10&searchKey=pasta&locale=en",
+              "host": ["{{baseUrl}}"],
+              "path": ["recipes", "search"],
+              "query": [
+                { "key": "page", "value": "0" },
+                { "key": "take", "value": "10" },
+                { "key": "searchKey", "value": "pasta" },
+                { "key": "locale", "value": "en" }
+              ]
+            }
+          },
+          "response": []
+        },
+        {
+          "name": "[Public] Search Recipes By Category",
+          "request": {
+            "auth": { "type": "noauth" },
+            "method": "GET",
+            "url": {
+              "raw": "{{baseUrl}}/recipes/search/category/{{categoryId}}?page=0&take=10&searchKey=&locale=en",
+              "host": ["{{baseUrl}}"],
+              "path": ["recipes", "search", "category", "{{categoryId}}"],
+              "query": [
+                { "key": "page", "value": "0" },
+                { "key": "take", "value": "10" },
+                { "key": "searchKey", "value": "" },
+                { "key": "locale", "value": "en" }
+              ]
+            }
+          },
+          "response": []
+        },
+        {
+          "name": "[Public] Get Recipe By Public Id",
+          "request": {
+            "auth": { "type": "noauth" },
+            "method": "GET",
+            "url": {
+              "raw": "{{baseUrl}}/recipes/details/{{publicId}}?locale=en",
+              "host": ["{{baseUrl}}"],
+              "path": ["recipes", "details", "{{publicId}}"],
+              "query": [{ "key": "locale", "value": "en" }]
+            }
+          },
+          "response": []
+        },
+        {
+          "name": "[Admin] Get All Recipes",
+          "request": {
+            "method": "GET",
+            "url": {
+              "raw": "{{baseUrl}}/recipes/admin?page=0&take=10&sortBy=title&sort=asc&locale=en",
+              "host": ["{{baseUrl}}"],
+              "path": ["recipes", "admin"],
+              "query": [
+                { "key": "page", "value": "0" },
+                { "key": "take", "value": "10" },
+                { "key": "sortBy", "value": "title" },
+                { "key": "sort", "value": "asc" },
+                { "key": "locale", "value": "en" },
+                { "key": "searchKey", "value": "", "disabled": true },
+                { "key": "difficulty", "value": "", "disabled": true },
+                { "key": "mealType", "value": "", "disabled": true },
+                { "key": "season", "value": "", "disabled": true },
+                { "key": "isVegetarian", "value": "", "disabled": true },
+                { "key": "isVegan", "value": "", "disabled": true },
+                { "key": "isGlutenFree", "value": "", "disabled": true },
+                { "key": "isPublished", "value": "", "disabled": true }
+              ]
+            }
+          },
+          "response": []
+        },
+        {
+          "name": "[Admin] Get All Recipes By Category",
+          "request": {
+            "method": "GET",
+            "url": {
+              "raw": "{{baseUrl}}/recipes/admin/category/{{categoryId}}?page=0&take=10&sortBy=title&sort=asc&locale=en",
+              "host": ["{{baseUrl}}"],
+              "path": ["recipes", "admin", "category", "{{categoryId}}"],
+              "query": [
+                { "key": "page", "value": "0" },
+                { "key": "take", "value": "10" },
+                { "key": "sortBy", "value": "title" },
+                { "key": "sort", "value": "asc" },
+                { "key": "locale", "value": "en" }
+              ]
+            }
+          },
+          "response": []
+        },
+        {
+          "name": "[Admin] Get Recipe By Public Id",
+          "request": {
+            "method": "GET",
+            "url": {
+              "raw": "{{baseUrl}}/recipes/admin/details/{{publicId}}?locale=en",
+              "host": ["{{baseUrl}}"],
+              "path": ["recipes", "admin", "details", "{{publicId}}"],
+              "query": [{ "key": "locale", "value": "en" }]
+            }
+          },
+          "response": []
+        },
+        {
+          "name": "[Contributor, Admin] Create Recipe",
+          "request": {
+            "method": "POST",
+            "header": [{ "key": "Content-Type", "value": "application/json" }],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"categoryPublicId\": \"{{categoryId}}\",\n  \"difficulty\": \"easy\",\n  \"mealType\": \"lunch\",\n  \"season\": \"all_year\",\n  \"prepTimeMin\": 10,\n  \"cookTimeMin\": 15,\n  \"servings\": 4,\n  \"isVegetarian\": true,\n  \"isVegan\": false,\n  \"isGlutenFree\": false,\n  \"isPublished\": true,\n  \"recipeTagsIds\": [],\n  \"ingredients\": [\n    {\n      \"ingredientPublicId\": \"00000000-0000-0000-0000-000000000001\",\n      \"quantity\": 100.0,\n      \"unit\": \"g\",\n      \"preparationNote\": \"chopped\",\n      \"sortOrder\": 0\n    }\n  ],\n  \"translations\": [\n    { \"langCode\": \"en\", \"title\": \"Test Recipe\", \"description\": \"Test description\", \"instructions\": \"Test instructions\" },\n    { \"langCode\": \"it\", \"title\": \"Ricetta di prova\", \"description\": \"Descrizione di prova\", \"instructions\": \"Istruzioni di prova\" }\n  ]\n}"
+            },
+            "url": {
+              "raw": "{{baseUrl}}/recipes?locale=en",
+              "host": ["{{baseUrl}}"],
+              "path": ["recipes"],
+              "query": [{ "key": "locale", "value": "en" }]
+            }
+          },
+          "response": []
+        },
+        {
+          "name": "[Contributor(own), Admin] Update Recipe",
+          "request": {
+            "method": "PUT",
+            "header": [{ "key": "Content-Type", "value": "application/json" }],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"categoryPublicId\": \"{{categoryId}}\",\n  \"difficulty\": \"medium\",\n  \"mealType\": \"dinner\",\n  \"season\": \"all_year\",\n  \"prepTimeMin\": 15,\n  \"cookTimeMin\": 20,\n  \"servings\": 4,\n  \"isVegetarian\": true,\n  \"isVegan\": false,\n  \"isGlutenFree\": false,\n  \"isPublished\": true,\n  \"recipeTagsIds\": [],\n  \"ingredients\": [\n    {\n      \"ingredientPublicId\": \"00000000-0000-0000-0000-000000000001\",\n      \"quantity\": 150.0,\n      \"unit\": \"g\",\n      \"preparationNote\": \"chopped\",\n      \"sortOrder\": 0\n    }\n  ],\n  \"specificTranslation\": { \"langCode\": \"en\", \"title\": \"Test Recipe Updated\", \"description\": \"Updated description\", \"instructions\": \"Updated instructions\" }\n}"
+            },
+            "url": {
+              "raw": "{{baseUrl}}/recipes/{{publicId}}",
+              "host": ["{{baseUrl}}"],
+              "path": ["recipes", "{{publicId}}"]
+            }
+          },
+          "response": []
+        },
+        {
+          "name": "[Contributor(own), Admin] Delete Recipe",
+          "request": {
+            "method": "DELETE",
+            "url": {
+              "raw": "{{baseUrl}}/recipes/{{publicId}}",
+              "host": ["{{baseUrl}}"],
+              "path": ["recipes", "{{publicId}}"]
             }
           },
           "response": []

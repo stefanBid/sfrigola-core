@@ -8,6 +8,8 @@ import com.sb.sfrigola_core.common.models.contracts.SCFilterQuery;
 import com.sb.sfrigola_core.domains.recipes.dto.input.AddRecipeDto;
 import com.sb.sfrigola_core.domains.recipes.dto.input.UpdateRecipeDto;
 import com.sb.sfrigola_core.domains.recipes.dto.view.RecipeDetailsAdminDto;
+import com.sb.sfrigola_core.domains.recipes.dto.view.RecipeDetailsDto;
+import com.sb.sfrigola_core.domains.recipes.dto.view.RecipeDto;
 import com.sb.sfrigola_core.domains.recipes.dto.view.RecipesFeedDto;
 import com.sb.sfrigola_core.domains.recipes.dto.view.RecipePreviewAdminDto;
 import com.sb.sfrigola_core.domains.recipes.enums.*;
@@ -45,6 +47,35 @@ public class RecipeController {
         return ResponseEntity.ok(SCGeneralResponseDto.success(homeFeed));
     }
 
+    // [Public]
+    @GetMapping(value = {"/search", "/search/category/{categoryId}"}, version = "1.0")
+    public ResponseEntity<SCGeneralResponseDto<List<RecipeDto>, SCPagedOptionDto>> searchRecipes(
+            @PathVariable(value = "categoryId", required = false) UUID categoryId,
+            @Min(value = 0, message = SCRequestParamValidationCodeConstants.PAGE_MUST_BE_AT_LEAST_ZERO)
+            @RequestParam(value = "page", required = false, defaultValue = "0") int page,
+            @Min(value = 1, message = SCRequestParamValidationCodeConstants.TAKE_MUST_BE_AT_LEAST_ONE) @Max(value = 100, message = SCRequestParamValidationCodeConstants.TAKE_MUST_BE_AT_MOST_HUNDRED)
+            @RequestParam(value = "take", required = false, defaultValue = "10") int take,
+            @RequestParam(value = "searchKey", required = false) String searchKey,
+            @RequestParam(required = false) @NotBlank(message = SCRequestParamValidationCodeConstants.LOCALE_MUST_NOT_BE_BLANK) String locale
+    ) {
+
+        var filterQuery = SCFilterQuery.pageWithSearch(searchKey, take, page);
+
+        var paginatedRecipes = recipeService.searchRecipes(filterQuery, categoryId, locale);
+        return ResponseEntity.ok(SCGeneralResponseDto.success(paginatedRecipes.content(), paginatedRecipes.pagedOptionDto()));
+    }
+
+
+    // [Public]
+    @GetMapping(value = "/details/{publicId}", version = "1.0")
+    public ResponseEntity<SCGeneralResponseDto<RecipeDetailsDto, Void>> getRecipeByPublicId(
+            @PathVariable("publicId") UUID publicId,
+            @RequestParam @NotBlank(message = SCRequestParamValidationCodeConstants.LOCALE_MUST_NOT_BE_BLANK) String locale
+    ) {
+        var recipeDetails = recipeService.getByPublicId(publicId, locale);
+        return ResponseEntity.ok(SCGeneralResponseDto.success(recipeDetails));
+    }
+
     // [Admin]
     @GetMapping(value = {"/admin", "/admin/category/{categoryId}"}, version = "1.0")
     public ResponseEntity<SCGeneralResponseDto<List<RecipePreviewAdminDto>, SCPagedOptionDto>> getAllAdmin(
@@ -76,13 +107,20 @@ public class RecipeController {
                 isPublished,
                 null
         );
-        var filterQuery = SCFilterQuery.powerful(searchKey, sortBy != null ? RecipeSortField.fromString(sortBy) : null, SortDirection.fromString(sort), take, page, recipeSpecificFilter);
-        var paginatedRecipes = recipeService.getAllAdmin(filterQuery, locale);
+        var filterQuery = SCFilterQuery.powerful(
+                searchKey,
+                sortBy != null ? RecipeSortField.fromString(sortBy) : null,
+                SortDirection.fromString(sort),
+                take,
+                page,
+                recipeSpecificFilter);
+
+        var paginatedRecipes = recipeService.getAllAdmin(filterQuery, categoryId, locale);
         return ResponseEntity.ok(SCGeneralResponseDto.success(paginatedRecipes.content(), paginatedRecipes.pagedOptionDto()));
     }
 
     // [Admin]
-    @GetMapping(value = "/admin/{publicId}", version = "1.0")
+    @GetMapping(value = "/admin/details/{publicId}", version = "1.0")
     public ResponseEntity<SCGeneralResponseDto<RecipeDetailsAdminDto, Void>> getRecipeByPublicIdAdmin(
             @PathVariable("publicId") UUID publicId,
             @RequestParam @NotBlank(message = SCRequestParamValidationCodeConstants.LOCALE_MUST_NOT_BE_BLANK) String locale
