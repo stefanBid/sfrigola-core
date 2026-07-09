@@ -11,6 +11,7 @@ import lombok.Getter;
 import lombok.Setter;
 import org.hibernate.annotations.ColumnTransformer;
 
+import java.math.BigDecimal;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.UUID;
@@ -68,6 +69,14 @@ public class Recipe extends BaseEntity {
 
     @Column(name = "is_published", nullable = false)
     private boolean isPublished = false;
+
+    // Materialized in the service layer on create/update (no DB trigger) — kept in sync
+    // with prepTimeMin/cookTimeMin/servings/recipeIngredients whenever any of them change.
+    @Column(name = "total_time_min", nullable = false)
+    private int totalTimeMin = 0;
+
+    @Column(name = "economical_ratio", nullable = false)
+    private BigDecimal economicalRatio = BigDecimal.ZERO;
 
     @OneToMany(mappedBy = "recipe", fetch = FetchType.LAZY, cascade = CascadeType.ALL, orphanRemoval = true)
     private List<RecipeTranslation> translations = new ArrayList<>();

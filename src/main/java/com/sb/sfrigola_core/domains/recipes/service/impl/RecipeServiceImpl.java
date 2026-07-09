@@ -1,5 +1,6 @@
 package com.sb.sfrigola_core.domains.recipes.service.impl;
 
+import com.sb.sfrigola_core.common.enums.SortDirection;
 import com.sb.sfrigola_core.common.models.contracts.SCFilterQuery;
 import com.sb.sfrigola_core.common.models.contracts.SCPagedResult;
 import com.sb.sfrigola_core.common.util.SCAuthenticationUtils;
@@ -14,14 +15,13 @@ import com.sb.sfrigola_core.domains.recipes.dto.input.AddRecipeDto;
 import com.sb.sfrigola_core.domains.recipes.dto.input.RecipeIngredientInputDto;
 import com.sb.sfrigola_core.domains.recipes.dto.input.RecipeTranslationInputDto;
 import com.sb.sfrigola_core.domains.recipes.dto.input.UpdateRecipeDto;
-import com.sb.sfrigola_core.domains.recipes.dto.view.RecipeDetailsAdminDto;
-import com.sb.sfrigola_core.domains.recipes.dto.view.RecipeDto;
-import com.sb.sfrigola_core.domains.recipes.dto.view.RecipeIngredientDto;
-import com.sb.sfrigola_core.domains.recipes.dto.view.RecipePreviewAdminDto;
+import com.sb.sfrigola_core.domains.recipes.dto.view.*;
 import com.sb.sfrigola_core.domains.recipes.entity.Recipe;
 import com.sb.sfrigola_core.domains.recipes.entity.RecipeIngredient;
 import com.sb.sfrigola_core.domains.recipes.entity.RecipeTag;
 import com.sb.sfrigola_core.domains.recipes.entity.RecipeTranslation;
+import com.sb.sfrigola_core.domains.recipes.enums.DifficultyLevel;
+import com.sb.sfrigola_core.domains.recipes.enums.FeedType;
 import com.sb.sfrigola_core.domains.recipes.enums.RecipeSortField;
 import com.sb.sfrigola_core.domains.recipes.exception.DuplicateRecipeLocaleException;
 import com.sb.sfrigola_core.domains.recipes.exception.MissingRecipeLocalesException;
@@ -42,6 +42,8 @@ import org.springframework.data.domain.Page;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
+import java.math.BigDecimal;
+import java.math.RoundingMode;
 import java.util.*;
 import java.util.stream.Collectors;
 
@@ -81,6 +83,37 @@ public class RecipeServiceImpl implements IRecipeService {
     }
 
     @Override
+    public Map<FeedType, RecipesFeedDto> getAllHomeFeed(@NonNull UUID categoryId, @NonNull String locale) {
+        // Check Locale is active
+        languageDomainBridgeService.validateLocaleIsActiveOrThrow(locale);
+
+        // Check Category exist
+        Category category = categoryDomainBridgeService.getCategoryEntityByPublicIdOrThrow(categoryId);
+
+        // VIRAL FEED (Not Implemented yet)
+        // FAVOURITE FEED (Not Implemented yet)
+
+        Map<FeedType, RecipesFeedDto> homeFeed = new EnumMap<>(FeedType.class);
+
+        // QUICK FEED — shortest prep + cook time first
+        var quickFilter = new RecipeSpecificFilter(null, null, null, null, null, null, true, category.getId());
+        var quickFilterQuery = SCFilterQuery.powerful(null, RecipeSortField.TOTAL_TIME_MIN, SortDirection.ASC, 10, 0, quickFilter);
+        homeFeed.put(FeedType.QUICK, new RecipesFeedDto(getFilteredPublished(quickFilterQuery, locale), (short) 0));
+
+        // LIKE_A_CHEF FEED — hard difficulty, longest prep + cook time first
+        var gourmetFilter = new RecipeSpecificFilter(DifficultyLevel.HARD, null, null, null, null, null, true, category.getId());
+        var gourmetFilterQuery = SCFilterQuery.powerful(null, RecipeSortField.TOTAL_TIME_MIN, SortDirection.DESC, 10, 0, gourmetFilter);
+        homeFeed.put(FeedType.LIKE_A_CHEF, new RecipesFeedDto(getFilteredPublished(gourmetFilterQuery, locale), (short) 1));
+
+        // ECONOMICAL FEED — lowest ingredient-count-to-servings ratio first
+        var economicalFilter = new RecipeSpecificFilter(null, null, null, null, null, null, true, category.getId());
+        var economicalFilterQuery = SCFilterQuery.powerful(null, RecipeSortField.ECONOMICAL_RATIO, SortDirection.ASC, 10, 0, economicalFilter);
+        homeFeed.put(FeedType.ECONOMICAL, new RecipesFeedDto(getFilteredPublished(economicalFilterQuery, locale), (short) 2));
+
+        return homeFeed;
+    }
+
+    @Override
     public SCPagedResult<RecipePreviewAdminDto> getAllAdmin(SCFilterQuery<RecipeSpecificFilter> filterQuery, @NonNull String locale) {
         var activeLanguagesSimpleMap = languageDomainBridgeService.getAllActiveLanguagesSimpleMap();
 
@@ -106,7 +139,7 @@ public class RecipeServiceImpl implements IRecipeService {
                     ? recipeRepository.findIdsByFiltersAndLocaleDesc(locale, filterQuery.searchKey(), isPublished, difficulty, mealType, season, isVegetarian, isVegan, isGlutenFree, pageable)
                     : recipeRepository.findIdsByFiltersAndLocaleAsc(locale, filterQuery.searchKey(), isPublished, difficulty, mealType, season, isVegetarian, isVegan, isGlutenFree, pageable);
         } else {
-            idsPage = recipeRepository.findIdsByFiltersAndLocaleOtherSort(locale, filterQuery.searchKey(), isPublished, difficulty, mealType, season, isVegetarian, isVegan, isGlutenFree, pageable);
+            idsPage = recipeRepository.findIdsByFiltersAndLocaleOtherSort(locale, filterQuery.searchKey(), isPublished, difficulty, mealType, season, isVegetarian, isVegan, isGlutenFree, null, pageable);
         }
 
         if (idsPage.hasContent()) {
@@ -195,6 +228,9 @@ public class RecipeServiceImpl implements IRecipeService {
         // INGREDIENTS MANAGEMENT
         newRecipe.setRecipeIngredients(toRecipeIngredients(nullSafe(addRecipeDto.ingredients()), newRecipe));
 
+        // MATERIALIZED FEED-SORTING FIELDS
+        recomputeFeedSortingFields(newRecipe);
+
         recipeRepository.save(newRecipe);
 
         return toAdminDto(
@@ -265,6 +301,9 @@ public class RecipeServiceImpl implements IRecipeService {
         recipeToUpdate.getRecipeIngredients().clear();
         recipeToUpdate.getRecipeIngredients().addAll(toRecipeIngredients(nullSafe(updateRecipeDto.ingredients()), recipeToUpdate));
 
+        // MATERIALIZED FEED-SORTING FIELDS
+        recomputeFeedSortingFields(recipeToUpdate);
+
         return toAdminDto(recipeToUpdate, recipeTranslationToUpdate, toSimpleLanguagesMap(activeLangMap));
     }
 
@@ -285,6 +324,36 @@ public class RecipeServiceImpl implements IRecipeService {
     // PRIVATE
     // =========================================================
 
+    private List<RecipeDto> getFilteredPublished(SCFilterQuery<RecipeSpecificFilter> filterQuery, @NonNull String locale) {
+        var pageable = SCPaginationUtils.toPageable(filterQuery);
+        var filter = filterQuery.other();
+
+        var recipeIds = recipeRepository.findIdsByFiltersAndLocaleOtherSort(
+                locale,
+                filterQuery.searchKey(),
+                true,
+                filter.difficulty() != null ? filter.difficulty().getValue() : null,
+                filter.mealType() != null ? filter.mealType().getValue() : null,
+                filter.season() != null ? filter.season().getValue() : null,
+                filter.isVegetarian(),
+                filter.isVegan(),
+                filter.isGlutenFree(),
+                filter.categoryIdCalculated(),
+                pageable
+        );
+
+        if (recipeIds.hasContent()) {
+            var ids = recipeIds.getContent();
+            Map<Long, Recipe> byId = recipeRepository.findByIdsWithSpecificTranslation(ids, locale)
+                    .stream().collect(Collectors.toMap(Recipe::getId, r -> r));
+            List<Recipe> ordered = ids.stream().map(byId::get).filter(Objects::nonNull).toList();
+            return ordered.stream().map(this::toDto).toList();
+        }
+
+
+        return List.of(); // Placeholder
+    }
+
     private void assertAuthorOrAdmin(Recipe recipe, UUID publicId) {
         var authUser = SCAuthenticationUtils.getAuthUserByContextHolder();
         if (authUser.role().isAdmin()) return;
@@ -294,6 +363,22 @@ public class RecipeServiceImpl implements IRecipeService {
 
     private Category resolveCategoryOrNull(UUID categoryPublicId) {
         return categoryPublicId != null ? categoryDomainBridgeService.getCategoryEntityByPublicIdOrThrow(categoryPublicId) : null;
+    }
+
+    /**
+     * Recomputes {@code totalTimeMin} and {@code economicalRatio} from the recipe's current
+     * timing, servings and ingredient list. Materialized on the entity (no DB trigger, no
+     * {@code @Formula}) so home-feed sorting queries never need a correlated subquery per row.
+     * Must be called after ingredients/servings/prep/cook time are set, before save.
+     */
+    private void recomputeFeedSortingFields(Recipe recipe) {
+        int prepTimeMin = recipe.getPrepTimeMin() != null ? recipe.getPrepTimeMin() : 0;
+        int cookTimeMin = recipe.getCookTimeMin() != null ? recipe.getCookTimeMin() : 0;
+        recipe.setTotalTimeMin(prepTimeMin + cookTimeMin);
+
+        int effectiveServings = recipe.getServings() != null && recipe.getServings() > 0 ? recipe.getServings() : 1;
+        recipe.setEconomicalRatio(BigDecimal.valueOf(recipe.getRecipeIngredients().size())
+                .divide(BigDecimal.valueOf(effectiveServings), 4, RoundingMode.HALF_UP));
     }
 
     private <T> List<T> nullSafe(List<T> list) {

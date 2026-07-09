@@ -8,12 +8,9 @@ import com.sb.sfrigola_core.common.models.contracts.SCFilterQuery;
 import com.sb.sfrigola_core.domains.recipes.dto.input.AddRecipeDto;
 import com.sb.sfrigola_core.domains.recipes.dto.input.UpdateRecipeDto;
 import com.sb.sfrigola_core.domains.recipes.dto.view.RecipeDetailsAdminDto;
-import com.sb.sfrigola_core.domains.recipes.dto.view.RecipeDto;
+import com.sb.sfrigola_core.domains.recipes.dto.view.RecipesFeedDto;
 import com.sb.sfrigola_core.domains.recipes.dto.view.RecipePreviewAdminDto;
-import com.sb.sfrigola_core.domains.recipes.enums.DifficultyLevel;
-import com.sb.sfrigola_core.domains.recipes.enums.MealType;
-import com.sb.sfrigola_core.domains.recipes.enums.RecipeSortField;
-import com.sb.sfrigola_core.domains.recipes.enums.SeasonType;
+import com.sb.sfrigola_core.domains.recipes.enums.*;
 import com.sb.sfrigola_core.domains.recipes.models.RecipeSpecificFilter;
 import com.sb.sfrigola_core.domains.recipes.service.IRecipeService;
 import jakarta.validation.Valid;
@@ -27,6 +24,7 @@ import org.springframework.validation.annotation.Validated;
 import org.springframework.web.bind.annotation.*;
 
 import java.util.List;
+import java.util.Map;
 import java.util.UUID;
 
 @RestController
@@ -38,23 +36,19 @@ public class RecipeController {
     private final IRecipeService recipeService;
 
     // [Public]
-    @GetMapping(version = "1.0")
-    public ResponseEntity<SCGeneralResponseDto<List<RecipeDto>, SCPagedOptionDto>> getAllRecipes(
-            @Min(value = 0, message = SCRequestParamValidationCodeConstants.PAGE_MUST_BE_AT_LEAST_ZERO)
-            @RequestParam(value = "page", required = false, defaultValue = "0") int page,
-            @Min(value = 1, message = SCRequestParamValidationCodeConstants.TAKE_MUST_BE_AT_LEAST_ONE) @Max(value = 100, message = SCRequestParamValidationCodeConstants.TAKE_MUST_BE_AT_MOST_HUNDRED)
-            @RequestParam(value = "take", required = false, defaultValue = "10") int take,
-            @RequestParam(value = "searchKey", required = false) String searchKey,
+    @GetMapping(value = "/home/category/{categoryId}", version = "1.0")
+    public ResponseEntity<SCGeneralResponseDto<Map<FeedType, RecipesFeedDto>, Void>> getAllRecipesHomeFeed(
+            @PathVariable("categoryId") UUID categoryId,
             @RequestParam(required = false) @NotBlank(message = SCRequestParamValidationCodeConstants.LOCALE_MUST_NOT_BE_BLANK) String locale
     ) {
-        var filterQuery = SCFilterQuery.pageWithSearch(searchKey, take, page);
-        var paginatedRecipes = recipeService.getAll(filterQuery, locale);
-        return ResponseEntity.ok(SCGeneralResponseDto.success(paginatedRecipes.content(), paginatedRecipes.pagedOptionDto()));
+        var homeFeed = recipeService.getAllHomeFeed(categoryId, locale);
+        return ResponseEntity.ok(SCGeneralResponseDto.success(homeFeed));
     }
 
     // [Admin]
-    @GetMapping(value = "/admin", version = "1.0")
+    @GetMapping(value = {"/admin", "/admin/category/{categoryId}"}, version = "1.0")
     public ResponseEntity<SCGeneralResponseDto<List<RecipePreviewAdminDto>, SCPagedOptionDto>> getAllAdmin(
+            @PathVariable(value = "categoryId", required = false) UUID categoryId,
             @Min(value = 0, message = SCRequestParamValidationCodeConstants.PAGE_MUST_BE_AT_LEAST_ZERO)
             @RequestParam(value = "page", required = false, defaultValue = "0") int page,
             @Min(value = 1, message = SCRequestParamValidationCodeConstants.TAKE_MUST_BE_AT_LEAST_ONE) @Max(value = 100, message = SCRequestParamValidationCodeConstants.TAKE_MUST_BE_AT_MOST_HUNDRED)
@@ -79,7 +73,8 @@ public class RecipeController {
                 isVegetarian,
                 isVegan,
                 isGlutenFree,
-                isPublished
+                isPublished,
+                null
         );
         var filterQuery = SCFilterQuery.powerful(searchKey, sortBy != null ? RecipeSortField.fromString(sortBy) : null, SortDirection.fromString(sort), take, page, recipeSpecificFilter);
         var paginatedRecipes = recipeService.getAllAdmin(filterQuery, locale);

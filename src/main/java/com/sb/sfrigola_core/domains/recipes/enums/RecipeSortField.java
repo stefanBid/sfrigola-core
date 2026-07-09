@@ -11,7 +11,9 @@ public enum RecipeSortField implements ISCSortField {
     PREP_TIME_MIN("prepTimeMin"),
     COOK_TIME_MIN("cookTimeMin"),
     SERVINGS("servings"),
-    IS_PUBLISHED("isPublished");
+    IS_PUBLISHED("isPublished"),
+    TOTAL_TIME_MIN("totalTimeMin"),
+    ECONOMICAL_RATIO("economicalRatio");
 
     private final String entityFieldName;
 

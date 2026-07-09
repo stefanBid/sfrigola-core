@@ -8,9 +8,12 @@ import com.sb.sfrigola_core.domains.recipes.dto.input.UpdateRecipeDto;
 import com.sb.sfrigola_core.domains.recipes.dto.view.RecipeDetailsAdminDto;
 import com.sb.sfrigola_core.domains.recipes.dto.view.RecipeDto;
 import com.sb.sfrigola_core.domains.recipes.dto.view.RecipePreviewAdminDto;
+import com.sb.sfrigola_core.domains.recipes.dto.view.RecipesFeedDto;
+import com.sb.sfrigola_core.domains.recipes.enums.FeedType;
 import com.sb.sfrigola_core.domains.recipes.models.RecipeSpecificFilter;
 import org.jspecify.annotations.NonNull;
 
+import java.util.Map;
 import java.util.UUID;
 
 /**
@@ -34,6 +37,29 @@ public interface IRecipeService {
      *         if {@code locale} does not match an active language (thrown by the languages domain bridge)
      */
     SCPagedResult<RecipeDto> getAll(SCFilterQuery<Void> filterQuery, @NonNull String locale);
+
+    /**
+     * Returns the home-page feed for a selected category: a fixed set of short, unpaginated
+     * recipe rows ({@link RecipesFeedDto#recipes()}, capped at a small top-N per row), one row
+     * per {@link FeedType}, each with its own ranking criterion (e.g. quickest to prepare,
+     * most economical by ingredient-count-to-servings ratio). Only published recipes with a
+     * translation for {@code locale} are considered.
+     * <p>
+     * Only {@link FeedType}s that are currently implementable are present as keys in the
+     * returned map — feed types that depend on domains not yet built (ratings/favorites stats)
+     * are omitted entirely rather than returned with an empty row, until those domains exist.
+     * {@link RecipesFeedDto#sortOrder()} indicates the display order of that row on the home page.
+     *
+     * @param categoryId public identifier of the category whose recipes populate the feed
+     * @param locale     BCP-47 language code used to filter and localize results
+     * @return a {@link Map} keyed by {@link FeedType}, never {@code null}; never contains
+     *         a {@code null} key or value, but may omit keys for not-yet-implemented feed types
+     * @throws com.sb.sfrigola_core.domains.categories.exception.NoCategoryFoundException
+     *         if no category exists with the given public ID
+     * @throws LocaleNotActiveException
+     *         if {@code locale} does not match an active language (thrown by the languages domain bridge)
+     */
+    Map<FeedType, RecipesFeedDto> getAllHomeFeed(@NonNull UUID categoryId, @NonNull String locale);
 
     /**
      * Returns a paginated admin preview of ALL recipes (published and draft), including

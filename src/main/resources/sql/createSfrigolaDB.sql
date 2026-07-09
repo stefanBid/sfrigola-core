@@ -253,6 +253,8 @@ CREATE TABLE recipes (
      prep_time_min   INT              CHECK (prep_time_min >= 0),
      cook_time_min   INT              CHECK (cook_time_min >= 0),
      servings        SMALLINT         CHECK (servings > 0),
+     total_time_min      INT           NOT NULL DEFAULT 0,
+     economical_ratio     NUMERIC(10,4) NOT NULL DEFAULT 0,
      is_vegetarian   BOOLEAN          NOT NULL DEFAULT FALSE,
      is_vegan        BOOLEAN          NOT NULL DEFAULT FALSE,
      is_gluten_free  BOOLEAN          NOT NULL DEFAULT FALSE,

@@ -100,6 +100,7 @@ public interface IRecipeRepository extends JpaRepository<Recipe, Long> {
                 AND (:isVegetarian IS NULL OR r.isVegetarian = :isVegetarian)
                 AND (:isVegan IS NULL OR r.isVegan = :isVegan)
                 AND (:isGlutenFree IS NULL OR r.isGlutenFree = :isGlutenFree)
+                AND (:categoryId IS NULL OR r.category.id = :categoryId)
            """,
             countQuery = """
             SELECT COUNT(r.id) FROM Recipe r
@@ -112,6 +113,7 @@ public interface IRecipeRepository extends JpaRepository<Recipe, Long> {
                 AND (:isVegetarian IS NULL OR r.isVegetarian = :isVegetarian)
                 AND (:isVegan IS NULL OR r.isVegan = :isVegan)
                 AND (:isGlutenFree IS NULL OR r.isGlutenFree = :isGlutenFree)
+                AND (:categoryId IS NULL OR r.category.id = :categoryId)
            """)
     Page<Long> findIdsByFiltersAndLocaleOtherSort(
             @Param("locale") String locale,
@@ -123,6 +125,7 @@ public interface IRecipeRepository extends JpaRepository<Recipe, Long> {
             @Param("isVegetarian") Boolean isVegetarian,
             @Param("isVegan") Boolean isVegan,
             @Param("isGlutenFree") Boolean isGlutenFree,
+            @Param("categoryId") Long categoryId,
             Pageable pageable
     );
 

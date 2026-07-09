@@ -11,6 +11,7 @@ public record RecipeSpecificFilter(
         Boolean isVegetarian,
         Boolean isVegan,
         Boolean isGlutenFree,
-        Boolean isPublished
+        Boolean isPublished,
+        Long categoryIdCalculated
 ) {
 }
