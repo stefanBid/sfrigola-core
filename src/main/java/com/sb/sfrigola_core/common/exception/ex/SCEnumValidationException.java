@@ -13,7 +13,7 @@ public class SCEnumValidationException extends SCGeneralException {
         super(
                 HttpStatus.BAD_REQUEST,
                 GeneralErrorCode.INVALID_ENUM_CODE,
-                String.format("Invalid value '%s' for enum '%s'. Valid values are (ignore-case): [ %s ]", fromStringValue, enumName, validEnumValues)
+                String.format("Invalid value '%s' for enum '%s'. Valid values are (ignore-case): %s", fromStringValue, enumName, validEnumValues)
         );
     }
 
