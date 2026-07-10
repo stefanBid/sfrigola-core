@@ -311,14 +311,15 @@ public class RecipeServiceImpl implements IRecipeService {
         if (recipeToUpdate.isPublished() != updateRecipeDto.isPublished())
             recipeToUpdate.setPublished(updateRecipeDto.isPublished());
 
-        // TAGS MANAGEMENT — full replace of the recipe's tag set
+        // TAGS MANAGEMENT — reconcile to the requested tag set (not clear+re-add: RecipeTag's
+        // id is @MapsId(recipe+tag), so a fresh instance for a tag that's kept unchanged would
+        // collide with the still-managed, pending-orphan-removal old row for that same id)
         List<Tag> tagsForRecipe = tagDomainBridgeService.getTagsUsableForRecipes(SCDataStructureUtils.nullSafeList(updateRecipeDto.recipeTagsIds()));
-        recipeToUpdate.getRecipeTags().clear();
-        recipeToUpdate.getRecipeTags().addAll(toRecipeTags(tagsForRecipe, recipeToUpdate));
+        reconcileRecipeTags(recipeToUpdate, tagsForRecipe);
 
-        // INGREDIENTS MANAGEMENT — full replace of the recipe's ingredient list
-        recipeToUpdate.getRecipeIngredients().clear();
-        recipeToUpdate.getRecipeIngredients().addAll(toRecipeIngredients(SCDataStructureUtils.nullSafeList(updateRecipeDto.ingredients()), recipeToUpdate));
+        // INGREDIENTS MANAGEMENT — reconcile to the requested ingredient lines (not clear+re-add:
+        // see reconcileRecipeIngredients for why)
+        reconcileRecipeIngredients(recipeToUpdate, SCDataStructureUtils.nullSafeList(updateRecipeDto.ingredients()));
 
         // MATERIALIZED FEED-SORTING FIELDS
         recomputeFeedSortingFields(recipeToUpdate);
@@ -632,6 +633,26 @@ public class RecipeServiceImpl implements IRecipeService {
      * @param recipe the owning recipe, set as the back-reference on each {@link RecipeTag}
      * @return one new {@link RecipeTag} per tag, not yet persisted
      */
+    /**
+     * Reconciles {@code recipe.recipeTags} to exactly {@code desiredTags}: removes tags no longer
+     * wanted (triggers {@code orphanRemoval} deletion) and adds only the tags not already present.
+     * Used instead of clear+re-add by {@link #updateRecipe} — {@link RecipeTag}'s id is
+     * {@code @MapsId(recipe+tag)}, so re-adding a fresh instance for a tag that's unchanged would
+     * collide with the old row for that same id, still managed in the persistence context pending
+     * its (now unnecessary) orphan-removal delete: {@code NonUniqueObjectException}.
+     *
+     * @param recipe      the recipe whose {@code recipeTags} collection is mutated in place
+     * @param desiredTags the full target tag set, already resolved and scope-validated
+     */
+    private void reconcileRecipeTags(Recipe recipe, List<Tag> desiredTags) {
+        Set<Long> desiredTagIds = desiredTags.stream().map(Tag::getId).collect(Collectors.toSet());
+        recipe.getRecipeTags().removeIf(rt -> !desiredTagIds.contains(rt.getTag().getId()));
+
+        Set<Long> existingTagIds = recipe.getRecipeTags().stream().map(rt -> rt.getTag().getId()).collect(Collectors.toSet());
+        List<Tag> tagsToAdd = desiredTags.stream().filter(t -> !existingTagIds.contains(t.getId())).toList();
+        recipe.getRecipeTags().addAll(toRecipeTags(tagsToAdd, recipe));
+    }
+
     private List<RecipeTag> toRecipeTags(List<Tag> tags, Recipe recipe) {
         return tags.stream()
                 .map(tag -> {
@@ -662,17 +683,60 @@ public class RecipeServiceImpl implements IRecipeService {
 
         List<RecipeIngredient> recipeIngredients = new ArrayList<>();
         for (int i = 0; i < inputs.size(); i++) {
-            var input = inputs.get(i);
             RecipeIngredient recipeIngredient = new RecipeIngredient();
             recipeIngredient.setRecipe(recipe);
             recipeIngredient.setIngredient(resolvedIngredients.get(i));
-            recipeIngredient.setQuantity(input.quantity());
-            recipeIngredient.setUnit(input.unit());
-            recipeIngredient.setPreparationNote(input.preparationNote());
-            recipeIngredient.setSortOrder(input.sortOrder());
+            applyRecipeIngredientFields(recipeIngredient, inputs.get(i));
             recipeIngredients.add(recipeIngredient);
         }
         return recipeIngredients;
+    }
+
+    /**
+     * Reconciles {@code recipe.recipeIngredients} to exactly {@code inputs}: removes lines for
+     * ingredients no longer present (triggers {@code orphanRemoval} deletion), updates the
+     * quantity/unit/note/sortOrder of lines for ingredients that are kept, and adds only genuinely
+     * new ingredient lines. Used instead of clear+re-add by {@link #updateRecipe} — the table has
+     * a DB unique constraint on {@code (recipe_id, ingredient_id)}, and Hibernate flushes inserts
+     * before deletes, so a fresh row for an ingredient kept unchanged would violate it before the
+     * old row's deferred delete runs.
+     *
+     * @param recipe the recipe whose {@code recipeIngredients} collection is mutated in place
+     * @param inputs the full target ingredient-line list
+     * @throws com.sb.sfrigola_core.domains.ingredients.exception.NoIngredientFoundException
+     *         if any {@code ingredientPublicId} does not match an existing ingredient
+     */
+    private void reconcileRecipeIngredients(Recipe recipe, List<RecipeIngredientInputDto> inputs) {
+        List<Ingredient> resolvedIngredients = ingredientDomainBridgeService.getIngredientsByPublicIds(
+                inputs.stream().map(RecipeIngredientInputDto::ingredientPublicId).toList()
+        );
+
+        Map<Long, RecipeIngredient> existingByIngredientId = recipe.getRecipeIngredients().stream()
+                .collect(Collectors.toMap(ri -> ri.getIngredient().getId(), ri -> ri));
+
+        Set<Long> desiredIngredientIds = resolvedIngredients.stream().map(Ingredient::getId).collect(Collectors.toSet());
+        recipe.getRecipeIngredients().removeIf(ri -> !desiredIngredientIds.contains(ri.getIngredient().getId()));
+
+        for (int i = 0; i < inputs.size(); i++) {
+            Ingredient ingredient = resolvedIngredients.get(i);
+            RecipeIngredient existing = existingByIngredientId.get(ingredient.getId());
+            if (existing != null) {
+                applyRecipeIngredientFields(existing, inputs.get(i));
+            } else {
+                RecipeIngredient newLine = new RecipeIngredient();
+                newLine.setRecipe(recipe);
+                newLine.setIngredient(ingredient);
+                applyRecipeIngredientFields(newLine, inputs.get(i));
+                recipe.getRecipeIngredients().add(newLine);
+            }
+        }
+    }
+
+    private void applyRecipeIngredientFields(RecipeIngredient target, RecipeIngredientInputDto input) {
+        target.setQuantity(input.quantity());
+        target.setUnit(input.unit());
+        target.setPreparationNote(input.preparationNote());
+        target.setSortOrder(input.sortOrder());
     }
 
     /**
