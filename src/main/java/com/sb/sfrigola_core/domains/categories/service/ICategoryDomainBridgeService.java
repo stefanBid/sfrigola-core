@@ -2,6 +2,7 @@ package com.sb.sfrigola_core.domains.categories.service;
 
 import com.sb.sfrigola_core.domains.categories.entity.Category;
 
+import java.util.List;
 import java.util.UUID;
 
 /**
@@ -22,4 +23,13 @@ public interface ICategoryDomainBridgeService {
      *         if no category exists with the given public ID
      */
     Category getCategoryEntityByPublicIdOrThrow(UUID publicId);
+
+    /**
+     * Returns the direct child categories of the given category.
+     *
+     * @param category the parent category whose children are resolved; never {@code null}
+     * @return the list of direct children, or an empty list if {@code category} is a leaf
+     *         (has no children)
+     */
+    List<Category> getChildrenCategories(Category category);
 }

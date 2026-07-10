@@ -1,5 +1,7 @@
 package com.sb.sfrigola_core.domains.recipes.enums;
 
+import com.sb.sfrigola_core.common.exception.ex.SCEnumValidationException;
+
 import java.util.Arrays;
 
 public enum FeedType {
@@ -13,6 +15,6 @@ public enum FeedType {
         return Arrays.stream(values())
                 .filter(type -> type.name().equalsIgnoreCase(feedType))
                 .findFirst()
-                .orElseThrow(() -> new IllegalArgumentException("Invalid feed type: " + feedType + ". It has to be one of: " + Arrays.toString(values())));
+                .orElseThrow(() -> new SCEnumValidationException(FeedType.class.getSimpleName(), feedType, values()));
     }
 }

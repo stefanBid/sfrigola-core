@@ -2,6 +2,7 @@ package com.sb.sfrigola_core.domains.ingredients.enums;
 
 import com.fasterxml.jackson.annotation.JsonCreator;
 import com.fasterxml.jackson.annotation.JsonValue;
+import com.sb.sfrigola_core.common.exception.ex.SCEnumValidationException;
 import lombok.Getter;
 
 import java.util.Arrays;
@@ -29,6 +30,7 @@ public enum IngredientFoodGroup {
         return Arrays.stream(values())
                 .filter(category -> category.value.equalsIgnoreCase(value))
                 .findFirst()
-                .orElseThrow(() -> new IllegalArgumentException("Invalid ingredient food group: " + value + " Accepted values: " + Arrays.toString(values())));
+                .orElseThrow(() -> new SCEnumValidationException(
+                        IngredientFoodGroup.class.getSimpleName(), value, values(), IngredientFoodGroup::getValue));
     }
 }

@@ -64,8 +64,7 @@ public class RecipeServiceImpl implements IRecipeService {
         // Check Locale is active
         languageDomainBridgeService.validateLocaleIsActiveOrThrow(locale);
 
-        // Check Category exist
-        Category category = categoryDomainBridgeService.getCategoryEntityByPublicIdOrThrow(categoryId);
+        List<Long> categoryCalculatedIds = resolveCategoryFilterIds(categoryId);
 
         // VIRAL FEED (Not Implemented yet)
         // FAVOURITE FEED (Not Implemented yet)
@@ -73,19 +72,19 @@ public class RecipeServiceImpl implements IRecipeService {
         Map<FeedType, RecipesFeedDto> homeFeed = new EnumMap<>(FeedType.class);
 
         // QUICK FEED — shortest prep + cook time first
-        var quickFilter = new RecipeSpecificFilter(null, null, null, null, null, null, true, category.getId());
+        var quickFilter = new RecipeSpecificFilter(null, null, null, null, null, null, true);
         var quickFilterQuery = SCFilterQuery.powerful(null, RecipeSortField.TOTAL_TIME_MIN, SortDirection.ASC, 10, 0, quickFilter);
-        homeFeed.put(FeedType.QUICK, new RecipesFeedDto(getFilteredPublished(quickFilterQuery, locale), (short) 0));
+        homeFeed.put(FeedType.QUICK, new RecipesFeedDto(getFilteredPublished(quickFilterQuery, categoryCalculatedIds, locale), (short) 0));
 
         // LIKE_A_CHEF FEED — hard difficulty, longest prep + cook time first
-        var gourmetFilter = new RecipeSpecificFilter(DifficultyLevel.HARD, null, null, null, null, null, true, category.getId());
+        var gourmetFilter = new RecipeSpecificFilter(DifficultyLevel.HARD, null, null, null, null, null, true);
         var gourmetFilterQuery = SCFilterQuery.powerful(null, RecipeSortField.TOTAL_TIME_MIN, SortDirection.DESC, 10, 0, gourmetFilter);
-        homeFeed.put(FeedType.LIKE_A_CHEF, new RecipesFeedDto(getFilteredPublished(gourmetFilterQuery, locale), (short) 1));
+        homeFeed.put(FeedType.LIKE_A_CHEF, new RecipesFeedDto(getFilteredPublished(gourmetFilterQuery, categoryCalculatedIds, locale), (short) 1));
 
         // ECONOMICAL FEED — lowest ingredient-count-to-servings ratio first
-        var economicalFilter = new RecipeSpecificFilter(null, null, null, null, null, null, true, category.getId());
+        var economicalFilter = new RecipeSpecificFilter(null, null, null, null, null, null, true);
         var economicalFilterQuery = SCFilterQuery.powerful(null, RecipeSortField.ECONOMICAL_RATIO, SortDirection.ASC, 10, 0, economicalFilter);
-        homeFeed.put(FeedType.ECONOMICAL, new RecipesFeedDto(getFilteredPublished(economicalFilterQuery, locale), (short) 2));
+        homeFeed.put(FeedType.ECONOMICAL, new RecipesFeedDto(getFilteredPublished(economicalFilterQuery,categoryCalculatedIds, locale), (short) 2));
 
         return homeFeed;
     }
@@ -96,7 +95,7 @@ public class RecipeServiceImpl implements IRecipeService {
 
         languageDomainBridgeService.validateLocaleIsActiveByActiveLanguagesMapKeysOrThrow(activeLanguagesSimpleMap.keySet(), locale);
 
-        Long categoryDbId = categoryId != null ? categoryDomainBridgeService.getCategoryEntityByPublicIdOrThrow(categoryId).getId() : null;
+        List<Long> categoryDbIds = resolveCategoryFilterIds(categoryId);
 
         boolean sortByTitle = filterQuery.sortBy() == null || filterQuery.sortBy() == RecipeSortField.TITLE;
         boolean descending = filterQuery.sort() != null && !filterQuery.sort().isAsc();
@@ -115,10 +114,10 @@ public class RecipeServiceImpl implements IRecipeService {
 
         if (sortByTitle) {
             idsPage = descending
-                    ? recipeRepository.findIdsByFiltersAndLocaleDesc(locale, filterQuery.searchKey(), isPublished, difficulty, mealType, season, isVegetarian, isVegan, isGlutenFree, categoryDbId, pageable)
-                    : recipeRepository.findIdsByFiltersAndLocaleAsc(locale, filterQuery.searchKey(), isPublished, difficulty, mealType, season, isVegetarian, isVegan, isGlutenFree, categoryDbId, pageable);
+                    ? recipeRepository.findIdsByFiltersAndLocaleDesc(locale, filterQuery.searchKey(), isPublished, difficulty, mealType, season, isVegetarian, isVegan, isGlutenFree, categoryDbIds, pageable)
+                    : recipeRepository.findIdsByFiltersAndLocaleAsc(locale, filterQuery.searchKey(), isPublished, difficulty, mealType, season, isVegetarian, isVegan, isGlutenFree, categoryDbIds, pageable);
         } else {
-            idsPage = recipeRepository.findIdsByFiltersAndLocaleOtherSort(locale, filterQuery.searchKey(), isPublished, difficulty, mealType, season, isVegetarian, isVegan, isGlutenFree, categoryDbId, pageable);
+            idsPage = recipeRepository.findIdsByFiltersAndLocaleOtherSort(locale, filterQuery.searchKey(), isPublished, difficulty, mealType, season, isVegetarian, isVegan, isGlutenFree, categoryDbIds, pageable);
         }
 
         if (idsPage.hasContent()) {
@@ -144,11 +143,11 @@ public class RecipeServiceImpl implements IRecipeService {
     public SCPagedResult<RecipeDto> searchRecipes(SCFilterQuery<Void> filterQuery, UUID categoryId, @NonNull String locale) {
         languageDomainBridgeService.validateLocaleIsActiveOrThrow(locale);
 
-        Long categoryDbId = categoryId != null ? categoryDomainBridgeService.getCategoryEntityByPublicIdOrThrow(categoryId).getId() : null;
+        List<Long> categoryDbIds = resolveCategoryFilterIds(categoryId);
 
         var pageable = SCPaginationUtils.toPageable(filterQuery);
 
-        var recipeIds = recipeRepository.findIdsBySearchKeyAndLocale(locale, filterQuery.searchKey(), categoryDbId, pageable);
+        var recipeIds = recipeRepository.findIdsBySearchKeyAndLocale(locale, filterQuery.searchKey(), categoryDbIds, pageable);
 
         if (recipeIds.hasContent()) {
             var ids = recipeIds.getContent();
@@ -341,7 +340,7 @@ public class RecipeServiceImpl implements IRecipeService {
     // PRIVATE
     // =========================================================
 
-    private List<RecipeDto> getFilteredPublished(SCFilterQuery<RecipeSpecificFilter> filterQuery, @NonNull String locale) {
+    private List<RecipeDto> getFilteredPublished(SCFilterQuery<RecipeSpecificFilter> filterQuery, List<Long> categoryCalculatedIds, @NonNull String locale) {
         var pageable = SCPaginationUtils.toPageable(filterQuery);
         var filter = filterQuery.other();
 
@@ -355,7 +354,7 @@ public class RecipeServiceImpl implements IRecipeService {
                 filter.isVegetarian(),
                 filter.isVegan(),
                 filter.isGlutenFree(),
-                filter.categoryIdCalculated(),
+                categoryCalculatedIds,
                 pageable
         );
 
@@ -380,6 +379,27 @@ public class RecipeServiceImpl implements IRecipeService {
 
     private Category resolveCategoryOrNull(UUID categoryPublicId) {
         return categoryPublicId != null ? categoryDomainBridgeService.getCategoryEntityByPublicIdOrThrow(categoryPublicId) : null;
+    }
+
+    /**
+     * Resolves a category public ID into the set of internal category IDs to filter recipes by:
+     * the category itself plus, if it is a parent category, all of its direct children.
+     * Returns {@code null} (no filter) when {@code categoryPublicId} is {@code null}.
+     */
+    private List<Long> resolveCategoryFilterIds(UUID categoryPublicId) {
+        if (categoryPublicId == null) return null;
+
+        Category category = categoryDomainBridgeService.getCategoryEntityByPublicIdOrThrow(categoryPublicId);
+
+        List<Long> categoryIds = new ArrayList<>();
+        var isParent = category.getParent() == null;
+        if (isParent) {
+            var children = categoryDomainBridgeService.getChildrenCategories(category);
+            categoryIds.addAll(children.stream().map(Category::getId).toList());
+        }
+        categoryIds.add(category.getId());
+
+        return categoryIds;
     }
 
     /**

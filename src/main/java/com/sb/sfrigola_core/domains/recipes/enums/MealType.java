@@ -2,6 +2,7 @@ package com.sb.sfrigola_core.domains.recipes.enums;
 
 import com.fasterxml.jackson.annotation.JsonCreator;
 import com.fasterxml.jackson.annotation.JsonValue;
+import com.sb.sfrigola_core.common.exception.ex.SCEnumValidationException;
 import lombok.Getter;
 
 import java.util.Arrays;
@@ -26,6 +27,7 @@ public enum MealType {
         return Arrays.stream(values())
                 .filter(type -> type.value.equalsIgnoreCase(value))
                 .findFirst()
-                .orElseThrow(() -> new IllegalArgumentException("Invalid meal type: " + value + " Accepted values: " + Arrays.toString(values())));
+                .orElseThrow(() -> new SCEnumValidationException(
+                        MealType.class.getSimpleName(), value, values(), MealType::getValue));
     }
 }

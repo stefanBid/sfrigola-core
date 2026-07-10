@@ -1,6 +1,8 @@
 package com.sb.sfrigola_core.common.enums;
 
 
+import com.sb.sfrigola_core.common.exception.ex.SCEnumValidationException;
+
 import java.util.Arrays;
 
 public enum SortDirection {
@@ -14,7 +16,8 @@ public enum SortDirection {
     }
 
     public static SortDirection fromString(String  direction) {
-        return Arrays.stream(values()).filter(dir -> dir.name().equalsIgnoreCase(direction)).findFirst().orElseThrow(() -> new IllegalArgumentException("Invalid sort direction: " + direction + "It Has to be either 'asc' or 'desc' (case insensitive)"));
+        return Arrays.stream(values()).filter(dir -> dir.name().equalsIgnoreCase(direction)).findFirst()
+                .orElseThrow(() -> new SCEnumValidationException(SortDirection.class.getSimpleName(), direction, values()));
     }
 
 }

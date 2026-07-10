@@ -104,8 +104,7 @@ public class RecipeController {
                 isVegetarian,
                 isVegan,
                 isGlutenFree,
-                isPublished,
-                null
+                isPublished
         );
         var filterQuery = SCFilterQuery.powerful(
                 searchKey,

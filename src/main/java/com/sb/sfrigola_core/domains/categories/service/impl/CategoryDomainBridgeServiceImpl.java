@@ -8,6 +8,7 @@ import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
+import java.util.List;
 import java.util.UUID;
 
 @Service
@@ -22,5 +23,10 @@ public class CategoryDomainBridgeServiceImpl implements ICategoryDomainBridgeSer
         return categoryRepository.findByPublicId(publicId).orElseThrow(
                 () -> new NoCategoryFoundException(publicId)
         );
+    }
+
+    @Override
+    public List<Category> getChildrenCategories(Category category) {
+        return categoryRepository.findByParentId(category.getId());
     }
 }

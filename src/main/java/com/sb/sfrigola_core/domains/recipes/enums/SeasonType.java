@@ -2,6 +2,7 @@ package com.sb.sfrigola_core.domains.recipes.enums;
 
 import com.fasterxml.jackson.annotation.JsonCreator;
 import com.fasterxml.jackson.annotation.JsonValue;
+import com.sb.sfrigola_core.common.exception.ex.SCEnumValidationException;
 import lombok.Getter;
 
 import java.util.Arrays;
@@ -25,6 +26,7 @@ public enum SeasonType {
         return Arrays.stream(values())
                 .filter(season -> season.value.equalsIgnoreCase(value))
                 .findFirst()
-                .orElseThrow(() -> new IllegalArgumentException("Invalid season type: " + value + " Accepted values: " + Arrays.toString(values())));
+                .orElseThrow(() -> new SCEnumValidationException(
+                        SeasonType.class.getSimpleName(), value, values(), SeasonType::getValue));
     }
 }
