@@ -398,20 +398,20 @@ idx_favorites_user           ON favorites (user_id)
 
 ---
 
-## Implementation Status (Sprint 3 in progress — Sprints 1 & 2 complete)
+## Implementation Status (Sprint 5 in progress — Sprints 1-4 complete)
 
 | Domain      | Entity | Repository | Service | Controller | Notes |
 |-------------|--------|------------|---------|------------|-------|
 | `auth`      | SCUser/SCRole (in users) | — | done | done | login, register, change-email, change-password |
 | `languages` | done | done | done | done | GET paginated |
 | `users`     | done | done | done | done | update-profile, change-lang, become-contributor, admin CRUD |
-| `categories`| done | missing | missing | missing | Category + CategoryTranslation entities; self-referential parent |
-| `tags`      | done | missing | missing | missing | Tag + TagTranslation + enums + converters |
-| `ingredients` | missing | missing | missing | missing | not started |
-| `recipes`   | missing | missing | missing | missing | not started |
-| `favorites` | missing | missing | missing | missing | not started |
-| `ratings`   | missing | missing | missing | missing | not started |
-| `stats`     | missing | missing | missing | no controller by design | not started |
+| `categories`| done | done | done | done | Category + CategoryTranslation; self-referential parent; has domain bridge |
+| `tags`      | done | done | done | done | Tag + TagTranslation + enums + converters; has domain bridge |
+| `ingredients` | done | done | done | done | Ingredient + IngredientTranslation + IngredientTag bridge table; has domain bridge |
+| `recipes`   | done | done | done | done | Recipe + RecipeTranslation + RecipeTag/RecipeIngredient bridge tables; has domain bridge (getRecipeEntityByPublicIdOrThrow, getRecipesByIdsWithLocale) |
+| `favorites` | done | done | done | done | authenticated-only: list/add/remove; has domain bridge (isFavoritedByUser, getFavoritedRecipeIds) for future recipes consumption |
+| `ratings`   | done | done | done | done | authenticated-only: stats/add/edit; has domain bridge (getRatingStats) for future recipes consumption |
+| `stats`     | done | done | n/a (bridge only) | no controller by design | RecipeStats entity, 1:1 with recipes via `@MapsId`; only consumed by favorites/ratings bridges |
 
 ---
 
@@ -443,6 +443,22 @@ Base path: `/sfrigola-core`
 | PATCH | `/users/profile/became-contributor` | authenticated | promotes to ROLE_CONTRIBUTOR |
 | GET | `/users/admin` | ROLE_ADMIN | paginated, sort/search/isActive filters |
 | PATCH | `/users/admin/{publicId}/status` | ROLE_ADMIN | activate/deactivate user |
+
+### Favorites — `/favorites`
+
+| Method | Path | Access | Notes |
+|--------|------|--------|-------|
+| GET | `/favorites` | authenticated | paginated, locale-localized RecipeDto list, most recently favorited first |
+| POST | `/favorites/{recipePublicId}` | authenticated | |
+| DELETE | `/favorites/{recipePublicId}` | authenticated | |
+
+### Ratings — `/ratings`
+
+| Method | Path | Access | Notes |
+|--------|------|--------|-------|
+| GET | `/ratings/recipe/{recipePublicId}/stats` | authenticated | average rating + total rating count |
+| POST | `/ratings` | authenticated | one rating per user per recipe |
+| PUT | `/ratings/recipe/{recipePublicId}` | authenticated | edits the authenticated user's own rating |
 
 ---
 

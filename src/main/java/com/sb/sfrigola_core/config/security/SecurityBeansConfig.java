@@ -113,7 +113,9 @@ public class SecurityBeansConfig {
                 "/api/users/settings/**",
                 "/api/users/profile/**",
                 "/api/auth/change-password",
-                "/api/auth/change-email"
+                "/api/auth/change-email",
+                "/api/favorites/**",
+                "/api/ratings/**"
         );
     }
 
