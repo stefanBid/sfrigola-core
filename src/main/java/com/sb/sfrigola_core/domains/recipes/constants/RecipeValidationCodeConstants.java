@@ -30,4 +30,6 @@ public class RecipeValidationCodeConstants {
 
     // --- TRANSLATION INSTRUCTIONS ---
     public static final String INSTRUCTIONS_REQUIRED         = "INSTRUCTIONS_REQUIRED";
+    public static final String INSTRUCTIONS_MIN_ONE          = "INSTRUCTIONS_MIN_ONE";
+    public static final String INSTRUCTIONS_STEP_BLANK       = "INSTRUCTIONS_STEP_BLANK";
 }

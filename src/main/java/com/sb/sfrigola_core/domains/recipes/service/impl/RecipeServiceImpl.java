@@ -4,6 +4,7 @@ import com.sb.sfrigola_core.common.enums.SortDirection;
 import com.sb.sfrigola_core.common.models.contracts.SCFilterQuery;
 import com.sb.sfrigola_core.common.models.contracts.SCPagedResult;
 import com.sb.sfrigola_core.common.util.SCAuthenticationUtils;
+import com.sb.sfrigola_core.common.util.SCDataStructureUtils;
 import com.sb.sfrigola_core.common.util.SCPaginationUtils;
 import com.sb.sfrigola_core.domains.categories.entity.Category;
 import com.sb.sfrigola_core.domains.categories.service.ICategoryDomainBridgeService;
@@ -238,11 +239,11 @@ public class RecipeServiceImpl implements IRecipeService {
         newRecipe.setTranslations(translations);
 
         // TAGS MANAGEMENT
-        List<Tag> tagsForRecipe = tagDomainBridgeService.getTagsUsableForRecipes(nullSafe(addRecipeDto.recipeTagsIds()));
+        List<Tag> tagsForRecipe = tagDomainBridgeService.getTagsUsableForRecipes(SCDataStructureUtils.nullSafeList(addRecipeDto.recipeTagsIds()));
         newRecipe.setRecipeTags(toRecipeTags(tagsForRecipe, newRecipe));
 
         // INGREDIENTS MANAGEMENT
-        newRecipe.setRecipeIngredients(toRecipeIngredients(nullSafe(addRecipeDto.ingredients()), newRecipe));
+        newRecipe.setRecipeIngredients(toRecipeIngredients(SCDataStructureUtils.nullSafeList(addRecipeDto.ingredients()), newRecipe));
 
         // MATERIALIZED FEED-SORTING FIELDS
         recomputeFeedSortingFields(newRecipe);
@@ -252,7 +253,7 @@ public class RecipeServiceImpl implements IRecipeService {
         return toAdminDto(
                 newRecipe,
                 translations.stream().filter(t -> t.getLanguage().getCode().equals(locale)).findFirst().orElse(null),
-                toSimpleLanguagesMap(activeLanguageMap));
+                languageDomainBridgeService.toSimpleLanguagesMap(activeLanguageMap));
     }
 
     @Override
@@ -282,8 +283,10 @@ public class RecipeServiceImpl implements IRecipeService {
                 recipeTranslationToUpdate.setTitle(updateRecipeDto.specificTranslation().title());
             if (!Objects.equals(recipeTranslationToUpdate.getDescription(), updateRecipeDto.specificTranslation().description()))
                 recipeTranslationToUpdate.setDescription(updateRecipeDto.specificTranslation().description());
-            if (!recipeTranslationToUpdate.getInstructions().equals(updateRecipeDto.specificTranslation().instructions()))
-                recipeTranslationToUpdate.setInstructions(updateRecipeDto.specificTranslation().instructions());
+            String newInstructions = SCDataStructureUtils.joinListIntoString(updateRecipeDto.specificTranslation().instructions(), ". ");
+
+            if (!recipeTranslationToUpdate.getInstructions().equals(newInstructions))
+                recipeTranslationToUpdate.setInstructions(newInstructions);
         }
 
         recipeToUpdate.setCategory(resolveCategoryOrNull(updateRecipeDto.categoryPublicId()));
@@ -309,18 +312,18 @@ public class RecipeServiceImpl implements IRecipeService {
             recipeToUpdate.setPublished(updateRecipeDto.isPublished());
 
         // TAGS MANAGEMENT — full replace of the recipe's tag set
-        List<Tag> tagsForRecipe = tagDomainBridgeService.getTagsUsableForRecipes(nullSafe(updateRecipeDto.recipeTagsIds()));
+        List<Tag> tagsForRecipe = tagDomainBridgeService.getTagsUsableForRecipes(SCDataStructureUtils.nullSafeList(updateRecipeDto.recipeTagsIds()));
         recipeToUpdate.getRecipeTags().clear();
         recipeToUpdate.getRecipeTags().addAll(toRecipeTags(tagsForRecipe, recipeToUpdate));
 
         // INGREDIENTS MANAGEMENT — full replace of the recipe's ingredient list
         recipeToUpdate.getRecipeIngredients().clear();
-        recipeToUpdate.getRecipeIngredients().addAll(toRecipeIngredients(nullSafe(updateRecipeDto.ingredients()), recipeToUpdate));
+        recipeToUpdate.getRecipeIngredients().addAll(toRecipeIngredients(SCDataStructureUtils.nullSafeList(updateRecipeDto.ingredients()), recipeToUpdate));
 
         // MATERIALIZED FEED-SORTING FIELDS
         recomputeFeedSortingFields(recipeToUpdate);
 
-        return toAdminDto(recipeToUpdate, recipeTranslationToUpdate, toSimpleLanguagesMap(activeLangMap));
+        return toAdminDto(recipeToUpdate, recipeTranslationToUpdate, languageDomainBridgeService.toSimpleLanguagesMap(activeLangMap));
     }
 
     @Override
@@ -340,6 +343,17 @@ public class RecipeServiceImpl implements IRecipeService {
     // PRIVATE
     // =========================================================
 
+    /**
+     * Runs one home-feed row: fetches published recipe IDs matching {@code filterQuery} (sort
+     * field/direction/limit come from it) restricted to {@code categoryCalculatedIds}, then loads
+     * and maps them to {@link RecipeDto} in the same order. Shared by all {@link FeedType} rows
+     * built in {@link #getAllHomeFeed}, each with its own filter/sort combination.
+     *
+     * @param filterQuery          pagination/sort/dietary filter for this specific feed row
+     * @param categoryCalculatedIds category IDs to restrict to (as resolved by {@link #resolveCategoryFilterIds}); {@code null} means no restriction
+     * @param locale               locale used both to filter (recipe must have a translation for it) and to localize the result
+     * @return recipes for this row, empty if none match
+     */
     private List<RecipeDto> getFilteredPublished(SCFilterQuery<RecipeSpecificFilter> filterQuery, List<Long> categoryCalculatedIds, @NonNull String locale) {
         var pageable = SCPaginationUtils.toPageable(filterQuery);
         var filter = filterQuery.other();
@@ -370,6 +384,15 @@ public class RecipeServiceImpl implements IRecipeService {
         return List.of(); // Placeholder
     }
 
+    /**
+     * Guards {@link #updateRecipe} and {@link #deleteRecipe}: reads the authenticated user from
+     * the security context and allows the call to proceed only if they are an admin or the
+     * recipe's author.
+     *
+     * @param recipe   the recipe being mutated
+     * @param publicId the recipe's public ID, used only to build the exception message
+     * @throws RecipeAuthorMismatchException if the authenticated user is neither the author nor an admin
+     */
     private void assertAuthorOrAdmin(Recipe recipe, UUID publicId) {
         var authUser = SCAuthenticationUtils.getAuthUserByContextHolder();
         if (authUser.role().isAdmin()) return;
@@ -377,6 +400,15 @@ public class RecipeServiceImpl implements IRecipeService {
             throw new RecipeAuthorMismatchException(publicId);
     }
 
+    /**
+     * Resolves the {@link Category} entity to assign as {@code recipe.category} on create/update.
+     * Unlike {@link #resolveCategoryFilterIds}, this does no parent/children expansion — it just
+     * resolves the single entity the recipe belongs to.
+     *
+     * @param categoryPublicId public ID from the request payload; {@code null} means "no category"
+     * @return the resolved {@link Category}, or {@code null} if {@code categoryPublicId} is {@code null}
+     * @throws com.sb.sfrigola_core.domains.categories.exception.NoCategoryFoundException if no category matches
+     */
     private Category resolveCategoryOrNull(UUID categoryPublicId) {
         return categoryPublicId != null ? categoryDomainBridgeService.getCategoryEntityByPublicIdOrThrow(categoryPublicId) : null;
     }
@@ -418,10 +450,14 @@ public class RecipeServiceImpl implements IRecipeService {
                 .divide(BigDecimal.valueOf(effectiveServings), 4, RoundingMode.HALF_UP));
     }
 
-    private <T> List<T> nullSafe(List<T> list) {
-        return list != null ? list : List.of();
-    }
-
+    /**
+     * Maps a {@link Recipe} to the public {@link RecipeDto} used by feed/search results.
+     * Assumes {@code recipe.getTranslations()} contains exactly one entry — the caller must have
+     * already filtered to a single locale (see {@link IRecipeRepository#findByIdsWithSpecificTranslation}).
+     *
+     * @param recipe the recipe entity, with its translations list pre-filtered to one locale
+     * @return the mapped {@link RecipeDto}
+     */
     private RecipeDto toDto(Recipe recipe) {
         // We have only one item in the list of translations — the first query filters by locale
         var translation = recipe.getTranslations().getFirst();
@@ -437,11 +473,17 @@ public class RecipeServiceImpl implements IRecipeService {
         );
     }
 
+    /**
+     * Maps a {@link Recipe} to {@link RecipePreviewAdminDto}, including which active languages
+     * the recipe has a translation for (localization coverage, used by the admin CMS).
+     *
+     * @param recipe              the recipe entity, with its full translations collection loaded
+     * @param recipeTranslation   the translation to preview (title), or {@code null} if none exists for the requested locale
+     * @param activeLanguagesMap  active language code → display name, used to build the coverage map
+     * @return the mapped {@link RecipePreviewAdminDto}
+     */
     private RecipePreviewAdminDto toAdminDto(Recipe recipe, RecipeTranslation recipeTranslation, Map<String, String> activeLanguagesMap) {
-        Map<String, String> translatedLanguages = recipe.getTranslations().stream()
-                .map(t -> t.getLanguage().getCode())
-                .filter(activeLanguagesMap::containsKey)
-                .collect(Collectors.toMap(code -> code, activeLanguagesMap::get));
+        Map<String, String> translatedLanguages = languageDomainBridgeService.buildTranslatedLanguagesMap(recipe.getTranslations(), activeLanguagesMap);
 
         String titlePreview = recipeTranslation != null ? recipeTranslation.getTitle() : null;
         return new RecipePreviewAdminDto(
@@ -463,11 +505,16 @@ public class RecipeServiceImpl implements IRecipeService {
         );
     }
 
-    private Map<String, String> toSimpleLanguagesMap(Map<String, Language> languageEntitiesMap) {
-        return languageEntitiesMap.entrySet().stream()
-                .collect(Collectors.toMap(Map.Entry::getKey, e -> e.getValue().getName()));
-    }
-
+    /**
+     * Maps a {@link Recipe} to full admin details, including ingredient and tag lists localized
+     * to {@code locale}. Used by {@link #getByPublicIdAdmin}; unlike {@link #toDto}, includes
+     * draft-recipe fields and never filters by {@code isPublished}.
+     *
+     * @param recipe             the recipe entity, with ingredients/tags collections loaded
+     * @param specificTranslation the translation to preview, or {@code null} if none exists for {@code locale}
+     * @param locale             locale used to localize the ingredient and tag names
+     * @return the mapped {@link RecipeDetailsAdminDto}
+     */
     private RecipeDetailsAdminDto toAdminDetailsDto(Recipe recipe, @Nullable RecipeTranslation specificTranslation, @NonNull String locale) {
         return new RecipeDetailsAdminDto(
                 recipe.getPublicId(),
@@ -491,6 +538,16 @@ public class RecipeServiceImpl implements IRecipeService {
         );
     }
 
+    /**
+     * Maps a {@link Recipe} to public details, including ingredient and tag lists localized to
+     * {@code locale}. Used by {@link #getByPublicId}, which has already checked {@code isPublished}
+     * before calling this — no dietary/publish flags beyond what's already on the entity are re-checked here.
+     *
+     * @param recipe             the recipe entity, with ingredients/tags collections loaded
+     * @param specificTranslation the translation to preview, or {@code null} if none exists for {@code locale}
+     * @param locale             locale used to localize the ingredient and tag names
+     * @return the mapped {@link RecipeDetailsDto}
+     */
     private RecipeDetailsDto toDetailsDto(Recipe recipe, @Nullable RecipeTranslation specificTranslation, @NonNull String locale) {
         return new RecipeDetailsDto(
                 recipe.getPublicId(),
@@ -513,6 +570,15 @@ public class RecipeServiceImpl implements IRecipeService {
         );
     }
 
+    /**
+     * Builds the recipe's tag list localized to {@code locale}, for {@link #toAdminDetailsDto}
+     * and {@link #toDetailsDto}. If a tag has no translation for {@code locale}, its label is
+     * {@code null} — the tag itself is still included.
+     *
+     * @param recipe the recipe entity, with {@code recipeTags} loaded
+     * @param locale locale used to pick each tag's label
+     * @return one {@link TagDto} per tag on the recipe
+     */
     private List<TagDto> buildTagList(Recipe recipe, String locale) {
         return recipe.getRecipeTags().stream()
                 .map(RecipeTag::getTag)
@@ -529,6 +595,15 @@ public class RecipeServiceImpl implements IRecipeService {
                 .toList();
     }
 
+    /**
+     * Builds the recipe's ingredient list localized to {@code locale}, for {@link #toAdminDetailsDto}
+     * and {@link #toDetailsDto}. If an ingredient has no translation for {@code locale}, its name
+     * is {@code null} — the ingredient line (quantity/unit/note) is still included.
+     *
+     * @param recipe the recipe entity, with {@code recipeIngredients} loaded
+     * @param locale locale used to pick each ingredient's name
+     * @return one {@link RecipeIngredientDto} per ingredient line on the recipe, in {@code sortOrder}
+     */
     private List<RecipeIngredientDto> buildIngredientList(Recipe recipe, String locale) {
         return recipe.getRecipeIngredients().stream()
                 .map(ri -> {
@@ -547,6 +622,16 @@ public class RecipeServiceImpl implements IRecipeService {
                 .toList();
     }
 
+    /**
+     * Wraps already-resolved and scope-validated {@link Tag} entities into new {@link RecipeTag}
+     * bridge-entity instances linked to {@code recipe}. Used by both {@link #createRecipe} and
+     * {@link #updateRecipe} (full tag-set replace) — resolution/validation happens beforehand via
+     * {@code tagDomainBridgeService.getTagsUsableForRecipes}.
+     *
+     * @param tags   resolved tags to attach, already checked for {@code recipe}/{@code both} scope
+     * @param recipe the owning recipe, set as the back-reference on each {@link RecipeTag}
+     * @return one new {@link RecipeTag} per tag, not yet persisted
+     */
     private List<RecipeTag> toRecipeTags(List<Tag> tags, Recipe recipe) {
         return tags.stream()
                 .map(tag -> {
@@ -558,6 +643,18 @@ public class RecipeServiceImpl implements IRecipeService {
                 .collect(Collectors.toList());
     }
 
+    /**
+     * Resolves each input line's {@code ingredientPublicId} to an {@link Ingredient} entity (one
+     * bulk lookup, order-preserving) and builds the corresponding {@link RecipeIngredient} rows
+     * linked to {@code recipe}. Used by both {@link #createRecipe} and {@link #updateRecipe}
+     * (full ingredient-list replace).
+     *
+     * @param inputs one line per ingredient (public ID, quantity, unit, note, sort order)
+     * @param recipe the owning recipe, set as the back-reference on each {@link RecipeIngredient}
+     * @return one new {@link RecipeIngredient} per input line, in the same order, not yet persisted
+     * @throws com.sb.sfrigola_core.domains.ingredients.exception.NoIngredientFoundException
+     *         if any {@code ingredientPublicId} does not match an existing ingredient
+     */
     private List<RecipeIngredient> toRecipeIngredients(List<RecipeIngredientInputDto> inputs, Recipe recipe) {
         List<Ingredient> resolvedIngredients = ingredientDomainBridgeService.getIngredientsByPublicIds(
                 inputs.stream().map(RecipeIngredientInputDto::ingredientPublicId).toList()
@@ -578,12 +675,21 @@ public class RecipeServiceImpl implements IRecipeService {
         return recipeIngredients;
     }
 
+    /**
+     * Builds a new (unsaved, un-linked-to-recipe) {@link RecipeTranslation} from an input DTO,
+     * condensing its {@code instructions} steps via {@link SCDataStructureUtils#joinListIntoString(List, String)}. The caller is
+     * responsible for setting {@code translation.setRecipe(...)} afterward.
+     *
+     * @param translationInputDto title/description/instruction-steps for one locale
+     * @param lang                the already-resolved, already-active {@link Language} for this translation
+     * @return the built {@link RecipeTranslation}, not yet linked to a recipe
+     */
     private RecipeTranslation toRecipeTranslation(RecipeTranslationInputDto translationInputDto, Language lang) {
         RecipeTranslation translation = new RecipeTranslation();
         translation.setLanguage(lang);
         translation.setTitle(translationInputDto.title());
         translation.setDescription(translationInputDto.description());
-        translation.setInstructions(translationInputDto.instructions());
+        translation.setInstructions(SCDataStructureUtils.joinListIntoString(translationInputDto.instructions(), ". "));
         return translation;
     }
 }

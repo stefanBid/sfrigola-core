@@ -512,13 +512,19 @@ Example: `ISCUserService` (controller-facing) vs `ISCUserDomainBridgeService` (b
 
 ### Translatable Entities Pattern
 
-Applies to every entity with a `*_translations` child table (`categories`, `tags`, and future `ingredients` / `recipes`). Modeled first on `categories`/`tags` in sprint 4/5 — follow this exactly for new translatable domains instead of re-deriving it.
+Applies to every entity with a `*_translations` child table (`categories`, `tags`, `ingredients`, `recipes`). Modeled first on `categories`/`tags` in sprint 4/5 — follow this exactly for new translatable domains instead of re-deriving it.
 
 **Locale validation/resolution always goes through `ILanguageDomainBridgeService`** — never inline a `Language`/locale null-check that duplicates it:
 - `validateLocaleIsActiveOrThrow(locale)` — single locale, no map loaded yet.
 - `validateLocaleIsActiveByActiveLanguagesMapKeysOrThrow(activeLanguagesKeys, locale)` — guard a locale when the active-languages map is already in memory (avoids a second query).
 - `getLangFromEntitiesMapFromKeyOrThrow(activeLanguagesMap, locale)` — resolve **and** validate a `Language` entity in one call, when the map of entities is already loaded.
 - All three throw `common.exception.ex.SCLocaleNotActiveException` — domains must not keep their own `LocaleNotActiveException`/`InvalidXLocaleException`.
+
+**The `translatedLanguages: Map<String, String>` field on admin preview DTOs (`XPreviewAdminDto`) is also built via `ILanguageDomainBridgeService`** — never inline the stream that computes it:
+- Every JPA translation entity (`CategoryTranslation`, `TagTranslation`, `IngredientTranslation`, `RecipeTranslation`) implements `common.interfaces.ISCTranslationEntity` (exposes `getLanguage()`). New translatable domains must do the same — it's a one-line `implements` addition, Lombok's `@Getter` already provides the method.
+- `buildTranslatedLanguagesMap(translations, activeLanguagesMap)` — generic over any `List<? extends ISCTranslationEntity>`; filters the entity's translations down to currently-active locales and maps each to its display name. This is the localization-coverage map shown in admin CMS previews.
+- `toSimpleLanguagesMap(languageEntitiesMap)` — flattens a `Map<String, Language>` (e.g. from `getActiveLanguageEntitiesMap()`) into `Map<String, String>`, for the common case where a `create`/`update` method already loaded the entities map for translation resolution and also needs the simple map to feed `buildTranslatedLanguagesMap` or the response DTO.
+- Domains must not keep their own private `toSimpleLanguagesMap`/translated-languages-stream copies — this was previously duplicated across `categories`/`tags`/`ingredients`/`recipes` and consolidated into the bridge for exactly this reason.
 
 **Create (`createNewX`)** — payload carries a `List<XTranslationInputDto>` that must cover **every** active language, no more no less:
 1. Reject duplicate `langCode` in the list → `DuplicateXLocaleException`.
@@ -700,7 +706,7 @@ Jakarta Validation on DTOs. Message constants in `SCRequestParamValidationCodeCo
 ## Notes for Claude
 
 - Actual domain package: `com.sb.sfrigola_core.domains.<feature>` — not `shared/` as in older versions.
-- Translation entities (e.g. `CategoryTranslation`, `TagTranslation`) live in the same domain as their parent entity (`domains/categories/entity/`), never in a separate `translations` domain.
+- Translation entities (e.g. `CategoryTranslation`, `TagTranslation`) live in the same domain as their parent entity (`domains/categories/entity/`), never in a separate `translations` domain — but they must `implements ISCTranslationEntity` (`common/interfaces`) so `ILanguageDomainBridgeService.buildTranslatedLanguagesMap`/`toSimpleLanguagesMap` work for them (see Translatable Entities Pattern).
 - Security, auditing, web config: in `config/`, never inside a domain.
 - Cross-cutting reusable code: in `common/`, not in a domain.
 - `stats` has no controller: internal service called by `rating` and `favorite`.

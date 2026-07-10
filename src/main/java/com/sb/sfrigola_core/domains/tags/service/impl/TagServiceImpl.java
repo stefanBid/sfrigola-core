@@ -181,7 +181,7 @@ public class TagServiceImpl implements ITagService {
         return toAdminDto(
                 newTag,
                 translations.stream().filter(t -> t.getLanguage().getCode().equals(locale)).findFirst().orElse(null),
-                toSimpleLanguagesMap(activeLanguageMap)
+                languageDomainBridgeService.toSimpleLanguagesMap(activeLanguageMap)
         );
     }
 
@@ -270,7 +270,7 @@ public class TagServiceImpl implements ITagService {
         if(!tagToUpdate.getScope().equals(updateTagDto.scope()))
             tagToUpdate.setScope(updateTagDto.scope());
 
-        return toAdminDto(tagToUpdate, tagTranslationToUpdate, toSimpleLanguagesMap(activeLangMap));
+        return toAdminDto(tagToUpdate, tagTranslationToUpdate, languageDomainBridgeService.toSimpleLanguagesMap(activeLangMap));
     }
 
     @Override
@@ -300,10 +300,7 @@ public class TagServiceImpl implements ITagService {
     }
 
     private TagPreviewAdminDto toAdminDto(Tag tag, TagTranslation tagTranslation, Map<String, String> activeLanguagesMap) {
-        Map<String, String> translatedLanguages = tag.getTranslations().stream()
-                .map(t -> t.getLanguage().getCode())
-                .filter(activeLanguagesMap::containsKey)
-                .collect(Collectors.toMap(code -> code, activeLanguagesMap::get));
+        Map<String, String> translatedLanguages = languageDomainBridgeService.buildTranslatedLanguagesMap(tag.getTranslations(), activeLanguagesMap);
 
         String translationLabelPreview = tagTranslation != null ? tagTranslation.getLabel() : null;
         return new TagPreviewAdminDto(
@@ -315,11 +312,6 @@ public class TagServiceImpl implements ITagService {
                 translationLabelPreview,
                 translatedLanguages
         );
-    }
-
-    private Map<String, String> toSimpleLanguagesMap(Map<String, Language> languageEntitiesMap) {
-        return languageEntitiesMap.entrySet().stream()
-                .collect(Collectors.toMap(Map.Entry::getKey, e -> e.getValue().getName()));
     }
 
     private TagDetailsAdminDto toAdminDetailsDto(Tag tag, @Nullable TagTranslation tagTranslation) {

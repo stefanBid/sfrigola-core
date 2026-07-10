@@ -1,6 +1,7 @@
 package com.sb.sfrigola_core.domains.ingredients.entity;
 
 import com.sb.sfrigola_core.common.entity.BaseEntity;
+import com.sb.sfrigola_core.common.interfaces.ISCTranslationEntity;
 import com.sb.sfrigola_core.domains.languages.entity.Language;
 import jakarta.persistence.*;
 import lombok.Getter;
@@ -15,7 +16,7 @@ import java.util.UUID;
 )
 @Getter
 @Setter
-public class IngredientTranslation extends BaseEntity {
+public class IngredientTranslation extends BaseEntity implements ISCTranslationEntity {
 
     @Id
     @GeneratedValue(strategy = GenerationType.IDENTITY)

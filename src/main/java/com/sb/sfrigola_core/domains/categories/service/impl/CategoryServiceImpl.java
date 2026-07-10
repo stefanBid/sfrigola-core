@@ -177,7 +177,7 @@ public class CategoryServiceImpl implements ICategoryService {
         return toAdminDto(
                 category,
                 translations.stream().filter(t -> t.getLanguage().getCode().equals(locale)).findFirst().orElse(null),
-                toSimpleLanguagesMap(activeLanguagesMap)
+                languageDomainBridgeService.toSimpleLanguagesMap(activeLanguagesMap)
         );
     }
 
@@ -221,7 +221,7 @@ public class CategoryServiceImpl implements ICategoryService {
         if(categoryToUpdate.isActive() != updateCategoryDto.isActive())
             categoryToUpdate.setActive(updateCategoryDto.isActive());
 
-        return toAdminDto(categoryToUpdate, categoryTranslationToUpdate, toSimpleLanguagesMap(activeLangMap));
+        return toAdminDto(categoryToUpdate, categoryTranslationToUpdate, languageDomainBridgeService.toSimpleLanguagesMap(activeLangMap));
     }
 
     @Override
@@ -304,10 +304,7 @@ public class CategoryServiceImpl implements ICategoryService {
 
     private CategoryPreviewAdminDto toAdminDto(Category category, @Nullable CategoryTranslation translationPreview, Map<String, String> activeLanguagesMap) {
         // Obtain a Map of Translation for a specific category, but only for active languages
-        Map<String, String> translatedLanguages = category.getTranslations().stream()
-                .map(t -> t.getLanguage().getCode())
-                .filter(activeLanguagesMap::containsKey)
-                .collect(Collectors.toMap(code -> code, activeLanguagesMap::get));
+        Map<String, String> translatedLanguages = languageDomainBridgeService.buildTranslatedLanguagesMap(category.getTranslations(), activeLanguagesMap);
 
         // Obtain Translation Preview for a specific Lang
         CategoryTranslationAdminDto categoryPreviewTranslationAdminDto = new CategoryTranslationAdminDto(
@@ -339,11 +336,6 @@ public class CategoryServiceImpl implements ICategoryService {
                 category.isActive(),
                 specificTranslation
         );
-    }
-
-    private Map<String, String> toSimpleLanguagesMap(Map<String, Language> languageEntitiesMap) {
-        return languageEntitiesMap.entrySet().stream()
-                .collect(Collectors.toMap(Map.Entry::getKey, e -> e.getValue().getName()));
     }
 
     private CategoryTranslation toCategoryTranslation(UpsetCategoryTranslationDto upsetCategoryTranslationDto, Language lang) {

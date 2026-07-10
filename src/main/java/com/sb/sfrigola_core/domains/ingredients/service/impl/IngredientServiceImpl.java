@@ -196,7 +196,7 @@ public class IngredientServiceImpl implements IIngredientService {
         return toAdminDto(
                 newIngredient,
                 translations.stream().filter(t -> t.getLanguage().getCode().equals(locale)).findFirst().orElse(null),
-                toSimpleLanguagesMap(activeLanguageMap));
+                languageDomainBridgeService.toSimpleLanguagesMap(activeLanguageMap));
     }
 
     @Override
@@ -252,7 +252,7 @@ public class IngredientServiceImpl implements IIngredientService {
         ingredientToUpdate.getIngredientTags().clear();
         ingredientToUpdate.getIngredientTags().addAll(newIngredientTags);
 
-        return toAdminDto(ingredientToUpdate, ingredientTranslationToUpdate, toSimpleLanguagesMap(activeLangMap));
+        return toAdminDto(ingredientToUpdate, ingredientTranslationToUpdate, languageDomainBridgeService.toSimpleLanguagesMap(activeLangMap));
     }
 
     @Override
@@ -287,10 +287,7 @@ public class IngredientServiceImpl implements IIngredientService {
     }
 
     private IngredientPreviewAdminDto toAdminDto(Ingredient ingredient, IngredientTranslation ingredientTranslation, Map<String, String> activeLanguageMap) {
-        Map<String, String> translatedLanguages = ingredient.getTranslations().stream()
-                .map(t -> t.getLanguage().getCode())
-                .filter(activeLanguageMap::containsKey)
-                .collect(Collectors.toMap(code -> code, activeLanguageMap::get));
+        Map<String, String> translatedLanguages = languageDomainBridgeService.buildTranslatedLanguagesMap(ingredient.getTranslations(), activeLanguageMap);
 
         String namePreview = ingredientTranslation != null ? ingredientTranslation.getName() : null;
         return new IngredientPreviewAdminDto(
@@ -305,11 +302,6 @@ public class IngredientServiceImpl implements IIngredientService {
                 namePreview,
                 translatedLanguages
         );
-    }
-
-    private Map<String, String> toSimpleLanguagesMap(Map<String, Language> languageEntitiesMap) {
-        return languageEntitiesMap.entrySet().stream()
-                .collect(Collectors.toMap(Map.Entry::getKey, e -> e.getValue().getName()));
     }
 
     private IngredientDetailsAdminDto toAdminDetailsDto(Ingredient ingredient, @Nullable IngredientTranslation specificTranslation, @NonNull String locale) {

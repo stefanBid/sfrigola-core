@@ -2,9 +2,11 @@ package com.sb.sfrigola_core.domains.recipes.dto.input;
 
 import com.sb.sfrigola_core.domains.recipes.constants.RecipeValidationCodeConstants;
 import jakarta.validation.constraints.NotBlank;
+import jakarta.validation.constraints.NotEmpty;
 import jakarta.validation.constraints.Size;
 
 import java.io.Serializable;
+import java.util.List;
 
 public record RecipeTranslationInputDto(
         @NotBlank(message = RecipeValidationCodeConstants.LANG_CODE_REQUIRED)
@@ -16,7 +18,7 @@ public record RecipeTranslationInputDto(
 
         String description,
 
-        @NotBlank(message = RecipeValidationCodeConstants.INSTRUCTIONS_REQUIRED)
-        String instructions
+        @NotEmpty(message = RecipeValidationCodeConstants.INSTRUCTIONS_MIN_ONE)
+        List<@NotBlank(message = RecipeValidationCodeConstants.INSTRUCTIONS_STEP_BLANK) String> instructions
 ) implements Serializable {
 }

@@ -15,6 +15,8 @@
     { "key": "publicId", "value": "", "type": "string" },
     { "key": "parentPublicId", "value": "", "type": "string" },
     { "key": "categoryId", "value": "", "type": "string" },
+    { "key": "tagId", "value": "", "type": "string" },
+    { "key": "ingredientId", "value": "", "type": "string" },
     { "key": "it", "value": "it", "type": "string" },
     { "key": "approved", "value": "approved", "type": "string" }
   ],
@@ -701,7 +703,7 @@
             "header": [{ "key": "Content-Type", "value": "application/json" }],
             "body": {
               "mode": "raw",
-              "raw": "{\n  \"categoryPublicId\": \"{{categoryId}}\",\n  \"difficulty\": \"easy\",\n  \"mealType\": \"lunch\",\n  \"season\": \"all_year\",\n  \"prepTimeMin\": 10,\n  \"cookTimeMin\": 15,\n  \"servings\": 4,\n  \"isVegetarian\": true,\n  \"isVegan\": false,\n  \"isGlutenFree\": false,\n  \"isPublished\": true,\n  \"recipeTagsIds\": [],\n  \"ingredients\": [\n    {\n      \"ingredientPublicId\": \"00000000-0000-0000-0000-000000000001\",\n      \"quantity\": 100.0,\n      \"unit\": \"g\",\n      \"preparationNote\": \"chopped\",\n      \"sortOrder\": 0\n    }\n  ],\n  \"translations\": [\n    { \"langCode\": \"en\", \"title\": \"Test Recipe\", \"description\": \"Test description\", \"instructions\": \"Test instructions\" },\n    { \"langCode\": \"it\", \"title\": \"Ricetta di prova\", \"description\": \"Descrizione di prova\", \"instructions\": \"Istruzioni di prova\" }\n  ]\n}"
+              "raw": "{\n  \"categoryPublicId\": \"{{categoryId}}\",\n  \"difficulty\": \"easy\",\n  \"mealType\": \"lunch\",\n  \"season\": \"all_year\",\n  \"prepTimeMin\": 10,\n  \"cookTimeMin\": 15,\n  \"servings\": 4,\n  \"isVegetarian\": true,\n  \"isVegan\": false,\n  \"isGlutenFree\": false,\n  \"isPublished\": true,\n  \"recipeTagsIds\": [\"{{tagId}}\"],\n  \"ingredients\": [\n    {\n      \"ingredientPublicId\": \"{{ingredientId}}\",\n      \"quantity\": 100.0,\n      \"unit\": \"g\",\n      \"preparationNote\": \"chopped\",\n      \"sortOrder\": 0\n    }\n  ],\n  \"translations\": [\n    { \"langCode\": \"en\", \"title\": \"Test Recipe\", \"description\": \"Test description\", \"instructions\": [\"Boil water\", \"Add pasta\", \"Drain and serve\"] },\n    { \"langCode\": \"it\", \"title\": \"Ricetta di prova\", \"description\": \"Descrizione di prova\", \"instructions\": [\"Bolli l'acqua\", \"Aggiungi la pasta\", \"Scola e servi\"] }\n  ]\n}"
             },
             "url": {
               "raw": "{{baseUrl}}/recipes?locale=en",
@@ -719,7 +721,7 @@
             "header": [{ "key": "Content-Type", "value": "application/json" }],
             "body": {
               "mode": "raw",
-              "raw": "{\n  \"categoryPublicId\": \"{{categoryId}}\",\n  \"difficulty\": \"medium\",\n  \"mealType\": \"dinner\",\n  \"season\": \"all_year\",\n  \"prepTimeMin\": 15,\n  \"cookTimeMin\": 20,\n  \"servings\": 4,\n  \"isVegetarian\": true,\n  \"isVegan\": false,\n  \"isGlutenFree\": false,\n  \"isPublished\": true,\n  \"recipeTagsIds\": [],\n  \"ingredients\": [\n    {\n      \"ingredientPublicId\": \"00000000-0000-0000-0000-000000000001\",\n      \"quantity\": 150.0,\n      \"unit\": \"g\",\n      \"preparationNote\": \"chopped\",\n      \"sortOrder\": 0\n    }\n  ],\n  \"specificTranslation\": { \"langCode\": \"en\", \"title\": \"Test Recipe Updated\", \"description\": \"Updated description\", \"instructions\": \"Updated instructions\" }\n}"
+              "raw": "{\n  \"categoryPublicId\": \"{{categoryId}}\",\n  \"difficulty\": \"medium\",\n  \"mealType\": \"dinner\",\n  \"season\": \"all_year\",\n  \"prepTimeMin\": 15,\n  \"cookTimeMin\": 20,\n  \"servings\": 4,\n  \"isVegetarian\": true,\n  \"isVegan\": false,\n  \"isGlutenFree\": false,\n  \"isPublished\": true,\n  \"recipeTagsIds\": [\"{{tagId}}\"],\n  \"ingredients\": [\n    {\n      \"ingredientPublicId\": \"{{ingredientId}}\",\n      \"quantity\": 150.0,\n      \"unit\": \"g\",\n      \"preparationNote\": \"chopped\",\n      \"sortOrder\": 0\n    }\n  ],\n  \"specificTranslation\": { \"langCode\": \"en\", \"title\": \"Test Recipe Updated\", \"description\": \"Updated description\", \"instructions\": [\"Boil water\", \"Add pasta\", \"Toss with sauce\", \"Serve hot\"] }\n}"
             },
             "url": {
               "raw": "{{baseUrl}}/recipes/{{publicId}}",
