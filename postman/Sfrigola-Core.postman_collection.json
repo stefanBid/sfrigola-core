@@ -744,6 +744,99 @@
           "response": []
         }
       ]
+    },
+    {
+      "name": "Favorites",
+      "item": [
+        {
+          "name": "Get All My Favorites",
+          "request": {
+            "method": "GET",
+            "url": {
+              "raw": "{{baseUrl}}/favorites?page=0&take=10&locale=en",
+              "host": ["{{baseUrl}}"],
+              "path": ["favorites"],
+              "query": [
+                { "key": "page", "value": "0" },
+                { "key": "take", "value": "10" },
+                { "key": "locale", "value": "en" }
+              ]
+            }
+          },
+          "response": []
+        },
+        {
+          "name": "Add Favorite",
+          "request": {
+            "method": "POST",
+            "url": {
+              "raw": "{{baseUrl}}/favorites/{{publicId}}",
+              "host": ["{{baseUrl}}"],
+              "path": ["favorites", "{{publicId}}"]
+            }
+          },
+          "response": []
+        },
+        {
+          "name": "Remove Favorite",
+          "request": {
+            "method": "DELETE",
+            "url": {
+              "raw": "{{baseUrl}}/favorites/{{publicId}}",
+              "host": ["{{baseUrl}}"],
+              "path": ["favorites", "{{publicId}}"]
+            }
+          },
+          "response": []
+        }
+      ]
+    },
+    {
+      "name": "Ratings",
+      "item": [
+        {
+          "name": "Get Rating Stats",
+          "request": {
+            "method": "GET",
+            "url": {
+              "raw": "{{baseUrl}}/ratings/recipe/{{publicId}}/stats",
+              "host": ["{{baseUrl}}"],
+              "path": ["ratings", "recipe", "{{publicId}}", "stats"]
+            }
+          },
+          "response": []
+        },
+        {
+          "name": "Add Rating",
+          "request": {
+            "method": "POST",
+            "header": [{ "key": "Content-Type", "value": "application/json" }],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"recipePublicId\": \"{{publicId}}\",\n  \"score\": 5,\n  \"comment\": \"Great recipe!\"\n}"
+            },
+            "url": { "raw": "{{baseUrl}}/ratings", "host": ["{{baseUrl}}"], "path": ["ratings"] }
+          },
+          "response": []
+        },
+        {
+          "name": "Edit Rating",
+          "request": {
+            "method": "PUT",
+            "header": [{ "key": "Content-Type", "value": "application/json" }],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"score\": 4,\n  \"comment\": \"Updated my opinion after a second try.\"\n}"
+            },
+            "url": {
+              "raw": "{{baseUrl}}/ratings/recipe/{{publicId}}",
+              "host": ["{{baseUrl}}"],
+              "path": ["ratings", "recipe", "{{publicId}}"]
+            }
+          },
+          "response": []
+        }
+      ]
     }
   ]
 }
