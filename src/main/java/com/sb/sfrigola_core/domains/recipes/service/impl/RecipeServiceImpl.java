@@ -624,16 +624,6 @@ public class RecipeServiceImpl implements IRecipeService {
     }
 
     /**
-     * Wraps already-resolved and scope-validated {@link Tag} entities into new {@link RecipeTag}
-     * bridge-entity instances linked to {@code recipe}. Used by both {@link #createRecipe} and
-     * {@link #updateRecipe} (full tag-set replace) — resolution/validation happens beforehand via
-     * {@code tagDomainBridgeService.getTagsUsableForRecipes}.
-     *
-     * @param tags   resolved tags to attach, already checked for {@code recipe}/{@code both} scope
-     * @param recipe the owning recipe, set as the back-reference on each {@link RecipeTag}
-     * @return one new {@link RecipeTag} per tag, not yet persisted
-     */
-    /**
      * Reconciles {@code recipe.recipeTags} to exactly {@code desiredTags}: removes tags no longer
      * wanted (triggers {@code orphanRemoval} deletion) and adds only the tags not already present.
      * Used instead of clear+re-add by {@link #updateRecipe} — {@link RecipeTag}'s id is
@@ -653,6 +643,17 @@ public class RecipeServiceImpl implements IRecipeService {
         recipe.getRecipeTags().addAll(toRecipeTags(tagsToAdd, recipe));
     }
 
+    /**
+     * Wraps already-resolved and scope-validated {@link Tag} entities into new {@link RecipeTag}
+     * bridge-entity instances linked to {@code recipe}. Used by {@link #createRecipe} directly
+     * (all tags are new on a brand-new recipe) and by {@link #reconcileRecipeTags} for just the
+     * subset of tags not already present — resolution/validation happens beforehand via
+     * {@code tagDomainBridgeService.getTagsUsableForRecipes}.
+     *
+     * @param tags   resolved tags to attach, already checked for {@code recipe}/{@code both} scope
+     * @param recipe the owning recipe, set as the back-reference on each {@link RecipeTag}
+     * @return one new {@link RecipeTag} per tag, not yet persisted
+     */
     private List<RecipeTag> toRecipeTags(List<Tag> tags, Recipe recipe) {
         return tags.stream()
                 .map(tag -> {
@@ -667,8 +668,8 @@ public class RecipeServiceImpl implements IRecipeService {
     /**
      * Resolves each input line's {@code ingredientPublicId} to an {@link Ingredient} entity (one
      * bulk lookup, order-preserving) and builds the corresponding {@link RecipeIngredient} rows
-     * linked to {@code recipe}. Used by both {@link #createRecipe} and {@link #updateRecipe}
-     * (full ingredient-list replace).
+     * linked to {@code recipe}. Used by {@link #createRecipe} directly (all lines are new on a
+     * brand-new recipe); {@link #updateRecipe} uses {@link #reconcileRecipeIngredients} instead.
      *
      * @param inputs one line per ingredient (public ID, quantity, unit, note, sort order)
      * @param recipe the owning recipe, set as the back-reference on each {@link RecipeIngredient}
@@ -732,6 +733,14 @@ public class RecipeServiceImpl implements IRecipeService {
         }
     }
 
+    /**
+     * Copies the mutable ingredient-line fields from an input DTO onto a {@link RecipeIngredient}
+     * (new or existing/managed). Shared by {@link #toRecipeIngredients} (new lines) and
+     * {@link #reconcileRecipeIngredients} (both new and updated-in-place lines).
+     *
+     * @param target the {@link RecipeIngredient} to update, either new or a managed existing line
+     * @param input  the quantity/unit/note/sortOrder to apply
+     */
     private void applyRecipeIngredientFields(RecipeIngredient target, RecipeIngredientInputDto input) {
         target.setQuantity(input.quantity());
         target.setUnit(input.unit());
