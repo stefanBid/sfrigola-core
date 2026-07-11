@@ -6,6 +6,7 @@ import com.sb.sfrigola_core.domains.recipes.enums.SeasonType;
 import com.sb.sfrigola_core.domains.tags.dto.view.TagDto;
 
 import java.io.Serializable;
+import java.math.BigDecimal;
 import java.util.List;
 import java.util.UUID;
 
@@ -27,6 +28,9 @@ public record RecipeDetailsAdminDto(
         String specificTranslationDescription,
         String specificTranslationInstructions,
         List<RecipeIngredientDto> ingredients,
-        List<TagDto> tags
+        List<TagDto> tags,
+        BigDecimal avgRating,
+        int ratingsCount,
+        int favoritesCount
 ) implements Serializable {
 }

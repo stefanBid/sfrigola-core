@@ -85,6 +85,20 @@ public interface IRecipeService {
     SCPagedResult<RecipeDto> searchRecipes(SCFilterQuery<Void> filterQuery, UUID categoryId, @NonNull String locale);
 
     /**
+     * Returns a paginated list of the authenticated user's favorited recipes, most recently
+     * favorited first, localized to {@code locale}. Lives here rather than in the favorites
+     * domain because it is fundamentally a recipe query (filtered by favorites) and returns
+     * {@link RecipeDto} — the favorites domain has no other reason to depend on it.
+     *
+     * @param filterQuery pagination only — no search/sort is supported
+     * @param locale      BCP-47 language code used to localize each recipe's title/description
+     * @return a {@link SCPagedResult} of {@link RecipeDto}; never {@code null}
+     * @throws LocaleNotActiveException
+     *         if {@code locale} does not match an active language (thrown by the languages domain bridge)
+     */
+    SCPagedResult<RecipeDto> getAllMyFavoriteRecipes(SCFilterQuery<Void> filterQuery, @NonNull String locale);
+
+    /**
      * Returns full admin details for a single recipe (published or draft), including its
      * ingredient list, tag list, and a preview of the translation for the requested locale.
      * <p>
@@ -121,12 +135,24 @@ public interface IRecipeService {
 
     /**
      * Creates a new recipe authored by the currently authenticated user (resolved from the
-     * security context — never trusted from the payload). Translations provided in {@code addRecipeDto}
-     * must cover every active language and are inserted as-is; the ingredient list and tag list
-     * are inserted as given, no merge occurs on create.
+     * security context — never trusted from the payload). Translation coverage requirements and
+     * the initial {@code isPublished} value differ by the actor's role:
+     * <ul>
+     *     <li><b>Contributor</b>: exactly one translation, in any active language of the
+     *     contributor's choosing — {@code locale} plays no role in this choice, it only selects
+     *     which translation is shown in the returned preview, same as everywhere else. The
+     *     recipe is created with {@code isPublished = false}; only an admin can publish it
+     *     (a separate admin-only action), typically after adding the missing active-language
+     *     translations via {@link #updateRecipe} (one locale per call).</li>
+     *     <li><b>Admin</b>: translations must cover every active language, no more no less —
+     *     same rule as every other translatable domain's create. The recipe is created with
+     *     {@code isPublished = true} immediately, since all languages are already covered.</li>
+     * </ul>
+     * The ingredient list and tag list are inserted as given, no merge occurs on create.
      *
      * @param addRecipeDto creation payload — category, difficulty/meal/season, timing, dietary flags,
-     *                     publish flag, ingredient lines, tag IDs and at least one translation
+     *                     ingredient lines, tag IDs, and translations (contributor: exactly one, any
+     *                     active language; admin: one per active language)
      * @param locale       BCP-47 locale code used to select the translation for the preview; never {@code null}
      * @return admin preview of the newly created recipe
      * @throws com.sb.sfrigola_core.domains.categories.exception.NoCategoryFoundException
@@ -137,26 +163,33 @@ public interface IRecipeService {
      *         if any tag ID in {@code addRecipeDto.recipeTagsIds()} does not match an existing tag
      * @throws com.sb.sfrigola_core.domains.tags.exception.TagScopeNotAllowedException
      *         if any resolved tag has scope {@code ingredient} (not usable on recipes)
+     * @throws com.sb.sfrigola_core.domains.recipes.exception.ContributorTranslationLimitExceededException
+     *         if the actor is a contributor and {@code addRecipeDto.translations()} has more than one entry
      * @throws com.sb.sfrigola_core.domains.recipes.exception.DuplicateRecipeLocaleException
-     *         if the same locale appears more than once in {@code addRecipeDto.translations()}
+     *         if the actor is an admin and the same locale appears more than once in {@code addRecipeDto.translations()}
      * @throws LocaleNotActiveException
      *         if a translation references a language that is not active (thrown by the languages domain bridge)
      * @throws com.sb.sfrigola_core.domains.recipes.exception.MissingRecipeLocalesException
-     *         if {@code addRecipeDto.translations()} does not cover all active languages
+     *         if the actor is an admin and {@code addRecipeDto.translations()} does not cover all active languages
      */
     RecipePreviewAdminDto createRecipe(AddRecipeDto addRecipeDto, @NonNull String locale);
 
     /**
      * Updates an existing recipe's category, difficulty/meal/season, timing, dietary flags,
-     * publish flag, ingredient list, tag list, and exactly one translation:
+     * ingredient list, tag list, and exactly one translation:
      * {@code updateRecipeDto.specificTranslation()} either edits the translation for that locale
      * if one already exists, or adds a new one. Only one locale can be touched per call — to
      * update multiple translations, call this method once per locale.
      * <p>
      * Only the recipe's author or an admin may update it — checked against the security context.
+     * If the actor is not an admin (i.e. the recipe's own contributor-author), the recipe is
+     * reverted to {@code isPublished = false} regardless of its previous value — any content
+     * change by the contributor needs re-approval; an admin's edit does not trigger this, whatever
+     * {@code isPublished} currently is is left untouched. Publishing/unpublishing itself is a
+     * separate admin-only action, not part of this method.
      *
      * @param publicId public identifier of the recipe to update
-     * @param updateRecipeDto new category, difficulty/meal/season, timing, dietary flags, publish flag,
+     * @param updateRecipeDto new category, difficulty/meal/season, timing, dietary flags,
      *                        ingredient lines, tag IDs, and the single translation to upsert
      * @return admin preview of the updated recipe, previewing the upserted translation
      * @throws com.sb.sfrigola_core.domains.recipes.exception.NoRecipeFoundException
@@ -175,6 +208,40 @@ public interface IRecipeService {
      *         if {@code updateRecipeDto.specificTranslation()} references a language that is not active
      */
     RecipePreviewAdminDto updateRecipe(UUID publicId, UpdateRecipeDto updateRecipeDto);
+
+    /**
+     * Publishes a recipe (sets {@code isPublished = true}), making it visible via public
+     * search/details/home feed. Admin-only — unlike {@link #updateRecipe}, there is no
+     * author-or-admin fallback: a contributor cannot self-publish even their own recipe, not
+     * checked here but enforced by the security path. Intended flow: a contributor creates a
+     * recipe with a translation for their own language only and {@code isPublished = false}; an
+     * admin later adds the missing active-language translations via {@link #updateRecipe} (one
+     * locale per call) and only then calls this method.
+     *
+     * @param publicId public identifier of the recipe to publish
+     * @param locale   BCP-47 locale code used to select the translation for the preview; never {@code null}
+     * @return admin preview of the recipe, now published
+     * @throws com.sb.sfrigola_core.domains.recipes.exception.NoRecipeFoundException
+     *         if no recipe exists with the given public ID
+     * @throws LocaleNotActiveException
+     *         if {@code locale} does not match an active language (thrown by the languages domain bridge)
+     */
+    RecipePreviewAdminDto publishRecipe(UUID publicId, @NonNull String locale);
+
+    /**
+     * Unpublishes a recipe (sets {@code isPublished = false}), hiding it from public
+     * search/details/home feed again. Admin-only, same as {@link #publishRecipe} — no
+     * author-or-admin fallback.
+     *
+     * @param publicId public identifier of the recipe to unpublish
+     * @param locale   BCP-47 locale code used to select the translation for the preview; never {@code null}
+     * @return admin preview of the recipe, now unpublished
+     * @throws com.sb.sfrigola_core.domains.recipes.exception.NoRecipeFoundException
+     *         if no recipe exists with the given public ID
+     * @throws LocaleNotActiveException
+     *         if {@code locale} does not match an active language (thrown by the languages domain bridge)
+     */
+    RecipePreviewAdminDto unpublishRecipe(UUID publicId, @NonNull String locale);
 
     /**
      * Deletes a recipe and all of its translations, ingredient lines and tag associations (cascade).

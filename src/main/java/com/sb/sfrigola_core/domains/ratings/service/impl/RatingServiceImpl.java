@@ -18,6 +18,7 @@ import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
+import java.math.BigDecimal;
 import java.util.Objects;
 import java.util.UUID;
 
@@ -34,8 +35,9 @@ public class RatingServiceImpl implements IRatingService {
     @Override
     public RecipeRatingStatsDto getRatingStats(UUID recipePublicId) {
         Recipe recipe = recipeDomainBridgeService.getRecipeEntityByPublicIdOrThrow(recipePublicId);
-        var stats = recipeStatsDomainBridgeService.getStats(recipe.getId());
-        return new RecipeRatingStatsDto(stats.avgRating(), stats.ratingsCount());
+        return recipeStatsDomainBridgeService.getStats(recipe.getId())
+                .map(stats -> new RecipeRatingStatsDto(stats.getAvgRating(), stats.getRatingsCount()))
+                .orElse(new RecipeRatingStatsDto(BigDecimal.ZERO, 0));
     }
 
     @Override

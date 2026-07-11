@@ -410,8 +410,8 @@ idx_favorites_user           ON favorites (user_id)
 | `ingredients` | done | done | done | done | Ingredient + IngredientTranslation + IngredientTag bridge table; has domain bridge |
 | `recipes`   | done | done | done | done | Recipe + RecipeTranslation + RecipeTag/RecipeIngredient bridge tables; has domain bridge (getRecipeEntityByPublicIdOrThrow, getRecipesByIdsWithLocale) |
 | `favorites` | done | done | done | done | authenticated-only: list/add/remove; has domain bridge (isFavoritedByUser, getFavoritedRecipeIds) for future recipes consumption |
-| `ratings`   | done | done | done | done | authenticated-only: stats/add/edit; has domain bridge (getRatingStats) for future recipes consumption |
-| `stats`     | done | done | n/a (bridge only) | no controller by design | RecipeStats entity, 1:1 with recipes via `@MapsId`; only consumed by favorites/ratings bridges |
+| `ratings`   | done | done | done | done | authenticated-only: stats/add/edit; no bridge — nothing outside this domain consumes ratings directly, only via the stats bridge |
+| `stats`     | done | done | n/a (bridge only) | no controller by design | RecipeStats entity, 1:1 with recipes via `@MapsId`; single bridge (`IRecipeStatsDomainBridgeService`) — written by favorites/ratings, read by recipes |
 
 ---
 
@@ -444,13 +444,39 @@ Base path: `/sfrigola-core`
 | GET | `/users/admin` | ROLE_ADMIN | paginated, sort/search/isActive filters |
 | PATCH | `/users/admin/{publicId}/status` | ROLE_ADMIN | activate/deactivate user |
 
+### Recipes — `/recipes`
+
+| Method | Path | Access | Notes |
+|--------|------|--------|-------|
+| GET | `/recipes/home/category/{categoryId}` | public | fixed short rows per `FeedType` (QUICK, LIKE_A_CHEF, ECONOMICAL; VIRAL not yet implemented) |
+| GET | `/recipes/search`, `/recipes/search/category/{categoryId}` | public | paginated, `searchKey` matches title/description |
+| GET | `/recipes/favorites` | authenticated | the authenticated user's favorited recipes — see Favorites section below for why this lives here |
+| GET | `/recipes/details/{publicId}` | public | draft recipes 404 exactly like non-existent ones |
+| GET | `/recipes/admin`, `/recipes/admin/category/{categoryId}` | ROLE_ADMIN | paginated, includes draft recipes, dietary/status filters |
+| GET | `/recipes/admin/details/{publicId}` | ROLE_ADMIN | includes draft recipes, ingredient/tag lists |
+| POST | `/recipes` | ROLE_CONTRIBUTOR, ROLE_ADMIN | author resolved from security context, never trusted from payload; see draft/publish flow below |
+| PUT | `/recipes/{publicId}` | author or ROLE_ADMIN | one translation upserted per call; no `isPublished` in the payload — see draft/publish flow below |
+| PATCH | `/recipes/admin/{publicId}/publish` | ROLE_ADMIN only | sets `isPublished = true`; no author fallback, unlike `PUT` above |
+| PATCH | `/recipes/admin/{publicId}/unpublish` | ROLE_ADMIN only | sets `isPublished = false`; no author fallback |
+| DELETE | `/recipes/{publicId}` | author or ROLE_ADMIN | cascades translations/ingredients/tags |
+
+`isPublished` is never part of `AddRecipeDto`/`UpdateRecipeDto` — it is only ever set by the service, never trusted from the client:
+- **Create**: a contributor's translation requirement is exactly one, in any active language of their choosing (`locale` only picks the preview, no other role in the choice) — the recipe is created with `isPublished = false`. An admin's translations must instead cover every active language, no more no less, and the recipe is created with `isPublished = true` immediately.
+- **Update**: if the actor is not an admin (i.e. the recipe's own contributor-author, since `assertAuthorOrAdmin` already excludes everyone else), the recipe is unconditionally reverted to `isPublished = false` — any content change needs re-approval. An admin's edit never touches `isPublished`.
+- **Publish/unpublish**: the only way to set `isPublished` back to `true` — admin-only, separate from `PUT`.
+
+Intended draft/publish flow: a contributor creates a recipe in one language, `isPublished = false`; an admin adds the missing active-language translations via `PUT` (one locale per call — each such admin edit leaves `isPublished` alone) and only then calls `PATCH .../publish`. If the contributor later edits their own (by-then-published) recipe, it silently reverts to draft and needs `PATCH .../publish` again.
+
+`RecipeDto` (public list/search/favorites/home-feed results), `RecipeDetailsDto` (public single-recipe details), `RecipePreviewAdminDto` and `RecipeDetailsAdminDto` (admin) all carry `avgRating`/`ratingsCount`/`favoritesCount` (public DTOs also carry `isFavourite`), sourced from `IRecipeStatsDomainBridgeService` — batched per page (`getStatsBatch`), single lookup for single-recipe endpoints (`getStats`). See Favorites/Ratings/Stats section below for the bridge.
+
 ### Favorites — `/favorites`
 
 | Method | Path | Access | Notes |
 |--------|------|--------|-------|
-| GET | `/favorites` | authenticated | paginated, locale-localized RecipeDto list, most recently favorited first |
 | POST | `/favorites/{recipePublicId}` | authenticated | |
 | DELETE | `/favorites/{recipePublicId}` | authenticated | |
+
+Listing the authenticated user's favorited recipes is `GET /recipes/favorites` (see Recipes section below) — it is fundamentally a recipe query filtered by favorites, so it lives in the recipes domain and returns `RecipeDto`; the favorites domain only owns add/remove and the cross-domain bridge checks.
 
 ### Ratings — `/ratings`
 
@@ -525,6 +551,10 @@ Every new API endpoint must be registered in the correct bean in `SecurityBeansC
 2. **`IXDomainBridgeService`** — internal bridge: receives data explicitly, does NOT read security context
 
 Example: `ISCUserService` (controller-facing) vs `ISCUserDomainBridgeService` (bridge used by auth).
+
+**Bridge return types: entities, never DTOs.** `IXDomainBridgeService` methods return JPA entities (`Category`, `Tag`, `Recipe`, `RecipeStats`, ...), `Optional<Entity>`/`List<Entity>`/`Map<Long, Entity>`, or plain primitives/ids (`boolean`, `Long`, `Set<Long>`, `Page<Long>`) — never a `dto/` class. Bridges are service-to-service, not API-facing; a DTO built for one caller's JSON shape has no business dictating another domain's internal contract, and reusing a `dto/view` class (built for a controller response) as a bridge return type couples the two so a frontend-only field change forces a bridge signature change too. If the caller only needs a couple of fields, let it read them off the entity itself.
+- Exception: value/model types that are not DTOs are fine (e.g. `SCAuthUser`, the security principal used by `ISCUserDomainBridgeService.findByEmailWithRole` — required detached/serializable for the security context and JWT, never a JPA entity there). The rule is "never DTO", not "always entity" — models, primitives, and ids are all fine; only `dto/` (view/input) classes are excluded.
+- When a bridge has no consumer left (e.g. a single-purpose passthrough bridge whose only caller was removed), delete it — don't keep a bridge alive "just in case". Prefer one consolidated bridge per concept over one per consumer (e.g. `IRecipeStatsDomainBridgeService` is the single point both `favorites` and `ratings` use to keep `recipe_stats` in sync, and the single point `recipes` uses to read it — there is no separate `ratings`-owned stats bridge).
 
 ### Translatable Entities Pattern
 

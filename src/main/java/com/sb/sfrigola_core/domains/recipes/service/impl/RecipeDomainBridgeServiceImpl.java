@@ -8,7 +8,6 @@ import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
-import java.util.List;
 import java.util.UUID;
 
 @Service
@@ -23,10 +22,5 @@ public class RecipeDomainBridgeServiceImpl implements IRecipeDomainBridgeService
         return recipeRepository.findByPublicId(publicId).orElseThrow(
                 () -> new NoRecipeFoundException(publicId)
         );
-    }
-
-    @Override
-    public List<Recipe> getRecipesByIdsWithLocale(List<Long> ids, String locale) {
-        return recipeRepository.findByIdsWithSpecificTranslation(ids, locale);
     }
 }

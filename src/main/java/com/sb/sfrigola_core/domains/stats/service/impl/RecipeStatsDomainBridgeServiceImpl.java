@@ -1,7 +1,6 @@
 package com.sb.sfrigola_core.domains.stats.service.impl;
 
 import com.sb.sfrigola_core.domains.recipes.entity.Recipe;
-import com.sb.sfrigola_core.domains.stats.dto.RecipeStatsDto;
 import com.sb.sfrigola_core.domains.stats.entity.RecipeStats;
 import com.sb.sfrigola_core.domains.stats.repository.IRecipeStatsRepository;
 import com.sb.sfrigola_core.domains.stats.service.IRecipeStatsDomainBridgeService;
@@ -12,6 +11,11 @@ import org.springframework.transaction.annotation.Transactional;
 import java.math.BigDecimal;
 import java.math.RoundingMode;
 import java.time.Instant;
+import java.util.List;
+import java.util.Map;
+import java.util.Optional;
+import java.util.function.Function;
+import java.util.stream.Collectors;
 
 @Service
 @Transactional(readOnly = true)
@@ -21,10 +25,15 @@ public class RecipeStatsDomainBridgeServiceImpl implements IRecipeStatsDomainBri
     private final IRecipeStatsRepository recipeStatsRepository;
 
     @Override
-    public RecipeStatsDto getStats(Long recipeId) {
-        return recipeStatsRepository.findById(recipeId)
-                .map(s -> new RecipeStatsDto(s.getAvgRating(), s.getRatingsCount(), s.getFavoritesCount(), s.getViewsCount()))
-                .orElse(RecipeStatsDto.empty());
+    public Optional<RecipeStats> getStats(Long recipeId) {
+        return recipeStatsRepository.findById(recipeId);
+    }
+
+    @Override
+    public Map<Long, RecipeStats> getStatsBatch(List<Long> recipeIds) {
+        if (recipeIds.isEmpty()) return Map.of();
+        return recipeStatsRepository.findAllById(recipeIds).stream()
+                .collect(Collectors.toMap(RecipeStats::getRecipeId, Function.identity()));
     }
 
     @Override

@@ -65,6 +65,20 @@ public class RecipeController {
         return ResponseEntity.ok(SCGeneralResponseDto.success(paginatedRecipes.content(), paginatedRecipes.pagedOptionDto()));
     }
 
+    // [Authenticated]
+    @GetMapping(value = "/favorites", version = "1.0")
+    public ResponseEntity<SCGeneralResponseDto<List<RecipeDto>, SCPagedOptionDto>> getAllMyFavoriteRecipes(
+            @Min(value = 0, message = SCRequestParamValidationCodeConstants.PAGE_MUST_BE_AT_LEAST_ZERO)
+            @RequestParam(value = "page", required = false, defaultValue = "0") int page,
+            @Min(value = 1, message = SCRequestParamValidationCodeConstants.TAKE_MUST_BE_AT_LEAST_ONE) @Max(value = 100, message = SCRequestParamValidationCodeConstants.TAKE_MUST_BE_AT_MOST_HUNDRED)
+            @RequestParam(value = "take", required = false, defaultValue = "10") int take,
+            @RequestParam(required = false) @NotBlank(message = SCRequestParamValidationCodeConstants.LOCALE_MUST_NOT_BE_BLANK) String locale
+    ) {
+        var filterQuery = SCFilterQuery.pagedOnly(take, page);
+        var paginatedFavorites = recipeService.getAllMyFavoriteRecipes(filterQuery, locale);
+        return ResponseEntity.ok(SCGeneralResponseDto.success(paginatedFavorites.content(), paginatedFavorites.pagedOptionDto()));
+    }
+
 
     // [Public]
     @GetMapping(value = "/details/{publicId}", version = "1.0")
@@ -146,6 +160,26 @@ public class RecipeController {
     ) {
         var updated = recipeService.updateRecipe(publicId, updateRecipeDto);
         return ResponseEntity.ok(SCGeneralResponseDto.success(updated));
+    }
+
+    // [Admin]
+    @PatchMapping(value = "/admin/{publicId}/publish", version = "1.0")
+    public ResponseEntity<SCGeneralResponseDto<RecipePreviewAdminDto, Void>> publishRecipe(
+            @PathVariable("publicId") UUID publicId,
+            @RequestParam @NotBlank(message = SCRequestParamValidationCodeConstants.LOCALE_MUST_NOT_BE_BLANK) String locale
+    ) {
+        var published = recipeService.publishRecipe(publicId, locale);
+        return ResponseEntity.ok(SCGeneralResponseDto.success(published));
+    }
+
+    // [Admin]
+    @PatchMapping(value = "/admin/{publicId}/unpublish", version = "1.0")
+    public ResponseEntity<SCGeneralResponseDto<RecipePreviewAdminDto, Void>> unpublishRecipe(
+            @PathVariable("publicId") UUID publicId,
+            @RequestParam @NotBlank(message = SCRequestParamValidationCodeConstants.LOCALE_MUST_NOT_BE_BLANK) String locale
+    ) {
+        var unpublished = recipeService.unpublishRecipe(publicId, locale);
+        return ResponseEntity.ok(SCGeneralResponseDto.success(unpublished));
     }
 
     // [Contributor(own), Admin]

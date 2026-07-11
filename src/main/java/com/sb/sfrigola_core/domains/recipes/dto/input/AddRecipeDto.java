@@ -39,8 +39,6 @@ public record AddRecipeDto(
 
         boolean isGlutenFree,
 
-        boolean isPublished,
-
         List<UUID> recipeTagsIds,
 
         List<@Valid RecipeIngredientInputDto> ingredients,

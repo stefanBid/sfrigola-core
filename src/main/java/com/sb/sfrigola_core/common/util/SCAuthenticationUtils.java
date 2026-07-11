@@ -27,6 +27,10 @@ public class SCAuthenticationUtils {
         return SCAuthUser.anonymous();
     }
 
+    public static boolean isAuthenticated(SCAuthUser scAuthUser) {
+            return scAuthUser.publicId() != null;
+    }
+
     public static String getAuthUser() {
         return getAuthUserByContextHolder().username();
     }

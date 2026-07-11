@@ -1,6 +1,7 @@
 package com.sb.sfrigola_core.domains.recipes.service.impl;
 
 import com.sb.sfrigola_core.common.enums.SortDirection;
+import com.sb.sfrigola_core.common.models.context.SCAuthUser;
 import com.sb.sfrigola_core.common.models.contracts.SCFilterQuery;
 import com.sb.sfrigola_core.common.models.contracts.SCPagedResult;
 import com.sb.sfrigola_core.common.util.SCAuthenticationUtils;
@@ -8,6 +9,7 @@ import com.sb.sfrigola_core.common.util.SCDataStructureUtils;
 import com.sb.sfrigola_core.common.util.SCPaginationUtils;
 import com.sb.sfrigola_core.domains.categories.entity.Category;
 import com.sb.sfrigola_core.domains.categories.service.ICategoryDomainBridgeService;
+import com.sb.sfrigola_core.domains.favorites.service.IFavoriteDomainBridgeService;
 import com.sb.sfrigola_core.domains.ingredients.entity.Ingredient;
 import com.sb.sfrigola_core.domains.ingredients.service.IIngredientDomainBridgeService;
 import com.sb.sfrigola_core.domains.languages.entity.Language;
@@ -24,6 +26,7 @@ import com.sb.sfrigola_core.domains.recipes.entity.RecipeTranslation;
 import com.sb.sfrigola_core.domains.recipes.enums.DifficultyLevel;
 import com.sb.sfrigola_core.domains.recipes.enums.FeedType;
 import com.sb.sfrigola_core.domains.recipes.enums.RecipeSortField;
+import com.sb.sfrigola_core.domains.recipes.exception.ContributorTranslationLimitExceededException;
 import com.sb.sfrigola_core.domains.recipes.exception.DuplicateRecipeLocaleException;
 import com.sb.sfrigola_core.domains.recipes.exception.MissingRecipeLocalesException;
 import com.sb.sfrigola_core.domains.recipes.exception.NoRecipeFoundException;
@@ -31,6 +34,8 @@ import com.sb.sfrigola_core.domains.recipes.exception.RecipeAuthorMismatchExcept
 import com.sb.sfrigola_core.domains.recipes.models.RecipeSpecificFilter;
 import com.sb.sfrigola_core.domains.recipes.repository.IRecipeRepository;
 import com.sb.sfrigola_core.domains.recipes.service.IRecipeService;
+import com.sb.sfrigola_core.domains.stats.entity.RecipeStats;
+import com.sb.sfrigola_core.domains.stats.service.IRecipeStatsDomainBridgeService;
 import com.sb.sfrigola_core.domains.tags.dto.view.TagDto;
 import com.sb.sfrigola_core.domains.tags.entity.Tag;
 import com.sb.sfrigola_core.domains.tags.service.ITagDomainBridgeService;
@@ -59,6 +64,8 @@ public class RecipeServiceImpl implements IRecipeService {
     private final IIngredientDomainBridgeService ingredientDomainBridgeService;
     private final ICategoryDomainBridgeService categoryDomainBridgeService;
     private final ISCUserDomainBridgeService userDomainBridgeService;
+    private final IFavoriteDomainBridgeService favoriteDomainBridgeService;
+    private final IRecipeStatsDomainBridgeService recipeStatsDomainBridgeService;
 
     @Override
     public Map<FeedType, RecipesFeedDto> getAllHomeFeed(@NonNull UUID categoryId, @NonNull String locale) {
@@ -66,26 +73,26 @@ public class RecipeServiceImpl implements IRecipeService {
         languageDomainBridgeService.validateLocaleIsActiveOrThrow(locale);
 
         List<Long> categoryCalculatedIds = resolveCategoryFilterIds(categoryId);
+        Long userId = resolveUserIdOrNull(SCAuthenticationUtils.getAuthUserByContextHolder());
 
         // VIRAL FEED (Not Implemented yet)
-        // FAVOURITE FEED (Not Implemented yet)
 
         Map<FeedType, RecipesFeedDto> homeFeed = new EnumMap<>(FeedType.class);
 
         // QUICK FEED — shortest prep + cook time first
         var quickFilter = new RecipeSpecificFilter(null, null, null, null, null, null, true);
         var quickFilterQuery = SCFilterQuery.powerful(null, RecipeSortField.TOTAL_TIME_MIN, SortDirection.ASC, 10, 0, quickFilter);
-        homeFeed.put(FeedType.QUICK, new RecipesFeedDto(getFilteredPublished(quickFilterQuery, categoryCalculatedIds, locale), (short) 0));
+        homeFeed.put(FeedType.QUICK, new RecipesFeedDto(getFilteredPublished(quickFilterQuery, categoryCalculatedIds, locale, userId), (short) 0));
 
         // LIKE_A_CHEF FEED — hard difficulty, longest prep + cook time first
         var gourmetFilter = new RecipeSpecificFilter(DifficultyLevel.HARD, null, null, null, null, null, true);
         var gourmetFilterQuery = SCFilterQuery.powerful(null, RecipeSortField.TOTAL_TIME_MIN, SortDirection.DESC, 10, 0, gourmetFilter);
-        homeFeed.put(FeedType.LIKE_A_CHEF, new RecipesFeedDto(getFilteredPublished(gourmetFilterQuery, categoryCalculatedIds, locale), (short) 1));
+        homeFeed.put(FeedType.LIKE_A_CHEF, new RecipesFeedDto(getFilteredPublished(gourmetFilterQuery, categoryCalculatedIds, locale, userId), (short) 1));
 
         // ECONOMICAL FEED — lowest ingredient-count-to-servings ratio first
         var economicalFilter = new RecipeSpecificFilter(null, null, null, null, null, null, true);
         var economicalFilterQuery = SCFilterQuery.powerful(null, RecipeSortField.ECONOMICAL_RATIO, SortDirection.ASC, 10, 0, economicalFilter);
-        homeFeed.put(FeedType.ECONOMICAL, new RecipesFeedDto(getFilteredPublished(economicalFilterQuery,categoryCalculatedIds, locale), (short) 2));
+        homeFeed.put(FeedType.ECONOMICAL, new RecipesFeedDto(getFilteredPublished(economicalFilterQuery,categoryCalculatedIds, locale, userId), (short) 2));
 
         return homeFeed;
     }
@@ -126,13 +133,17 @@ public class RecipeServiceImpl implements IRecipeService {
             Map<Long, Recipe> byId = recipeRepository.findByIdsWithAllTranslations(ids)
                     .stream().collect(Collectors.toMap(Recipe::getId, r -> r));
             List<Recipe> ordered = ids.stream().map(byId::get).filter(Objects::nonNull).toList();
+            // One batch query for the whole page's stats, keyed by recipe id, instead of calling
+            // getStats(recipeId) once per recipe in the loop below — same page size, one round
+            // trip either way, but the map avoids N round trips for N recipes.
+            Map<Long, RecipeStats> statsById = recipeStatsDomainBridgeService.getStatsBatch(ids);
 
             return new SCPagedResult<>(
                     ordered.stream().map(recipe -> {
                         RecipeTranslation recipeTranslation = recipe.getTranslations().stream()
                                 .filter(t -> t.getLanguage().getCode().equals(locale))
                                 .findFirst().orElse(null);
-                        return toAdminDto(recipe, recipeTranslation, activeLanguagesSimpleMap);
+                        return toAdminDto(recipe, recipeTranslation, activeLanguagesSimpleMap, statsById.get(recipe.getId()));
                     }).toList(),
                     SCPaginationUtils.toPagedOption(idsPage)
             );
@@ -143,6 +154,9 @@ public class RecipeServiceImpl implements IRecipeService {
     @Override
     public SCPagedResult<RecipeDto> searchRecipes(SCFilterQuery<Void> filterQuery, UUID categoryId, @NonNull String locale) {
         languageDomainBridgeService.validateLocaleIsActiveOrThrow(locale);
+
+        SCAuthUser authUser = SCAuthenticationUtils.getAuthUserByContextHolder();
+
 
         List<Long> categoryDbIds = resolveCategoryFilterIds(categoryId);
 
@@ -155,9 +169,37 @@ public class RecipeServiceImpl implements IRecipeService {
             Map<Long, Recipe> byId = recipeRepository.findByIdsWithSpecificTranslation(ids, locale)
                     .stream().collect(Collectors.toMap(Recipe::getId, r -> r));
             List<Recipe> ordered = ids.stream().map(byId::get).filter(Objects::nonNull).toList();
+            // Decorate Ordered Recipe with info like favourites and stats
+            List<DecorateRecipe> decoratedRecipes = decorateRecipes(ordered, resolveUserIdOrNull(authUser));
             return new SCPagedResult<>(
-                    ordered.stream().map(this::toDto).toList(),
+                    decoratedRecipes.stream().map(this::toRecipeDto).toList(),
                     SCPaginationUtils.toPagedOption(recipeIds)
+            );
+        }
+        return SCPagedResult.empty();
+    }
+
+    @Override
+    public SCPagedResult<RecipeDto> getAllMyFavoriteRecipes(SCFilterQuery<Void> filterQuery, @NonNull String locale) {
+        languageDomainBridgeService.validateLocaleIsActiveOrThrow(locale);
+
+        var authUser = SCAuthenticationUtils.getAuthUserByContextHolder();
+        var pageable = SCPaginationUtils.toPageable(filterQuery);
+
+        var recipeIdsPage = favoriteDomainBridgeService.getFavoritedRecipeIdsPage(authUser.publicId(), pageable);
+
+        if (recipeIdsPage.hasContent()) {
+            var ids = recipeIdsPage.getContent();
+            Map<Long, Recipe> byId = recipeRepository.findByIdsWithSpecificTranslation(ids, locale)
+                    .stream().collect(Collectors.toMap(Recipe::getId, r -> r));
+            List<Recipe> ordered = ids.stream().map(byId::get).filter(Objects::nonNull).toList();
+
+            // Decorate Ordered Recipe with info like favourites and stats
+            List<DecorateRecipe> decoratedRecipes = decorateRecipesWithoutFavourites(ordered);
+
+            return new SCPagedResult<>(
+                    decoratedRecipes.stream().map(this::toRecipeDto).toList(),
+                    SCPaginationUtils.toPagedOption(recipeIdsPage)
             );
         }
         return SCPagedResult.empty();
@@ -175,7 +217,8 @@ public class RecipeServiceImpl implements IRecipeService {
                 .filter(t -> t.getLanguage().getCode().equals(locale))
                 .findFirst().orElse(null);
 
-        return toAdminDetailsDto(recipe, recipeTranslation, locale);
+        var stats = recipeStatsDomainBridgeService.getStats(recipe.getId()).orElse(null);
+        return toAdminDetailsDto(recipe, recipeTranslation, locale, stats);
     }
 
     @Override
@@ -190,7 +233,13 @@ public class RecipeServiceImpl implements IRecipeService {
                 .filter(t -> t.getLanguage().getCode().equals(locale))
                 .findFirst().orElse(null);
 
-        return toDetailsDto(recipe, recipeTranslation, locale);
+        // Single recipe, not a page of them — one favourite check + one stats lookup is enough,
+        // no batch needed here (batch only pays off across multiple recipes, see decorateRecipes).
+        Long userId = resolveUserIdOrNull(SCAuthenticationUtils.getAuthUserByContextHolder());
+        boolean isFavourite = userId != null && favoriteDomainBridgeService.isFavoritedByUser(userId, recipe.getId());
+        var stats = recipeStatsDomainBridgeService.getStats(recipe.getId()).orElse(null);
+
+        return toDetailsDto(recipe, recipeTranslation, locale, isFavourite, stats);
     }
 
     @Override
@@ -198,32 +247,56 @@ public class RecipeServiceImpl implements IRecipeService {
     public RecipePreviewAdminDto createRecipe(AddRecipeDto addRecipeDto, @NonNull String locale) {
         var authUser = SCAuthenticationUtils.getAuthUserByContextHolder();
         SCUser author = userDomainBridgeService.getUserEntityByPublicIdOrThrow(authUser.publicId());
+        Recipe newRecipe = new Recipe();
 
         // TRANSLATION CHECKS:
         // 1) No duplicated translation
-        // 2) A new recipe must have all active languages covered in translation, otherwise it is not valid
+        // 2) CASE CONTRIBUTOR A new recipe must have exactly one translation, in any active
+        //    language of the contributor's choosing — locale is only used to pick the preview
+        // 2) CASE ADMIN A new recipe must have all active languages covered in translation, otherwise it is not valid
+
         var activeLanguageMap = languageDomainBridgeService.getActiveLanguageEntitiesMap();
         var activeCodeSet = activeLanguageMap.keySet().stream().map(String::toLowerCase).collect(Collectors.toSet());
 
-        Set<String> seenLocales = new HashSet<>();
-        addRecipeDto.translations().forEach(t -> {
-            if (!seenLocales.add(t.langCode()))
-                throw new DuplicateRecipeLocaleException(t.langCode());
-        });
+        List<RecipeTranslation> translations = new ArrayList<>();
 
-        if (!activeCodeSet.containsAll(seenLocales) || activeCodeSet.size() != seenLocales.size())
-            throw new MissingRecipeLocalesException();
+        if(authUser.role().isContributor()) {
 
-        Recipe newRecipe = new Recipe();
+            if (addRecipeDto.translations().size() > 1)
+                throw new ContributorTranslationLimitExceededException(addRecipeDto.translations().size());
 
-        List<RecipeTranslation> translations = addRecipeDto.translations().stream()
-                .map(t -> {
-                    Language lang = languageDomainBridgeService.getLangFromEntitiesMapFromKeyOrThrow(activeLanguageMap, t.langCode());
-                    return toRecipeTranslation(t, lang);
-                })
-                .collect(Collectors.toCollection(ArrayList::new));
-        translations.forEach(t -> t.setRecipe(newRecipe));
+            var extractedTranslationFromInput = addRecipeDto.translations().getFirst();
+            Language lang = languageDomainBridgeService.getLangFromEntitiesMapFromKeyOrThrow(activeLanguageMap, extractedTranslationFromInput.langCode());
+            translations.addFirst(toRecipeTranslation(extractedTranslationFromInput, lang));
+            translations.getFirst().setRecipe(newRecipe);
 
+        }else if (authUser.role().isAdmin()){
+            Set<String> seenLocales = new HashSet<>();
+
+            addRecipeDto.translations().forEach(t -> {
+                if (!seenLocales.add(t.langCode()))
+                    throw new DuplicateRecipeLocaleException(t.langCode());
+            });
+
+            if (!activeCodeSet.containsAll(seenLocales) || activeCodeSet.size() != seenLocales.size())
+                throw new MissingRecipeLocalesException();
+
+
+            translations = addRecipeDto.translations().stream()
+                    .map(t -> {
+                        Language lang = languageDomainBridgeService.getLangFromEntitiesMapFromKeyOrThrow(activeLanguageMap, t.langCode());
+                        return toRecipeTranslation(t, lang);
+                    })
+                    .collect(Collectors.toCollection(ArrayList::new));
+            translations.forEach(t -> t.setRecipe(newRecipe));
+
+        } else
+            translations = List.of();
+
+
+
+        newRecipe.setTranslations(translations);
+        newRecipe.setPublished(authUser.role().isAdmin());
         newRecipe.setAuthor(author);
         newRecipe.setCategory(resolveCategoryOrNull(addRecipeDto.categoryPublicId()));
         newRecipe.setDifficulty(addRecipeDto.difficulty());
@@ -235,8 +308,6 @@ public class RecipeServiceImpl implements IRecipeService {
         newRecipe.setVegetarian(addRecipeDto.isVegetarian());
         newRecipe.setVegan(addRecipeDto.isVegan());
         newRecipe.setGlutenFree(addRecipeDto.isGlutenFree());
-        newRecipe.setPublished(addRecipeDto.isPublished());
-        newRecipe.setTranslations(translations);
 
         // TAGS MANAGEMENT
         List<Tag> tagsForRecipe = tagDomainBridgeService.getTagsUsableForRecipes(SCDataStructureUtils.nullSafeList(addRecipeDto.recipeTagsIds()));
@@ -253,7 +324,8 @@ public class RecipeServiceImpl implements IRecipeService {
         return toAdminDto(
                 newRecipe,
                 translations.stream().filter(t -> t.getLanguage().getCode().equals(locale)).findFirst().orElse(null),
-                languageDomainBridgeService.toSimpleLanguagesMap(activeLanguageMap));
+                languageDomainBridgeService.toSimpleLanguagesMap(activeLanguageMap),
+                null); // brand-new recipe — no stats row can exist yet
     }
 
     @Override
@@ -264,6 +336,13 @@ public class RecipeServiceImpl implements IRecipeService {
         );
 
         assertAuthorOrAdmin(recipeToUpdate, publicId);
+
+        // EDITORIAL WORKFLOW: a contributor editing their own recipe (assertAuthorOrAdmin above
+        // already guarantees whoever isn't an admin here must be the author) always reverts it to
+        // draft — content changed, needs admin re-approval before it's public again. An admin's
+        // edit never triggers this; isPublished is left exactly as it was.
+        if (!SCAuthenticationUtils.getAuthUserByContextHolder().role().isAdmin())
+            recipeToUpdate.setPublished(false);
 
         // TRANSLATION CHECK: Update translation is of an active locale
         var activeLangMap = languageDomainBridgeService.getActiveLanguageEntitiesMap();
@@ -308,8 +387,6 @@ public class RecipeServiceImpl implements IRecipeService {
             recipeToUpdate.setVegan(updateRecipeDto.isVegan());
         if (recipeToUpdate.isGlutenFree() != updateRecipeDto.isGlutenFree())
             recipeToUpdate.setGlutenFree(updateRecipeDto.isGlutenFree());
-        if (recipeToUpdate.isPublished() != updateRecipeDto.isPublished())
-            recipeToUpdate.setPublished(updateRecipeDto.isPublished());
 
         // TAGS MANAGEMENT — reconcile to the requested tag set (not clear+re-add: RecipeTag's
         // id is @MapsId(recipe+tag), so a fresh instance for a tag that's kept unchanged would
@@ -324,7 +401,20 @@ public class RecipeServiceImpl implements IRecipeService {
         // MATERIALIZED FEED-SORTING FIELDS
         recomputeFeedSortingFields(recipeToUpdate);
 
-        return toAdminDto(recipeToUpdate, recipeTranslationToUpdate, languageDomainBridgeService.toSimpleLanguagesMap(activeLangMap));
+        var stats = recipeStatsDomainBridgeService.getStats(recipeToUpdate.getId()).orElse(null);
+        return toAdminDto(recipeToUpdate, recipeTranslationToUpdate, languageDomainBridgeService.toSimpleLanguagesMap(activeLangMap), stats);
+    }
+
+    @Override
+    @Transactional
+    public RecipePreviewAdminDto publishRecipe(UUID publicId, @NonNull String locale) {
+        return setPublishedStatus(publicId, true, locale);
+    }
+
+    @Override
+    @Transactional
+    public RecipePreviewAdminDto unpublishRecipe(UUID publicId, @NonNull String locale) {
+        return setPublishedStatus(publicId, false, locale);
     }
 
     @Override
@@ -345,6 +435,123 @@ public class RecipeServiceImpl implements IRecipeService {
     // =========================================================
 
     /**
+     * Carries a {@link Recipe} together with the per-request enrichment ({@code isFavourite},
+     * {@code ratingAverage}) that {@link #toRecipeDto} needs to build a {@link RecipeDto}.
+     * Keeps {@link #toRecipeDto} a pure mapper — all batch lookups happen once in
+     * {@link #decorateRecipes}, never per-recipe.
+     */
+    private record DecorateRecipe(
+            Recipe recipe,
+            boolean isFavourite,
+            BigDecimal ratingAverage
+    ) {}
+
+    /**
+     * Batch-resolves {@code isFavourite} and {@code ratingAverage} for a page of recipes, in at
+     * most two queries total (favorites + rating stats), regardless of page size.
+     *
+     * @param recipes the recipe entities to decorate, each with its translations list
+     *                pre-filtered to one locale
+     * @param userId  internal ID of the authenticated user, or {@code null} if anonymous —
+     *                {@code null} skips the favorites lookup entirely, every recipe gets
+     *                {@code isFavourite = false}
+     * @return one {@link DecorateRecipe} per input recipe, same order
+     */
+    private List<DecorateRecipe> decorateRecipes(List<Recipe> recipes, @Nullable Long userId) {
+        if (recipes.isEmpty()) return List.of();
+
+        List<Long> recipeIds = recipes.stream().map(Recipe::getId).toList();
+        // Resolve favourite-status for the whole page in one query (recipeIds IN (...)) instead
+        // of calling isFavouriteByUser(userId, recipeId) once per recipe below — same page size,
+        // one query either way, but the set avoids N queries for N recipes.
+        Set<Long> favouriteIds = userId != null
+                ? favoriteDomainBridgeService.getFavoritedRecipeIds(userId, recipeIds)
+                : Set.of();
+        // Same reasoning for stats: one batch lookup keyed by recipe id, not one getStats(id)
+        // call per recipe in the stream below.
+        Map<Long, RecipeStats> statsById = recipeStatsDomainBridgeService.getStatsBatch(recipeIds);
+
+        return recipes.stream()
+                .map(recipe -> {
+                    RecipeStats stats = statsById.get(recipe.getId());
+                    return new DecorateRecipe(
+                            recipe,
+                            favouriteIds.contains(recipe.getId()),
+                            stats != null ? stats.getAvgRating() : BigDecimal.ZERO
+                    );
+                })
+                .toList();
+    }
+
+    /**
+     * Variant of {@link #decorateRecipes} that skips the favorites lookup entirely and forces
+     * {@code isFavourite} to {@code true} for every recipe. Used by
+     * {@link #getAllMyFavoriteRecipes}, where every recipe in {@code recipes} already came from
+     * the favorites bridge — checking again would be a redundant query for a known answer.
+     *
+     * @param recipes the recipe entities to decorate, each with its translations list
+     *                pre-filtered to one locale
+     * @return one {@link DecorateRecipe} per input recipe, same order
+     */
+    private List<DecorateRecipe> decorateRecipesWithoutFavourites(List<Recipe> recipes) {
+        if (recipes.isEmpty()) return List.of();
+
+        List<Long> recipeIds = recipes.stream().map(Recipe::getId).toList();
+        // One batch lookup keyed by recipe id, not one getStats(id) call per recipe in the
+        // stream below — same tradeoff as in decorateRecipes.
+        Map<Long, RecipeStats> statsById = recipeStatsDomainBridgeService.getStatsBatch(recipeIds);
+
+        return recipes.stream()
+                .map(recipe -> {
+                    RecipeStats stats = statsById.get(recipe.getId());
+                    return new DecorateRecipe(
+                            recipe,
+                            true,
+                            stats != null ? stats.getAvgRating() : BigDecimal.ZERO
+                    );
+                })
+                .toList();
+    }
+
+    /**
+     * Pure mapper: turns an already-decorated {@link DecorateRecipe} into the public
+     * {@link RecipeDto}. Issues no queries — all enrichment was already resolved by
+     * {@link #decorateRecipes}.
+     *
+     * @param decorated the recipe plus its resolved {@code isFavourite}/{@code ratingAverage}
+     * @return the mapped {@link RecipeDto}
+     */
+    private RecipeDto toRecipeDto(DecorateRecipe decorated) {
+        Recipe recipe = decorated.recipe();
+        // We have only one item in the list of translations — the first query filters by locale
+        var translation = recipe.getTranslations().getFirst();
+        return new RecipeDto(
+                recipe.getPublicId(),
+                recipe.getAuthor().getPublicId(),
+                recipe.getCategory() != null ? recipe.getCategory().getPublicId() : null,
+                translation.getTitle(),
+                translation.getDescription(),
+                decorated.ratingAverage(),
+                decorated.isFavourite(),
+                recipe.getTotalTimeMin(),
+                recipe.getEconomicalRatio()
+        );
+    }
+
+    /**
+     * Resolves the internal ID of the authenticated user, for {@link #decorateRecipes}. Public
+     * endpoints (e.g. {@link #searchRecipes}, {@link #getAllHomeFeed}) call this unconditionally —
+     * an anonymous caller (no valid token) simply gets {@code null} back, no extra query is issued.
+     *
+     * @param authUser the security-context principal, possibly anonymous
+     * @return the authenticated user's internal ID, or {@code null} if {@code authUser} is anonymous
+     */
+    private @Nullable Long resolveUserIdOrNull(SCAuthUser authUser) {
+        if (!SCAuthenticationUtils.isAuthenticated(authUser)) return null;
+        return userDomainBridgeService.getUserEntityByPublicIdOrThrow(authUser.publicId()).getId();
+    }
+
+    /**
      * Runs one home-feed row: fetches published recipe IDs matching {@code filterQuery} (sort
      * field/direction/limit come from it) restricted to {@code categoryCalculatedIds}, then loads
      * and maps them to {@link RecipeDto} in the same order. Shared by all {@link FeedType} rows
@@ -353,9 +560,11 @@ public class RecipeServiceImpl implements IRecipeService {
      * @param filterQuery          pagination/sort/dietary filter for this specific feed row
      * @param categoryCalculatedIds category IDs to restrict to (as resolved by {@link #resolveCategoryFilterIds}); {@code null} means no restriction
      * @param locale               locale used both to filter (recipe must have a translation for it) and to localize the result
+     * @param userId               internal ID of the authenticated user resolved once by {@link #getAllHomeFeed},
+     *                             or {@code null} if anonymous — passed down instead of re-resolved per row
      * @return recipes for this row, empty if none match
      */
-    private List<RecipeDto> getFilteredPublished(SCFilterQuery<RecipeSpecificFilter> filterQuery, List<Long> categoryCalculatedIds, @NonNull String locale) {
+    private List<RecipeDto> getFilteredPublished(SCFilterQuery<RecipeSpecificFilter> filterQuery, List<Long> categoryCalculatedIds, @NonNull String locale, @Nullable Long userId) {
         var pageable = SCPaginationUtils.toPageable(filterQuery);
         var filter = filterQuery.other();
 
@@ -378,7 +587,10 @@ public class RecipeServiceImpl implements IRecipeService {
             Map<Long, Recipe> byId = recipeRepository.findByIdsWithSpecificTranslation(ids, locale)
                     .stream().collect(Collectors.toMap(Recipe::getId, r -> r));
             List<Recipe> ordered = ids.stream().map(byId::get).filter(Objects::nonNull).toList();
-            return ordered.stream().map(this::toDto).toList();
+
+            // Decorate Ordered Recipe with info like favourites and stats
+            List<DecorateRecipe> decorateRecipes = decorateRecipes(ordered, userId);
+            return decorateRecipes.stream().map(this::toRecipeDto).toList();
         }
 
 
@@ -399,6 +611,34 @@ public class RecipeServiceImpl implements IRecipeService {
         if (authUser.role().isAdmin()) return;
         if (!recipe.getAuthor().getPublicId().equals(authUser.publicId()))
             throw new RecipeAuthorMismatchException(publicId);
+    }
+
+    /**
+     * Shared implementation for {@link #publishRecipe} and {@link #unpublishRecipe}: flips
+     * {@code isPublished} and returns the admin preview localized to {@code locale}. No
+     * author-or-admin check here (unlike {@link #assertAuthorOrAdmin}) — publish/unpublish is
+     * admin-only, enforced by the security path, not re-checked in the service.
+     *
+     * @param publicId  public identifier of the recipe to toggle
+     * @param published the new {@code isPublished} value
+     * @param locale    BCP-47 locale code used to select the translation for the preview
+     * @return admin preview of the recipe with its updated {@code isPublished} flag
+     * @throws NoRecipeFoundException if no recipe exists with the given public ID
+     */
+    private RecipePreviewAdminDto setPublishedStatus(UUID publicId, boolean published, @NonNull String locale) {
+        languageDomainBridgeService.validateLocaleIsActiveOrThrow(locale);
+
+        var recipe = recipeRepository.findByPublicIdWithAllTranslation(publicId).orElseThrow(
+                () -> new NoRecipeFoundException(publicId)
+        );
+        recipe.setPublished(published);
+
+        var recipeTranslation = recipe.getTranslations().stream()
+                .filter(t -> t.getLanguage().getCode().equals(locale))
+                .findFirst().orElse(null);
+
+        var stats = recipeStatsDomainBridgeService.getStats(recipe.getId()).orElse(null);
+        return toAdminDto(recipe, recipeTranslation, languageDomainBridgeService.getAllActiveLanguagesSimpleMap(), stats);
     }
 
     /**
@@ -452,38 +692,17 @@ public class RecipeServiceImpl implements IRecipeService {
     }
 
     /**
-     * Maps a {@link Recipe} to the public {@link RecipeDto} used by feed/search results.
-     * Assumes {@code recipe.getTranslations()} contains exactly one entry — the caller must have
-     * already filtered to a single locale (see {@link IRecipeRepository#findByIdsWithSpecificTranslation}).
-     *
-     * @param recipe the recipe entity, with its translations list pre-filtered to one locale
-     * @return the mapped {@link RecipeDto}
-     */
-    private RecipeDto toDto(Recipe recipe) {
-        // We have only one item in the list of translations — the first query filters by locale
-        var translation = recipe.getTranslations().getFirst();
-        return new RecipeDto(
-                recipe.getPublicId(),
-                recipe.getAuthor().getPublicId(),
-                recipe.getCategory() != null ? recipe.getCategory().getPublicId() : null,
-                translation.getTitle(),
-                translation.getDescription(),
-                false, // isFavourite — favorites domain not implemented yet
-                recipe.getTotalTimeMin(),
-                recipe.getEconomicalRatio()
-        );
-    }
-
-    /**
      * Maps a {@link Recipe} to {@link RecipePreviewAdminDto}, including which active languages
-     * the recipe has a translation for (localization coverage, used by the admin CMS).
+     * the recipe has a translation for (localization coverage, used by the admin CMS) and its
+     * current rating/favorite aggregates.
      *
      * @param recipe              the recipe entity, with its full translations collection loaded
      * @param recipeTranslation   the translation to preview (title), or {@code null} if none exists for the requested locale
      * @param activeLanguagesMap  active language code → display name, used to build the coverage map
+     * @param stats               the recipe's stats row, or {@code null} if it has never been favorited or rated
      * @return the mapped {@link RecipePreviewAdminDto}
      */
-    private RecipePreviewAdminDto toAdminDto(Recipe recipe, RecipeTranslation recipeTranslation, Map<String, String> activeLanguagesMap) {
+    private RecipePreviewAdminDto toAdminDto(Recipe recipe, RecipeTranslation recipeTranslation, Map<String, String> activeLanguagesMap, @Nullable RecipeStats stats) {
         Map<String, String> translatedLanguages = languageDomainBridgeService.buildTranslatedLanguagesMap(recipe.getTranslations(), activeLanguagesMap);
 
         String titlePreview = recipeTranslation != null ? recipeTranslation.getTitle() : null;
@@ -502,21 +721,25 @@ public class RecipeServiceImpl implements IRecipeService {
                 recipe.isGlutenFree(),
                 recipe.isPublished(),
                 titlePreview,
-                translatedLanguages
+                translatedLanguages,
+                stats != null ? stats.getAvgRating() : BigDecimal.ZERO,
+                stats != null ? stats.getRatingsCount() : 0,
+                stats != null ? stats.getFavoritesCount() : 0
         );
     }
 
     /**
      * Maps a {@link Recipe} to full admin details, including ingredient and tag lists localized
-     * to {@code locale}. Used by {@link #getByPublicIdAdmin}; unlike {@link #toDto}, includes
+     * to {@code locale}. Used by {@link #getByPublicIdAdmin}; unlike {@link #toRecipeDto}, includes
      * draft-recipe fields and never filters by {@code isPublished}.
      *
      * @param recipe             the recipe entity, with ingredients/tags collections loaded
      * @param specificTranslation the translation to preview, or {@code null} if none exists for {@code locale}
      * @param locale             locale used to localize the ingredient and tag names
+     * @param stats              the recipe's stats row, or {@code null} if it has never been favorited or rated
      * @return the mapped {@link RecipeDetailsAdminDto}
      */
-    private RecipeDetailsAdminDto toAdminDetailsDto(Recipe recipe, @Nullable RecipeTranslation specificTranslation, @NonNull String locale) {
+    private RecipeDetailsAdminDto toAdminDetailsDto(Recipe recipe, @Nullable RecipeTranslation specificTranslation, @NonNull String locale, @Nullable RecipeStats stats) {
         return new RecipeDetailsAdminDto(
                 recipe.getPublicId(),
                 recipe.getAuthor().getPublicId(),
@@ -535,7 +758,10 @@ public class RecipeServiceImpl implements IRecipeService {
                 specificTranslation != null ? specificTranslation.getDescription() : null,
                 specificTranslation != null ? specificTranslation.getInstructions() : null,
                 buildIngredientList(recipe, locale),
-                buildTagList(recipe, locale)
+                buildTagList(recipe, locale),
+                stats != null ? stats.getAvgRating() : BigDecimal.ZERO,
+                stats != null ? stats.getRatingsCount() : 0,
+                stats != null ? stats.getFavoritesCount() : 0
         );
     }
 
@@ -547,9 +773,11 @@ public class RecipeServiceImpl implements IRecipeService {
      * @param recipe             the recipe entity, with ingredients/tags collections loaded
      * @param specificTranslation the translation to preview, or {@code null} if none exists for {@code locale}
      * @param locale             locale used to localize the ingredient and tag names
+     * @param isFavourite        whether the requesting user has favorited this recipe; {@code false} if anonymous
+     * @param stats              the recipe's stats row, or {@code null} if it has never been favorited or rated
      * @return the mapped {@link RecipeDetailsDto}
      */
-    private RecipeDetailsDto toDetailsDto(Recipe recipe, @Nullable RecipeTranslation specificTranslation, @NonNull String locale) {
+    private RecipeDetailsDto toDetailsDto(Recipe recipe, @Nullable RecipeTranslation specificTranslation, @NonNull String locale, boolean isFavourite, @Nullable RecipeStats stats) {
         return new RecipeDetailsDto(
                 recipe.getPublicId(),
                 recipe.getAuthor().getPublicId(),
@@ -567,7 +795,11 @@ public class RecipeServiceImpl implements IRecipeService {
                 specificTranslation != null ? specificTranslation.getDescription() : null,
                 specificTranslation != null ? specificTranslation.getInstructions() : null,
                 buildIngredientList(recipe, locale),
-                buildTagList(recipe, locale)
+                buildTagList(recipe, locale),
+                isFavourite,
+                stats != null ? stats.getAvgRating() : BigDecimal.ZERO,
+                stats != null ? stats.getRatingsCount() : 0,
+                stats != null ? stats.getFavoritesCount() : 0
         );
     }
 

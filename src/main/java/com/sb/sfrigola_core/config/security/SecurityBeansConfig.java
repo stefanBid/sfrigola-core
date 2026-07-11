@@ -94,7 +94,8 @@ public class SecurityBeansConfig {
     @Bean("authenticatedGetPath")
     public List<String> authenticatedGetPath() {
         return List.of(
-                "/api/recipes"
+                "/api/recipes",
+                "/api/recipes/favorites"
         );
     }
 

@@ -10,6 +10,7 @@ public record RecipeDto(
         UUID categoryPublicId,
         String specificTranslationTitle,
         String specificTranslationDescription,
+        BigDecimal avgRating,
         boolean isFavourite,
         int totalTimeMin,
         BigDecimal economicalRatio

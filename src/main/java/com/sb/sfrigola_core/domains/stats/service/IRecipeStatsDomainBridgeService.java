@@ -1,13 +1,19 @@
 package com.sb.sfrigola_core.domains.stats.service;
 
 import com.sb.sfrigola_core.domains.recipes.entity.Recipe;
-import com.sb.sfrigola_core.domains.stats.dto.RecipeStatsDto;
+import com.sb.sfrigola_core.domains.stats.entity.RecipeStats;
+
+import java.util.List;
+import java.util.Map;
+import java.util.Optional;
 
 /**
  * Internal bridge contract for the stats' domain.
  * Does NOT read the security context; all required data is received explicitly.
  * No controller is exposed for this domain (see CLAUDE.md) — it is only ever called by the
- * favorites and ratings domains to keep {@code recipe_stats} in sync, and by them alone.
+ * favorites and ratings domains to keep {@code recipe_stats} in sync, and by the recipes domain
+ * to read it — this is the single point where recipe statistics are read; nothing else should
+ * query {@code recipe_stats} directly.
  * Write methods follow the "succeed or throw" contract — no boolean return, exception on failure.
  * The underlying {@code recipe_stats} row is created lazily (upserted) on first write for a
  * recipe, since recipe creation itself does not seed one.
@@ -18,10 +24,22 @@ public interface IRecipeStatsDomainBridgeService {
      * Returns the current precomputed aggregates for {@code recipeId}.
      *
      * @param recipeId internal ID of the recipe whose stats are read
-     * @return the {@link RecipeStatsDto} for the recipe, or {@link RecipeStatsDto#empty()}
+     * @return the {@link RecipeStats} entity for the recipe, or {@link Optional#empty()}
      *         if no stats row exists yet (i.e. the recipe has never been favorited or rated)
      */
-    RecipeStatsDto getStats(Long recipeId);
+    Optional<RecipeStats> getStats(Long recipeId);
+
+    /**
+     * Batch variant of {@link #getStats}: returns the stats row for every recipe in
+     * {@code recipeIds} that already has one. Recipes with no row (never favorited or
+     * rated) are simply absent from the map — callers must default the aggregates themselves
+     * (e.g. zero rating/count). Used by the recipes domain to localize a page of results
+     * without one query per recipe.
+     *
+     * @param recipeIds internal recipe IDs to look up; never {@code null}
+     * @return recipe ID → {@link RecipeStats}, only for recipes that have a stats row; never {@code null}
+     */
+    Map<Long, RecipeStats> getStatsBatch(List<Long> recipeIds);
 
     /**
      * Records that {@code recipe} was added to a user's favorites: increments {@code favorites_count}.

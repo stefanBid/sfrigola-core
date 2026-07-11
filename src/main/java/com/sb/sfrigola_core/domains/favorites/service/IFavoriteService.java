@@ -1,11 +1,5 @@
 package com.sb.sfrigola_core.domains.favorites.service;
 
-import com.sb.sfrigola_core.common.models.contracts.SCFilterQuery;
-import com.sb.sfrigola_core.common.models.contracts.SCPagedResult;
-import com.sb.sfrigola_core.domains.languages.exception.LocaleNotActiveException;
-import com.sb.sfrigola_core.domains.recipes.dto.view.RecipeDto;
-import org.jspecify.annotations.NonNull;
-
 import java.util.UUID;
 
 /**
@@ -14,20 +8,13 @@ import java.util.UUID;
  * managing another user's favorites through this contract. Every method operates on the
  * authenticated user's own favorites list.
  * All methods succeed or throw a subclass of {@link com.sb.sfrigola_core.common.exception.ex.SCGeneralException}.
+ * <p>
+ * Listing the authenticated user's favorited recipes is exposed by the recipes domain instead
+ * (see {@code IRecipeService#getAllMyFavoriteRecipes}) — it is fundamentally a recipe query
+ * filtered by favorites, and returns {@code RecipeDto}, which this domain has no other reason to
+ * depend on.
  */
 public interface IFavoriteService {
-
-    /**
-     * Returns a paginated list of the authenticated user's favorited recipes, most recently
-     * favorited first, localized to {@code locale}.
-     *
-     * @param filterQuery pagination only — no search/sort is supported
-     * @param locale      BCP-47 language code used to localize each recipe's title/description
-     * @return a {@link SCPagedResult} of {@link RecipeDto}; never {@code null}
-     * @throws LocaleNotActiveException
-     *         if {@code locale} does not match an active language (thrown by the languages domain bridge)
-     */
-    SCPagedResult<RecipeDto> getAllMyFavorites(SCFilterQuery<Void> filterQuery, @NonNull String locale);
 
     /**
      * Adds the given recipe to the authenticated user's favorites.
