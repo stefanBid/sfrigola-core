@@ -5,9 +5,12 @@ import com.sb.sfrigola_core.common.dto.option.SCPagedOptionDto;
 import com.sb.sfrigola_core.common.dto.response.SCGeneralResponseDto;
 import com.sb.sfrigola_core.common.enums.SortDirection;
 import com.sb.sfrigola_core.common.models.contracts.SCFilterQuery;
-import com.sb.sfrigola_core.domains.ingredients.dto.IngredientDto;
-import com.sb.sfrigola_core.domains.ingredients.dto.admin.IngredientInputDto;
-import com.sb.sfrigola_core.domains.ingredients.dto.admin.IngredientPreviewAdminDto;
+import com.sb.sfrigola_core.domains.ingredients.dto.view.IngredientDetailsAdminDto;
+import com.sb.sfrigola_core.domains.ingredients.dto.view.IngredientDto;
+import com.sb.sfrigola_core.domains.ingredients.dto.input.AddIngredientDto;
+import com.sb.sfrigola_core.domains.ingredients.dto.input.UpdateIngredientDto;
+import com.sb.sfrigola_core.domains.ingredients.dto.view.IngredientPreviewAdminDto;
+import com.sb.sfrigola_core.domains.ingredients.enums.IngredientFoodGroup;
 import com.sb.sfrigola_core.domains.ingredients.enums.IngredientSortField;
 import com.sb.sfrigola_core.domains.ingredients.models.IngredientSpecificFilter;
 import com.sb.sfrigola_core.domains.ingredients.service.IIngredientService;
@@ -22,6 +25,7 @@ import org.springframework.validation.annotation.Validated;
 import org.springframework.web.bind.annotation.*;
 
 import java.util.List;
+import java.util.UUID;
 
 @RestController
 @RequestMapping("/ingredients")
@@ -31,8 +35,7 @@ public class IngredientController {
 
     private final IIngredientService ingredientService;
 
-    // CONTRIBUTOR CONTROLLER
-
+    // [Contributor, Admin]
     @GetMapping(version = "1.0")
     public ResponseEntity<SCGeneralResponseDto<List<IngredientDto>, SCPagedOptionDto>> getAllIngredients(
             @Min(value = 0, message = SCRequestParamValidationCodeConstants.PAGE_MUST_BE_AT_LEAST_ZERO)
@@ -48,8 +51,7 @@ public class IngredientController {
         return ResponseEntity.ok(SCGeneralResponseDto.success(paginatedIngredients.content(), paginatedIngredients.pagedOptionDto()));
     }
 
-    // ADMIN CONTROLLER
-
+    // [Admin]
     @GetMapping(value = "/admin", version = "1.0")
     public ResponseEntity<SCGeneralResponseDto<List<IngredientPreviewAdminDto>, SCPagedOptionDto>> getAllAdmin(
             @Min(value = 0, message = SCRequestParamValidationCodeConstants.PAGE_MUST_BE_AT_LEAST_ZERO)
@@ -60,8 +62,8 @@ public class IngredientController {
             @Pattern(regexp = "asc|desc", message = SCRequestParamValidationCodeConstants.SORT_INVALID_VALUE)
             @RequestParam(value = "sort", required = false, defaultValue = "asc") String sort,
             @RequestParam(value = "searchKey", required = false) String searchKey,
-            @RequestParam(required = false) String locale,
-            @RequestParam(required = false) String category,
+            @RequestParam(required = false) @NotBlank(message = SCRequestParamValidationCodeConstants.LOCALE_MUST_NOT_BE_BLANK) String locale,
+            @RequestParam(required = false) String foodGroup,
             @RequestParam(required = false) Boolean isVegetarian,
             @RequestParam(required = false) Boolean isVegan,
             @RequestParam(required = false) Boolean isGlutenFree,
@@ -69,7 +71,7 @@ public class IngredientController {
             @RequestParam(required = false) Double maxCalories
     ){
         var specificFilterForIngredients = new IngredientSpecificFilter(
-                category,
+                foodGroup != null ? IngredientFoodGroup.fromString(foodGroup) : null,
                 isVegetarian,
                 isVegan,
                 isGlutenFree,
@@ -82,12 +84,43 @@ public class IngredientController {
         return ResponseEntity.ok(SCGeneralResponseDto.success(paginatedIngredients.content(), paginatedIngredients.pagedOptionDto()));
     }
 
+    // [Admin]
+    @GetMapping(value = "/admin/{publicId}", version = "1.0")
+    public ResponseEntity<SCGeneralResponseDto<IngredientDetailsAdminDto, Void>> getIngredientByPublicIdAdmin(
+            @PathVariable("publicId") UUID publicId,
+            @RequestParam @NotBlank(message = SCRequestParamValidationCodeConstants.LOCALE_MUST_NOT_BE_BLANK) String locale
+    ) {
+        var ingredientDetails = ingredientService.getByPublicIdAdmin(publicId, locale);
+        return ResponseEntity.ok(SCGeneralResponseDto.success(ingredientDetails));
+    }
+
+    // [Admin]
     @PostMapping(value = "/admin", version = "1.0")
     public ResponseEntity<SCGeneralResponseDto<IngredientPreviewAdminDto, Void>> createIngredient(
-            @RequestBody @Valid IngredientInputDto newIngredient
+            @RequestBody @Valid AddIngredientDto newIngredient,
+            @RequestParam @NotBlank(message = SCRequestParamValidationCodeConstants.LOCALE_MUST_NOT_BE_BLANK) String locale
     ) {
-        var ingredientCreated = ingredientService.createIngredient(newIngredient);
+        var ingredientCreated = ingredientService.createNewIngredient(newIngredient, locale);
         return ResponseEntity.ok(SCGeneralResponseDto.success(ingredientCreated));
+    }
+
+    // [Admin]
+    @PutMapping(value = "/admin/{publicId}", version = "1.0")
+    public ResponseEntity<SCGeneralResponseDto<IngredientPreviewAdminDto, Void>> updateIngredient(
+            @PathVariable("publicId") UUID publicId,
+            @RequestBody @Valid UpdateIngredientDto updateIngredientDto
+    ) {
+        var updated = ingredientService.updateIngredient(publicId, updateIngredientDto);
+        return ResponseEntity.ok(SCGeneralResponseDto.success(updated));
+    }
+
+    // [Admin]
+    @DeleteMapping(value = "/admin/{publicId}", version = "1.0")
+    public ResponseEntity<SCGeneralResponseDto<UUID, Void>> deleteIngredient(
+            @PathVariable("publicId") UUID publicId
+    ) {
+        var deleted = ingredientService.deleteIngredient(publicId);
+        return ResponseEntity.ok(SCGeneralResponseDto.success(deleted));
     }
 
 }

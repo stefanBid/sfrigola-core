@@ -1,7 +1,9 @@
 package com.sb.sfrigola_core.domains.ingredients.models;
 
+import com.sb.sfrigola_core.domains.ingredients.enums.IngredientFoodGroup;
+
 public record IngredientSpecificFilter(
-        String category,
+        IngredientFoodGroup foodGroup,
         Boolean isVegetarian,
         Boolean isVegan,
         Boolean isGlutenFree,

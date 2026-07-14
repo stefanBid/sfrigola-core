@@ -37,7 +37,7 @@ public class CategoryServiceImpl implements ICategoryService {
     private final ILanguageDomainBridgeService languageDomainBridgeService;
 
     @Override
-    public SCPagedResult<CategoryPublicViewDto> getAll(SCFilterQuery<Void> filterQuery, String locale) {
+    public SCPagedResult<CategoryPublicViewDto> getAll(SCFilterQuery<Void> filterQuery, @NonNull String locale) {
         languageDomainBridgeService.validateLocaleIsActiveOrThrow(locale);
 
         var pageable = SCPaginationUtils.toPageable(filterQuery, true);
@@ -68,8 +68,7 @@ public class CategoryServiceImpl implements ICategoryService {
         Map<String, String> activeLanguagesMap = languageDomainBridgeService.getAllActiveLanguagesSimpleMap();
 
         // LOCALE CHECK
-        if(!activeLanguagesMap.containsKey(locale))
-            throw new InvalidCategoryLocaleException(locale);
+        languageDomainBridgeService.validateLocaleIsActiveByActiveLanguagesMapKeysOrThrow(activeLanguagesMap.keySet(), locale);
 
         // SORT SWITCHER
         // CASE: Sort is ASC call query with GOUP-BY ASC
@@ -155,8 +154,7 @@ public class CategoryServiceImpl implements ICategoryService {
         // Set Translation
         ArrayList<CategoryTranslation> translations = addCategoryDto.translations().stream()
                 .map(t -> {
-                    Language lang = activeLanguagesMap.get(t.langCode());
-                    if (lang == null) throw new InvalidCategoryLocaleException(t.langCode());
+                    Language lang = languageDomainBridgeService.getLangFromEntitiesMapFromKeyOrThrow(activeLanguagesMap, t.langCode());
                     return this.toCategoryTranslation(t, lang);
                 })
                 .collect(Collectors.toCollection(ArrayList::new));
@@ -179,7 +177,7 @@ public class CategoryServiceImpl implements ICategoryService {
         return toAdminDto(
                 category,
                 translations.stream().filter(t -> t.getLanguage().getCode().equals(locale)).findFirst().orElse(null),
-                toSimpleLanguagesMap(activeLanguagesMap)
+                languageDomainBridgeService.toSimpleLanguagesMap(activeLanguagesMap)
         );
     }
 
@@ -197,9 +195,7 @@ public class CategoryServiceImpl implements ICategoryService {
 
         // TRANSLATION CHECK: Update translation is of an active locale
         var activeLangMap = languageDomainBridgeService.getActiveLanguageEntitiesMap();
-        Language lang = activeLangMap.get(updateCategoryDto.specificTranslation().langCode());
-        if(lang == null)
-            throw new InvalidCategoryLocaleException(updateCategoryDto.specificTranslation().langCode());
+        Language lang = languageDomainBridgeService.getLangFromEntitiesMapFromKeyOrThrow(activeLangMap, updateCategoryDto.specificTranslation().langCode());
 
         var categoryTranslationToUpdate = categoryToUpdate.getTranslations().stream()
                 .filter(t -> t.getLanguage().getCode().equals(updateCategoryDto.specificTranslation().langCode()))
@@ -219,10 +215,13 @@ public class CategoryServiceImpl implements ICategoryService {
                 categoryTranslationToUpdate.setDescription(updateCategoryDto.specificTranslation().description());
         }
 
-        categoryToUpdate.setSlug(updateCategoryDto.slug());
-        categoryToUpdate.setActive(updateCategoryDto.isActive());
+        if(!categoryToUpdate.getSlug().equals(updateCategoryDto.slug()))
+            categoryToUpdate.setSlug(updateCategoryDto.slug());
 
-        return toAdminDto(categoryToUpdate, categoryTranslationToUpdate, toSimpleLanguagesMap(activeLangMap));
+        if(categoryToUpdate.isActive() != updateCategoryDto.isActive())
+            categoryToUpdate.setActive(updateCategoryDto.isActive());
+
+        return toAdminDto(categoryToUpdate, categoryTranslationToUpdate, languageDomainBridgeService.toSimpleLanguagesMap(activeLangMap));
     }
 
     @Override
@@ -305,10 +304,7 @@ public class CategoryServiceImpl implements ICategoryService {
 
     private CategoryPreviewAdminDto toAdminDto(Category category, @Nullable CategoryTranslation translationPreview, Map<String, String> activeLanguagesMap) {
         // Obtain a Map of Translation for a specific category, but only for active languages
-        Map<String, String> translatedLanguages = category.getTranslations().stream()
-                .map(t -> t.getLanguage().getCode())
-                .filter(activeLanguagesMap::containsKey)
-                .collect(Collectors.toMap(code -> code, activeLanguagesMap::get));
+        Map<String, String> translatedLanguages = languageDomainBridgeService.buildTranslatedLanguagesMap(category.getTranslations(), activeLanguagesMap);
 
         // Obtain Translation Preview for a specific Lang
         CategoryTranslationAdminDto categoryPreviewTranslationAdminDto = new CategoryTranslationAdminDto(
@@ -340,11 +336,6 @@ public class CategoryServiceImpl implements ICategoryService {
                 category.isActive(),
                 specificTranslation
         );
-    }
-
-    private Map<String, String> toSimpleLanguagesMap(Map<String, Language> languageEntitiesMap) {
-        return languageEntitiesMap.entrySet().stream()
-                .collect(Collectors.toMap(Map.Entry::getKey, e -> e.getValue().getName()));
     }
 
     private CategoryTranslation toCategoryTranslation(UpsetCategoryTranslationDto upsetCategoryTranslationDto, Language lang) {

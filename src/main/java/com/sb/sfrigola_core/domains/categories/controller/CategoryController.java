@@ -45,8 +45,7 @@ public class CategoryController {
         return ResponseEntity.ok(SCGeneralResponseDto.success(paginatedCategories.content(), paginatedCategories.pagedOptionDto()));
     }
 
-    // ADMIN CONTROLLER
-
+    // [Admin]
     @GetMapping(value = "/admin", version = "1.0")
     public ResponseEntity<SCGeneralResponseDto<List<CategoryPreviewAdminDto>, SCPagedOptionDto>> getAllCategoriesAdmin(
             @Min(value = 0, message = SCRequestParamValidationCodeConstants.PAGE_MUST_BE_AT_LEAST_ZERO)
@@ -64,6 +63,7 @@ public class CategoryController {
         return ResponseEntity.ok(SCGeneralResponseDto.success(paginatedCategories.content(), paginatedCategories.pagedOptionDto()));
     }
 
+    // [Admin]
     @GetMapping(value = "/admin/{publicId}", version = "1.0")
     public ResponseEntity<SCGeneralResponseDto<CategoryDetailsAdminDto, Void>> getCategoryByPublicIdAdmin(
             @PathVariable("publicId") UUID publicId,
@@ -74,6 +74,7 @@ public class CategoryController {
         return ResponseEntity.ok(SCGeneralResponseDto.success(selectedCategory));
     }
 
+    // [Admin]
     @PostMapping(value = {"/admin", "/admin/{parentPublicId}"}, version = "1.0")
     public ResponseEntity<SCGeneralResponseDto<CategoryPreviewAdminDto, Void>> createCategory(
             @PathVariable(value = "parentPublicId", required = false) UUID parentPublicId,
@@ -84,6 +85,7 @@ public class CategoryController {
         return ResponseEntity.ok(SCGeneralResponseDto.success(created));
     }
 
+    // [Admin]
     @PutMapping(value = "/admin/{publicId}", version = "1.0")
     public ResponseEntity<SCGeneralResponseDto<CategoryPreviewAdminDto, Void>> updateCategory(
             @PathVariable(value = "publicId") UUID publicId,
@@ -93,6 +95,7 @@ public class CategoryController {
         return ResponseEntity.ok(SCGeneralResponseDto.success(updated));
     }
 
+    // [Admin]
     @DeleteMapping(value = "/admin/{publicId}", version = "1.0")
     public ResponseEntity<SCGeneralResponseDto<UUID, Void>> deleteCategory(
             @PathVariable(value = "publicId") UUID publicId
@@ -101,6 +104,7 @@ public class CategoryController {
         return ResponseEntity.ok(SCGeneralResponseDto.success(deleted));
     }
 
+    // [Admin]
     @PutMapping(value = "/admin/reorder", version = "1.0")
     public ResponseEntity<SCGeneralResponseDto<List<CategoryPreviewAdminDto>, Void>> reorderCategories(
             @RequestBody @Valid ReorderedCategoriesTreeDto reorderedCategoriesTreeDto

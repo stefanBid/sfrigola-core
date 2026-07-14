@@ -1,8 +1,13 @@
 package com.sb.sfrigola_core.domains.languages.service;
 
+import com.sb.sfrigola_core.common.interfaces.ISCTranslationEntity;
 import com.sb.sfrigola_core.domains.languages.entity.Language;
+import com.sb.sfrigola_core.domains.languages.exception.LocaleNotActiveException;
+import org.jspecify.annotations.NonNull;
 
+import java.util.List;
 import java.util.Map;
+import java.util.Set;
 
 /**
  * Internal bridge contract for the languages' domain.
@@ -41,9 +46,58 @@ public interface ILanguageDomainBridgeService {
      * only need to guard a single locale param and don't otherwise load the active languages map.
      *
      * @param locale BCP-47 code to validate (e.g. {@code "it"}, {@code "en"})
-     * @throws com.sb.sfrigola_core.domains.languages.exception.LocaleNotActiveException
+     * @throws LocaleNotActiveException
      *         if no active language exists with the given code
      */
-    void validateLocaleIsActiveOrThrow(String locale);
+    void validateLocaleIsActiveOrThrow(@NonNull String locale);
+
+    /**
+     * Validates that {@code locale} is present among {@code activeLanguagesKeys}, for cross-domain
+     * services that already loaded the active languages map (e.g. via {@link #getAllActiveLanguagesSimpleMap()}
+     * or {@link #getActiveLanguageEntitiesMap()}) and want to guard a locale without an extra query.
+     *
+     * @param activeLanguagesKeys BCP-47 codes of the currently active languages, previously loaded by the caller
+     * @param locale              BCP-47 code to validate (e.g. {@code "it"}, {@code "en"})
+     * @throws LocaleNotActiveException
+     *         if {@code locale} is not contained in {@code activeLanguagesKeys}
+     */
+    void validateLocaleIsActiveByActiveLanguagesMapKeysOrThrow(Set<String> activeLanguagesKeys, @NonNull String locale);
+
+    /**
+     * Returns the {@link com.sb.sfrigola_core.domains.languages.entity.Language} entity for {@code locale}
+     * from {@code activeLanguagesMap}, for cross-domain services that already loaded the active languages map
+     * (e.g. via {@link #getActiveLanguageEntitiesMap()}) and want to resolve a locale to an entity without an extra query.
+     *
+     * @param activeLanguagesMap a map of active languages keyed by BCP-47 code
+     * @param locale             BCP-47 code to resolve (e.g. {@code "it"}, {@code "en"})
+     * @return the corresponding {@link com.sb.sfrigola_core.domains.languages.entity.Language} entity
+     * @throws LocaleNotActiveException
+     *        if {@code locale} is not contained in {@code activeLanguagesMap}
+     */
+    Language getLangFromEntitiesMapFromKeyOrThrow(Map<String, Language> activeLanguagesMap, @NonNull String locale);
+
+    /**
+     * Builds the {@code translatedLanguages} map used by admin preview DTOs across every
+     * translatable domain (categories, tags, recipes, ingredients): which active languages a
+     * parent entity currently has a translation for, keyed by BCP-47 code and valued by display
+     * name. A locale with a translation that is no longer active is silently dropped — only
+     * currently-active languages are reported as coverage.
+     *
+     * @param translations       the parent entity's translation collection (any {@link ISCTranslationEntity})
+     * @param activeLanguagesMap active language code → display name, as returned by {@link #getAllActiveLanguagesSimpleMap()}
+     * @return active language code → display name, restricted to locales present in {@code translations}; never {@code null}
+     */
+    <T extends ISCTranslationEntity> Map<String, String> buildTranslatedLanguagesMap(List<T> translations, Map<String, String> activeLanguagesMap);
+
+    /**
+     * Flattens a {@code code -> Language} entity map (e.g. from {@link #getActiveLanguageEntitiesMap()})
+     * into {@code code -> display name} — the shape needed wherever an entity map was already
+     * loaded for locale resolution but a simple map is also needed (e.g. to feed
+     * {@link #buildTranslatedLanguagesMap}).
+     *
+     * @param languageEntitiesMap language code → {@link Language} entity
+     * @return language code → {@link Language#getName()}
+     */
+    Map<String, String> toSimpleLanguagesMap(Map<String, Language> languageEntitiesMap);
 
 }

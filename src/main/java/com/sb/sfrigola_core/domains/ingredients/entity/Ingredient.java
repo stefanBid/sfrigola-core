@@ -1,6 +1,7 @@
 package com.sb.sfrigola_core.domains.ingredients.entity;
 
 import com.sb.sfrigola_core.common.entity.BaseEntity;
+import com.sb.sfrigola_core.domains.ingredients.enums.IngredientFoodGroup;
 import jakarta.persistence.*;
 import lombok.Getter;
 import lombok.Setter;
@@ -28,8 +29,8 @@ public class Ingredient extends BaseEntity {
     @Column(name = "slug", nullable = false, unique = true, length = 150)
     private String slug;
 
-    @Column(name = "category", length = 100)
-    private String category;
+    @Column(name = "food_group", length = 100)
+    private IngredientFoodGroup foodGroup;
 
     @Column(name = "calories_per_100g", precision = 7, scale = 2)
     private BigDecimal caloriesPer100g;

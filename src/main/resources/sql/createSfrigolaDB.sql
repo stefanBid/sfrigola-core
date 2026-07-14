@@ -197,7 +197,7 @@ CREATE TABLE ingredients (
      id                  BIGSERIAL    PRIMARY KEY,
      public_id           UUID         NOT NULL UNIQUE DEFAULT gen_random_uuid(),
      slug                VARCHAR(150) NOT NULL UNIQUE,
-     category            VARCHAR(100),              -- 'vegetable', 'dairy', 'protein', 'grain'
+     food_group          VARCHAR(100),              -- 'vegetable', 'fruit', 'dairy', 'protein', 'grain', 'fat', 'herb', 'beverage', 'other'
      calories_per_100g   NUMERIC(7,2),
      allergens           TEXT[],                    -- ARRAY['gluten','milk','eggs','nuts']
      is_vegetarian       BOOLEAN      NOT NULL DEFAULT FALSE,
@@ -253,6 +253,8 @@ CREATE TABLE recipes (
      prep_time_min   INT              CHECK (prep_time_min >= 0),
      cook_time_min   INT              CHECK (cook_time_min >= 0),
      servings        SMALLINT         CHECK (servings > 0),
+     total_time_min      INT           NOT NULL DEFAULT 0,
+     economical_ratio     NUMERIC(10,4) NOT NULL DEFAULT 0,
      is_vegetarian   BOOLEAN          NOT NULL DEFAULT FALSE,
      is_vegan        BOOLEAN          NOT NULL DEFAULT FALSE,
      is_gluten_free  BOOLEAN          NOT NULL DEFAULT FALSE,
@@ -667,7 +669,7 @@ VALUES (
 -- ============================================================
 
 -- Ingredients
-INSERT INTO ingredients (id, slug, category, calories_per_100g, allergens, is_vegetarian, is_vegan, is_gluten_free) VALUES
+INSERT INTO ingredients (id, slug, food_group, calories_per_100g, allergens, is_vegetarian, is_vegan, is_gluten_free) VALUES
  (1,  'spaghetti',        'grain',     158.00, ARRAY['gluten'],        TRUE,  TRUE,  FALSE),
  (2,  'tomato',           'vegetable',  18.00, NULL,                   TRUE,  TRUE,  TRUE),
  (3,  'garlic',           'vegetable', 149.00, NULL,                   TRUE,  TRUE,  TRUE),
@@ -753,23 +755,46 @@ INSERT INTO ingredient_tags (ingredient_id, tag_id) VALUES
  (19, 11); -- sugar: sweet
 
 -- Recipes
+-- total_time_min = prep_time_min + cook_time_min
+-- economical_ratio = ingredient count (see recipe_ingredients below) / servings
 INSERT INTO recipes (
     id, author_id, category_id, difficulty, meal_type, season,
     prep_time_min, cook_time_min, servings,
+    total_time_min, economical_ratio,
     is_vegetarian, is_vegan, is_gluten_free, is_published
 ) VALUES
  (1, (SELECT id FROM users WHERE username = 'admin'),
      (SELECT id FROM categories WHERE slug = 'pasta'),
-     'easy', 'dinner', 'all_year', 10, 20, 4, TRUE, FALSE, FALSE, TRUE),
+     'easy', 'dinner', 'all_year', 10, 20, 4, 30, 1.5000, TRUE, FALSE, FALSE, TRUE),
  (2, (SELECT id FROM users WHERE username = 'contributor'),
      (SELECT id FROM categories WHERE slug = 'risotto'),
-     'medium', 'dinner', 'autumn', 10, 35, 4, TRUE, FALSE, TRUE, TRUE),
+     'medium', 'dinner', 'autumn', 10, 35, 4, 45, 1.5000, TRUE, FALSE, TRUE, TRUE),
  (3, (SELECT id FROM users WHERE username = 'admin'),
      (SELECT id FROM categories WHERE slug = 'meat'),
-     'easy', 'lunch', 'all_year', 15, 25, 4, FALSE, FALSE, TRUE, TRUE),
+     'easy', 'lunch', 'all_year', 15, 25, 4, 40, 1.2500, FALSE, FALSE, TRUE, TRUE),
  (4, (SELECT id FROM users WHERE username = 'contributor'),
      (SELECT id FROM categories WHERE slug = 'desserts'),
-     'medium', 'dessert', 'all_year', 30, 0, 6, TRUE, FALSE, FALSE, TRUE);
+     'medium', 'dessert', 'all_year', 30, 0, 6, 30, 1.0000, TRUE, FALSE, FALSE, TRUE),
+ -- Extra pasta recipes so the 'pasta' category home feed has a real spread
+ -- across quick / gourmet (hard) / economical rows, not just one recipe each.
+ (5, (SELECT id FROM users WHERE username = 'admin'),
+     (SELECT id FROM categories WHERE slug = 'pasta'),
+     'easy', 'dinner', 'all_year', 5, 15, 4, 20, 1.0000, TRUE, FALSE, FALSE, TRUE),
+ (6, (SELECT id FROM users WHERE username = 'contributor'),
+     (SELECT id FROM categories WHERE slug = 'pasta'),
+     'medium', 'dinner', 'all_year', 10, 15, 4, 25, 1.0000, TRUE, FALSE, FALSE, TRUE),
+ (7, (SELECT id FROM users WHERE username = 'admin'),
+     (SELECT id FROM categories WHERE slug = 'pasta'),
+     'hard', 'dinner', 'autumn', 30, 60, 4, 90, 1.7500, TRUE, FALSE, FALSE, TRUE),
+ (8, (SELECT id FROM users WHERE username = 'contributor'),
+     (SELECT id FROM categories WHERE slug = 'pasta'),
+     'easy', 'lunch', 'summer', 5, 12, 4, 17, 1.0000, TRUE, FALSE, FALSE, TRUE),
+ (9, (SELECT id FROM users WHERE username = 'admin'),
+     (SELECT id FROM categories WHERE slug = 'pasta'),
+     'easy', 'dinner', 'all_year', 10, 20, 6, 30, 0.8333, TRUE, FALSE, FALSE, TRUE),
+ (10, (SELECT id FROM users WHERE username = 'contributor'),
+     (SELECT id FROM categories WHERE slug = 'pasta'),
+     'hard', 'dinner', 'winter', 20, 90, 4, 110, 2.0000, FALSE, FALSE, FALSE, TRUE);
 
 SELECT setval('recipes_id_seq', (SELECT MAX(id) FROM recipes));
 
@@ -782,7 +807,19 @@ INSERT INTO recipe_translations (recipe_id, locale, title, description, instruct
  (3, 'en', 'Lemon Chicken', 'Quick pan-seared chicken breast with garlic and lemon.',
   'Season chicken breast and sear in olive oil until golden. Add minced garlic and lemon juice, simmer briefly to make a light pan sauce, then finish with a knob of butter.'),
  (4, 'en', 'Tiramisu', 'Classic Italian no-bake dessert with coffee and mascarpone.',
-  'Whisk egg yolks with sugar until pale, fold in mascarpone. Dip ladyfingers in coffee and layer with the mascarpone cream. Repeat layers, chill, then dust with cocoa powder before serving.');
+  'Whisk egg yolks with sugar until pale, fold in mascarpone. Dip ladyfingers in coffee and layer with the mascarpone cream. Repeat layers, chill, then dust with cocoa powder before serving.'),
+ (5, 'en', 'Spaghetti Aglio e Olio', 'Simple garlic and olive oil spaghetti with parmesan.',
+  'Cook spaghetti in salted water until al dente. Gently saute sliced garlic in olive oil until golden. Toss the drained pasta with the garlic oil and grated parmesan.'),
+ (6, 'en', 'Creamy Egg and Parmesan Spaghetti', 'Quick carbonara-style spaghetti with egg yolks, parmesan and butter.',
+  'Cook spaghetti until al dente. Whisk egg yolks with grated parmesan. Off the heat, toss hot pasta with butter, then the egg mixture, stirring quickly to form a creamy sauce.'),
+ (7, 'en', 'Gourmet Porcini Pasta', 'Slow-cooked gourmet pasta with porcini mushrooms, onion and parmesan.',
+  'Soak the porcini mushrooms and slowly saute with onion and garlic in butter and olive oil. Simmer gently to develop deep flavor, then toss with cooked spaghetti and grated parmesan.'),
+ (8, 'en', 'Quick Lemon Spaghetti', 'Fresh and fast spaghetti with lemon, olive oil and parmesan.',
+  'Cook spaghetti until al dente. Toss immediately with olive oil, fresh lemon juice and grated parmesan until glossy and creamy.'),
+ (9, 'en', 'Budget Carrot and Onion Pasta', 'Economical everyday pasta with carrot, onion and parmesan.',
+  'Saute grated carrot and chopped onion in olive oil until soft. Toss with cooked spaghetti and grated parmesan.'),
+ (10, 'en', 'Sunday Chicken Ragu Pasta', 'Slow-simmered Sunday ragu with chicken, tomato and vegetables.',
+  'Saute onion, carrot and garlic in olive oil, add diced chicken and brown. Add chopped tomato and simmer slowly until rich and thick. Toss with cooked spaghetti and grated parmesan.');
 
 -- Recipe translations - Italian
 INSERT INTO recipe_translations (recipe_id, locale, title, description, instructions) VALUES
@@ -793,7 +830,19 @@ INSERT INTO recipe_translations (recipe_id, locale, title, description, instruct
  (3, 'it', 'Pollo al Limone', 'Petto di pollo in padella veloce con aglio e limone.',
   'Insaporire il petto di pollo e rosolarlo nell''olio d''oliva fino a doratura. Aggiungere l''aglio tritato e il succo di limone, far sobbollire brevemente per creare un sughetto leggero, quindi mantecare con una noce di burro.'),
  (4, 'it', 'Tiramisu', 'Classico dolce italiano al cucchiaio con caffe e mascarpone.',
-  'Sbattere i tuorli con lo zucchero fino a renderli chiari, incorporare il mascarpone. Inzuppare i savoiardi nel caffe e alternare a strati con la crema al mascarpone. Ripetere gli strati, far raffreddare e spolverare con cacao prima di servire.');
+  'Sbattere i tuorli con lo zucchero fino a renderli chiari, incorporare il mascarpone. Inzuppare i savoiardi nel caffe e alternare a strati con la crema al mascarpone. Ripetere gli strati, far raffreddare e spolverare con cacao prima di servire.'),
+ (5, 'it', 'Spaghetti Aglio e Olio', 'Spaghetti semplici con aglio, olio d''oliva e parmigiano.',
+  'Cuocere gli spaghetti in acqua salata fino a cottura al dente. Soffriggere delicatamente l''aglio a fettine nell''olio d''oliva fino a doratura. Mantecare la pasta scolata con l''olio aromatizzato e il parmigiano grattugiato.'),
+ (6, 'it', 'Spaghetti Cremosi con Uova e Parmigiano', 'Spaghetti veloci in stile carbonara con tuorli, parmigiano e burro.',
+  'Cuocere gli spaghetti fino a cottura al dente. Sbattere i tuorli con il parmigiano grattugiato. A fuoco spento, mantecare la pasta calda con il burro, poi con il composto di uova, mescolando velocemente per creare una crema.'),
+ (7, 'it', 'Pasta Gourmet ai Porcini', 'Pasta gourmet a cottura lenta con funghi porcini, cipolla e parmigiano.',
+  'Ammollare i funghi porcini e soffriggerli lentamente con cipolla e aglio nel burro e nell''olio. Far sobbollire dolcemente per sviluppare un sapore profondo, poi mantecare con gli spaghetti cotti e il parmigiano grattugiato.'),
+ (8, 'it', 'Spaghetti Veloci al Limone', 'Spaghetti freschi e veloci con limone, olio d''oliva e parmigiano.',
+  'Cuocere gli spaghetti fino a cottura al dente. Mantecare subito con olio d''oliva, succo di limone fresco e parmigiano grattugiato fino a renderli lucidi e cremosi.'),
+ (9, 'it', 'Pasta Economica con Carote e Cipolle', 'Pasta economica di tutti i giorni con carote, cipolla e parmigiano.',
+  'Soffriggere la carota grattugiata e la cipolla tritata nell''olio d''oliva fino ad ammorbidirle. Mantecare con gli spaghetti cotti e il parmigiano grattugiato.'),
+ (10, 'it', 'Pasta al Ragu della Domenica', 'Ragu della domenica a cottura lenta con pollo, pomodoro e verdure.',
+  'Soffriggere cipolla, carota e aglio nell''olio d''oliva, aggiungere il pollo a dadini e farlo rosolare. Unire il pomodoro a pezzi e far sobbollire lentamente fino a ottenere un sugo ricco e denso. Mantecare con gli spaghetti cotti e il parmigiano grattugiato.');
 
 -- Recipe tags
 INSERT INTO recipe_tags (recipe_id, tag_id) VALUES
@@ -808,7 +857,25 @@ INSERT INTO recipe_tags (recipe_id, tag_id) VALUES
  (3, 5),  -- chicken: fresh
  (4, 6),  -- tiramisu: comfort-food
  (4, 9),  -- tiramisu: gourmet
- (4, 10); -- tiramisu: traditional
+ (4, 10), -- tiramisu: traditional
+ (5, 1),  -- aglio e olio: quick
+ (5, 2),  -- aglio e olio: easy
+ (5, 3),  -- aglio e olio: budget
+ (6, 6),  -- egg & parmesan spaghetti: comfort-food
+ (6, 10), -- egg & parmesan spaghetti: traditional
+ (7, 9),  -- porcini gourmet: gourmet
+ (7, 6),  -- porcini gourmet: comfort-food
+ (7, 31), -- porcini gourmet: autumn
+ (8, 1),  -- lemon spaghetti: quick
+ (8, 5),  -- lemon spaghetti: fresh
+ (8, 4),  -- lemon spaghetti: light
+ (8, 30), -- lemon spaghetti: summer
+ (9, 3),  -- carrot & onion pasta: budget
+ (9, 2),  -- carrot & onion pasta: easy
+ (9, 8),  -- carrot & onion pasta: meal-prep
+ (10, 6), -- sunday ragu: comfort-food
+ (10, 10),-- sunday ragu: traditional
+ (10, 32);-- sunday ragu: winter
 
 -- Recipe ingredients
 INSERT INTO recipe_ingredients (recipe_id, ingredient_id, quantity, unit, preparation_note, sort_order) VALUES
@@ -834,7 +901,45 @@ INSERT INTO recipe_ingredients (recipe_id, ingredient_id, quantity, unit, prepar
  (4, 16, 200.00, 'g',   NULL,              2),
  (4, 17, 300.00, 'ml',  'brewed, cooled',  3),
  (4, 18, 20.00,  'g',   'for dusting',     4),
- (4, 19, 100.00, 'g',   NULL,              5);
+ (4, 19, 100.00, 'g',   NULL,              5),
+ -- Spaghetti Aglio e Olio
+ (5, 1,  400.00, 'g',    NULL,             0),
+ (5, 3,  3.00,   'clove','minced',         1),
+ (5, 4,  4.00,   'tbsp', NULL,             2),
+ (5, 5,  30.00,  'g',    'grated',         3),
+ -- Creamy Egg and Parmesan Spaghetti
+ (6, 1,  400.00, 'g',    NULL,             0),
+ (6, 14, 4.00,   'unit', 'yolks',          1),
+ (6, 5,  60.00,  'g',    'grated',         2),
+ (6, 10, 20.00,  'g',    NULL,             3),
+ -- Gourmet Porcini Pasta
+ (7, 1,  400.00, 'g',    NULL,             0),
+ (7, 11, 300.00, 'g',    'soaked',         1),
+ (7, 7,  1.00,   'unit', 'chopped',        2),
+ (7, 10, 40.00,  'g',    NULL,             3),
+ (7, 5,  50.00,  'g',    'grated',         4),
+ (7, 4,  3.00,   'tbsp', NULL,             5),
+ (7, 3,  2.00,   'clove','minced',         6),
+ -- Quick Lemon Spaghetti
+ (8, 1,  400.00, 'g',    NULL,             0),
+ (8, 13, 2.00,   'unit', 'juiced',         1),
+ (8, 4,  3.00,   'tbsp', NULL,             2),
+ (8, 5,  40.00,  'g',    'grated',         3),
+ -- Budget Carrot and Onion Pasta
+ (9, 1,  500.00, 'g',    NULL,             0),
+ (9, 8,  2.00,   'unit', 'grated',         1),
+ (9, 7,  1.00,   'unit', 'chopped',        2),
+ (9, 4,  3.00,   'tbsp', NULL,             3),
+ (9, 5,  40.00,  'g',    'grated',         4),
+ -- Sunday Chicken Ragu Pasta
+ (10, 1,  400.00, 'g',    NULL,            0),
+ (10, 12, 300.00, 'g',    'diced',         1),
+ (10, 2,  400.00, 'g',    'chopped',       2),
+ (10, 7,  1.00,   'unit', 'chopped',       3),
+ (10, 8,  1.00,   'unit', 'diced',         4),
+ (10, 3,  2.00,   'clove','minced',        5),
+ (10, 4,  2.00,   'tbsp', NULL,            6),
+ (10, 5,  40.00,  'g',    'grated',        7);
 
 -- Favorites
 INSERT INTO favorites (user_id, recipe_id) VALUES
@@ -844,7 +949,17 @@ INSERT INTO favorites (user_id, recipe_id) VALUES
  ((SELECT id FROM users WHERE username = 'admin'),       2),
  ((SELECT id FROM users WHERE username = 'user'),        3),
  ((SELECT id FROM users WHERE username = 'user'),        4),
- ((SELECT id FROM users WHERE username = 'admin'),       4);
+ ((SELECT id FROM users WHERE username = 'admin'),       4),
+ ((SELECT id FROM users WHERE username = 'user'),        5),
+ ((SELECT id FROM users WHERE username = 'contributor'), 5),
+ ((SELECT id FROM users WHERE username = 'admin'),       6),
+ ((SELECT id FROM users WHERE username = 'user'),        7),
+ ((SELECT id FROM users WHERE username = 'admin'),       7),
+ ((SELECT id FROM users WHERE username = 'contributor'), 7),
+ ((SELECT id FROM users WHERE username = 'user'),        8),
+ ((SELECT id FROM users WHERE username = 'contributor'), 9),
+ ((SELECT id FROM users WHERE username = 'user'),        10),
+ ((SELECT id FROM users WHERE username = 'admin'),       10);
 
 -- Ratings
 INSERT INTO ratings (user_id, recipe_id, score, comment) VALUES
@@ -855,11 +970,29 @@ INSERT INTO ratings (user_id, recipe_id, score, comment) VALUES
  ((SELECT id FROM users WHERE username = 'user'),        3, 5, 'Fast, fresh, perfect for lunch.'),
  ((SELECT id FROM users WHERE username = 'contributor'), 3, 4, 'Simple and tasty.'),
  ((SELECT id FROM users WHERE username = 'user'),        4, 5, 'Best tiramisu recipe I''ve tried.'),
- ((SELECT id FROM users WHERE username = 'admin'),       4, 4, 'Classic and reliable.');
+ ((SELECT id FROM users WHERE username = 'admin'),       4, 4, 'Classic and reliable.'),
+ ((SELECT id FROM users WHERE username = 'user'),        5, 5, 'Great quick weeknight dinner.'),
+ ((SELECT id FROM users WHERE username = 'contributor'), 5, 4, 'Simple and satisfying.'),
+ ((SELECT id FROM users WHERE username = 'admin'),       6, 4, 'Nice creamy texture.'),
+ ((SELECT id FROM users WHERE username = 'user'),        6, 5, 'Perfect carbonara-style dish.'),
+ ((SELECT id FROM users WHERE username = 'user'),        7, 5, 'Restaurant-level flavor, worth the wait.'),
+ ((SELECT id FROM users WHERE username = 'contributor'), 7, 5, 'Incredible depth of flavor.'),
+ ((SELECT id FROM users WHERE username = 'admin'),       7, 4, 'A bit long to prepare but excellent.'),
+ ((SELECT id FROM users WHERE username = 'user'),        8, 5, 'Fresh and zesty, my go-to lunch.'),
+ ((SELECT id FROM users WHERE username = 'contributor'), 9, 4, 'Cheap and cheerful, great for meal prep.'),
+ ((SELECT id FROM users WHERE username = 'admin'),       9, 4, 'Simple ingredients, big taste.'),
+ ((SELECT id FROM users WHERE username = 'user'),        10, 5, 'Sunday comfort food at its best.'),
+ ((SELECT id FROM users WHERE username = 'contributor'), 10, 5, 'Slow-cooked perfection.');
 
 -- Recipe stats (mirrors the seeded ratings/favorites above)
 INSERT INTO recipe_stats (recipe_id, avg_rating, ratings_count, favorites_count, views_count) VALUES
  (1, 4.50, 2, 2, 42),
  (2, 4.50, 2, 2, 30),
  (3, 4.50, 2, 1, 18),
- (4, 4.50, 2, 2, 55);
+ (4, 4.50, 2, 2, 55),
+ (5, 4.50, 2, 2, 25),
+ (6, 4.50, 2, 1, 20),
+ (7, 4.67, 3, 3, 50),
+ (8, 5.00, 1, 1, 15),
+ (9, 4.00, 2, 1, 18),
+ (10, 5.00, 2, 2, 35);

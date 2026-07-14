@@ -7,7 +7,8 @@ public enum IngredientErrorCode implements ISCErrorCode {
     INGREDIENT_NOT_FOUND,
     INGREDIENT_SLUG_ALREADY_EXISTS,
     INGREDIENT_LANGUAGE_NOT_ACTIVE,
-    DUPLICATE_INGREDIENT_LOCALE;
+    DUPLICATE_INGREDIENT_LOCALE,
+    MISSING_INGREDIENT_LOCALES;
 
     @Override
     public String code() {

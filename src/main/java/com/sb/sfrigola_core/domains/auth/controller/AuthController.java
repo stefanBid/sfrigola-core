@@ -15,24 +15,28 @@ public class AuthController {
 
     private final IAuthService authService;
 
+    // [Public]
     @PostMapping(value = "/login", version = "1.0")
     public ResponseEntity<SCGeneralResponseDto<LoginResponseDto, Void>> login(@RequestBody @Valid LoginRequestDto loginRequest) {
         LoginResponseDto loggedUser = authService.login(loginRequest.username(), loginRequest.password());
         return ResponseEntity.ok(SCGeneralResponseDto.success(loggedUser));
     }
 
+    // [Public]
     @PostMapping(value = "/register", version = "1.0")
     public ResponseEntity<SCGeneralResponseDto<String, Void>> register(@RequestBody @Valid RegisterUserDto registerUserDto) {
         authService.registerUser(registerUserDto);
         return ResponseEntity.ok(SCGeneralResponseDto.successMutation("User registered successfully"));
     }
 
+    // [Authenticated]
     @PatchMapping(value = "/change-email", version = "1.0")
     public ResponseEntity<SCGeneralResponseDto<String, Void>> changeEmail(@RequestBody @Valid ChangeEmailDto changeEmailDto) {
         authService.changeRegistrationEmail(changeEmailDto);
         return ResponseEntity.ok(SCGeneralResponseDto.successMutation("Email changed successfully"));
     }
 
+    // [Authenticated]
     @PatchMapping(value="/change-password", version = "1.0")
     public ResponseEntity<SCGeneralResponseDto<String, Void>> changePassword(@RequestBody @Valid ChangePasswordDto changePasswordDto) {
         authService.changeAuthPassword(changePasswordDto);

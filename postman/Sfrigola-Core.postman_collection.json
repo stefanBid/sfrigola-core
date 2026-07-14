@@ -1,0 +1,868 @@
+{
+  "info": {
+    "_postman_id": "d3b1a6d2-0f1a-4a2e-9a3a-sfrigola-core-0001",
+    "name": "Sfrigola Core",
+    "description": "Full API surface for sfrigola-core, organized by domain (one folder per domain). Bearer token is set once at collection level and auto-filled by the Login request — no manual header editing needed.",
+    "schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json"
+  },
+  "auth": {
+    "type": "bearer",
+    "bearer": [{ "key": "token", "value": "{{token}}", "type": "string" }]
+  },
+  "variable": [
+    { "key": "baseUrl", "value": "http://localhost:8080/sfrigola-core/api", "type": "string" },
+    { "key": "token", "value": "", "type": "string" },
+    { "key": "publicId", "value": "", "type": "string" },
+    { "key": "parentPublicId", "value": "", "type": "string" },
+    { "key": "categoryId", "value": "", "type": "string" },
+    { "key": "tagId", "value": "", "type": "string" },
+    { "key": "ingredientId", "value": "", "type": "string" },
+    { "key": "it", "value": "it", "type": "string" },
+    { "key": "approved", "value": "approved", "type": "string" }
+  ],
+  "item": [
+    {
+      "name": "Auth",
+      "item": [
+        {
+          "name": "Login",
+          "request": {
+            "auth": { "type": "noauth" },
+            "method": "POST",
+            "header": [{ "key": "Content-Type", "value": "application/json" }],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"username\": \"admin@sfrigola.com\",\n  \"password\": \"sfrigola\"\n}"
+            },
+            "url": { "raw": "{{baseUrl}}/auth/login", "host": ["{{baseUrl}}"], "path": ["auth", "login"] }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "if (pm.response.code === 200) {",
+                  "    const body = pm.response.json();",
+                  "    if (body && body.data && body.data.token) {",
+                  "        pm.collectionVariables.set('token', body.data.token);",
+                  "    }",
+                  "}"
+                ]
+              }
+            }
+          ],
+          "response": []
+        },
+        {
+          "name": "Register",
+          "request": {
+            "auth": { "type": "noauth" },
+            "method": "POST",
+            "header": [{ "key": "Content-Type", "value": "application/json" }],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"username\": \"mario.rossi\",\n  \"email\": \"mario.rossi@example.com\",\n  \"password\": \"Passw0rd!\",\n  \"confirmPassword\": \"Passw0rd!\",\n  \"preferredLang\": \"it\",\n  \"firstName\": \"Mario\",\n  \"lastName\": \"Rossi\"\n}"
+            },
+            "url": { "raw": "{{baseUrl}}/auth/register", "host": ["{{baseUrl}}"], "path": ["auth", "register"] }
+          },
+          "response": []
+        },
+        {
+          "name": "Change Email",
+          "request": {
+            "method": "PATCH",
+            "header": [{ "key": "Content-Type", "value": "application/json" }],
+            "body": { "mode": "raw", "raw": "{\n  \"newEmail\": \"mario.new@example.com\"\n}" },
+            "url": { "raw": "{{baseUrl}}/auth/change-email", "host": ["{{baseUrl}}"], "path": ["auth", "change-email"] }
+          },
+          "response": []
+        },
+        {
+          "name": "Change Password",
+          "request": {
+            "method": "PATCH",
+            "header": [{ "key": "Content-Type", "value": "application/json" }],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"oldPassword\": \"Passw0rd!\",\n  \"newPassword\": \"NewPassw0rd!\",\n  \"confirmNewPassword\": \"NewPassw0rd!\"\n}"
+            },
+            "url": { "raw": "{{baseUrl}}/auth/change-password", "host": ["{{baseUrl}}"], "path": ["auth", "change-password"] }
+          },
+          "response": []
+        }
+      ]
+    },
+    {
+      "name": "Languages",
+      "item": [
+        {
+          "name": "Get Languages",
+          "request": {
+            "method": "GET",
+            "url": {
+              "raw": "{{baseUrl}}/languages?page=0&take=10&sortBy=name&sort=asc",
+              "host": ["{{baseUrl}}"],
+              "path": ["languages"],
+              "query": [
+                { "key": "page", "value": "0" },
+                { "key": "take", "value": "10" },
+                { "key": "sortBy", "value": "name" },
+                { "key": "sort", "value": "asc" },
+                { "key": "isActive", "value": "", "disabled": true }
+              ]
+            }
+          },
+          "response": []
+        }
+      ]
+    },
+    {
+      "name": "Users",
+      "item": [
+        {
+          "name": "Change Preferred Lang",
+          "request": {
+            "method": "PATCH",
+            "url": {
+              "raw": "{{baseUrl}}/users/settings/change-preferred-lang/{{it}}",
+              "host": ["{{baseUrl}}"],
+              "path": ["users", "settings", "change-preferred-lang", "{{it}}"]
+            }
+          },
+          "response": []
+        },
+        {
+          "name": "Update Profile",
+          "request": {
+            "method": "PATCH",
+            "header": [{ "key": "Content-Type", "value": "application/json" }],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"firstName\": \"Mario\",\n  \"lastName\": \"Rossi\",\n  \"avatarUrl\": \"https://example.com/avatar.png\",\n  \"bio\": \"Home cook, pasta enthusiast.\"\n}"
+            },
+            "url": { "raw": "{{baseUrl}}/users/profile/update", "host": ["{{baseUrl}}"], "path": ["users", "profile", "update"] }
+          },
+          "response": []
+        },
+        {
+          "name": "Become Contributor",
+          "request": {
+            "method": "PATCH",
+            "url": { "raw": "{{baseUrl}}/users/profile/became-contributor", "host": ["{{baseUrl}}"], "path": ["users", "profile", "became-contributor"] }
+          },
+          "response": []
+        },
+        {
+          "name": "[Admin] Get All Users",
+          "request": {
+            "method": "GET",
+            "url": {
+              "raw": "{{baseUrl}}/users/admin?page=0&take=10&sortBy=lastName&sort=asc",
+              "host": ["{{baseUrl}}"],
+              "path": ["users", "admin"],
+              "query": [
+                { "key": "page", "value": "0" },
+                { "key": "take", "value": "10" },
+                { "key": "sortBy", "value": "lastName" },
+                { "key": "sort", "value": "asc" },
+                { "key": "searchKey", "value": "", "disabled": true },
+                { "key": "isActive", "value": "", "disabled": true }
+              ]
+            }
+          },
+          "response": []
+        },
+        {
+          "name": "[Admin] Set User Active",
+          "request": {
+            "method": "PATCH",
+            "header": [{ "key": "Content-Type", "value": "application/json" }],
+            "body": { "mode": "raw", "raw": "{\n  \"active\": false\n}" },
+            "url": {
+              "raw": "{{baseUrl}}/users/admin/{{publicId}}/status",
+              "host": ["{{baseUrl}}"],
+              "path": ["users", "admin", "{{publicId}}", "status"]
+            }
+          },
+          "response": []
+        }
+      ]
+    },
+    {
+      "name": "Categories",
+      "item": [
+        {
+          "name": "Get Categories",
+          "request": {
+            "method": "GET",
+            "url": {
+              "raw": "{{baseUrl}}/categories?page=0&take=10&locale=en",
+              "host": ["{{baseUrl}}"],
+              "path": ["categories"],
+              "query": [
+                { "key": "page", "value": "0" },
+                { "key": "take", "value": "10" },
+                { "key": "locale", "value": "en" }
+              ]
+            }
+          },
+          "response": []
+        },
+        {
+          "name": "[Admin] Get All Categories",
+          "request": {
+            "method": "GET",
+            "url": {
+              "raw": "{{baseUrl}}/categories/admin?page=0&take=10&sort=asc&locale=en",
+              "host": ["{{baseUrl}}"],
+              "path": ["categories", "admin"],
+              "query": [
+                { "key": "page", "value": "0" },
+                { "key": "take", "value": "10" },
+                { "key": "sort", "value": "asc" },
+                { "key": "searchKey", "value": "", "disabled": true },
+                { "key": "isActive", "value": "", "disabled": true },
+                { "key": "locale", "value": "en" }
+              ]
+            }
+          },
+          "response": []
+        },
+        {
+          "name": "[Admin] Get Category By Id",
+          "request": {
+            "method": "GET",
+            "url": {
+              "raw": "{{baseUrl}}/categories/admin/{{publicId}}?locale=en",
+              "host": ["{{baseUrl}}"],
+              "path": ["categories", "admin", "{{publicId}}"],
+              "query": [{ "key": "locale", "value": "en" }]
+            }
+          },
+          "response": []
+        },
+        {
+          "name": "[Admin] Create Category",
+          "request": {
+            "method": "POST",
+            "header": [{ "key": "Content-Type", "value": "application/json" }],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"slug\": \"test-category\",\n  \"isActive\": true,\n  \"translations\": [\n    { \"langCode\": \"it\", \"name\": \"Test\", \"description\": \"Test\" },\n    { \"langCode\": \"en\", \"name\": \"Test\", \"description\": \"Test\" }\n  ]\n}"
+            },
+            "url": {
+              "raw": "{{baseUrl}}/categories/admin?locale=en",
+              "host": ["{{baseUrl}}"],
+              "path": ["categories", "admin"],
+              "query": [{ "key": "locale", "value": "en" }]
+            }
+          },
+          "response": []
+        },
+        {
+          "name": "[Admin] Create Child Category",
+          "request": {
+            "method": "POST",
+            "header": [{ "key": "Content-Type", "value": "application/json" }],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"slug\": \"test-category-child\",\n  \"isActive\": true,\n  \"translations\": [\n    { \"langCode\": \"it\", \"name\": \"Test\", \"description\": \"Test\" },\n    { \"langCode\": \"en\", \"name\": \"Test\", \"description\": \"Test\" }\n  ]\n}"
+            },
+            "url": {
+              "raw": "{{baseUrl}}/categories/admin/{{parentPublicId}}?locale=en",
+              "host": ["{{baseUrl}}"],
+              "path": ["categories", "admin", "{{parentPublicId}}"],
+              "query": [{ "key": "locale", "value": "en" }]
+            }
+          },
+          "response": []
+        },
+        {
+          "name": "[Admin] Update Category",
+          "request": {
+            "method": "PUT",
+            "header": [{ "key": "Content-Type", "value": "application/json" }],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"slug\": \"test-category\",\n  \"isActive\": true,\n  \"specificTranslation\": { \"langCode\": \"it\", \"name\": \"Test\", \"description\": \"Test\" }\n}"
+            },
+            "url": {
+              "raw": "{{baseUrl}}/categories/admin/{{publicId}}",
+              "host": ["{{baseUrl}}"],
+              "path": ["categories", "admin", "{{publicId}}"]
+            }
+          },
+          "response": []
+        },
+        {
+          "name": "[Admin] Reorder Categories",
+          "request": {
+            "method": "PUT",
+            "header": [{ "key": "Content-Type", "value": "application/json" }],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"parentPublicId\": null,\n  \"orderedPublicIds\": [\n    \"00000000-0000-0000-0000-000000000001\",\n    \"00000000-0000-0000-0000-000000000002\"\n  ]\n}"
+            },
+            "url": { "raw": "{{baseUrl}}/categories/admin/reorder", "host": ["{{baseUrl}}"], "path": ["categories", "admin", "reorder"] }
+          },
+          "response": []
+        },
+        {
+          "name": "[Admin] Delete Category",
+          "request": {
+            "method": "DELETE",
+            "url": {
+              "raw": "{{baseUrl}}/categories/admin/{{publicId}}",
+              "host": ["{{baseUrl}}"],
+              "path": ["categories", "admin", "{{publicId}}"]
+            }
+          },
+          "response": []
+        }
+      ]
+    },
+    {
+      "name": "Tags",
+      "item": [
+        {
+          "name": "[Contributor, Admin] Get Tags",
+          "request": {
+            "method": "GET",
+            "url": {
+              "raw": "{{baseUrl}}/tags?page=0&take=10&locale=en",
+              "host": ["{{baseUrl}}"],
+              "path": ["tags"],
+              "query": [
+                { "key": "page", "value": "0" },
+                { "key": "take", "value": "10" },
+                { "key": "locale", "value": "en" },
+                { "key": "searchKey", "value": "", "disabled": true },
+                { "key": "scope", "value": "", "disabled": true }
+              ]
+            }
+          },
+          "response": []
+        },
+        {
+          "name": "[Contributor, Admin] Suggest Tag",
+          "request": {
+            "method": "POST",
+            "header": [{ "key": "Content-Type", "value": "application/json" }],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"slug\": \"test-tag-suggest\",\n  \"type\": \"flavor\",\n  \"scope\": \"both\",\n  \"translationByConsumerLang\": \"Test\"\n}"
+            },
+            "url": {
+              "raw": "{{baseUrl}}/tags/suggest?locale=en",
+              "host": ["{{baseUrl}}"],
+              "path": ["tags", "suggest"],
+              "query": [{ "key": "locale", "value": "en" }]
+            }
+          },
+          "response": []
+        },
+        {
+          "name": "[Admin] Get All Tags",
+          "request": {
+            "method": "GET",
+            "url": {
+              "raw": "{{baseUrl}}/tags/admin?page=0&take=10&sort=asc&sortBy=label&locale=en",
+              "host": ["{{baseUrl}}"],
+              "path": ["tags", "admin"],
+              "query": [
+                { "key": "page", "value": "0" },
+                { "key": "take", "value": "10" },
+                { "key": "sort", "value": "asc" },
+                { "key": "sortBy", "value": "label" },
+                { "key": "locale", "value": "en" },
+                { "key": "searchKey", "value": "", "disabled": true },
+                { "key": "status", "value": "", "disabled": true },
+                { "key": "type", "value": "", "disabled": true },
+                { "key": "scope", "value": "", "disabled": true }
+              ]
+            }
+          },
+          "response": []
+        },
+        {
+          "name": "[Admin] Get Tag By Id",
+          "request": {
+            "method": "GET",
+            "url": {
+              "raw": "{{baseUrl}}/tags/admin/{{publicId}}?locale=en",
+              "host": ["{{baseUrl}}"],
+              "path": ["tags", "admin", "{{publicId}}"],
+              "query": [{ "key": "locale", "value": "en" }]
+            }
+          },
+          "response": []
+        },
+        {
+          "name": "[Admin] Create Tag",
+          "request": {
+            "method": "POST",
+            "header": [{ "key": "Content-Type", "value": "application/json" }],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"slug\": \"test-tag\",\n  \"type\": \"flavor\",\n  \"scope\": \"both\",\n  \"translations\": [\n    { \"langCode\": \"it\", \"label\": \"Test\" },\n    { \"langCode\": \"en\", \"label\": \"Test\" }\n  ]\n}"
+            },
+            "url": {
+              "raw": "{{baseUrl}}/tags/admin?locale=en",
+              "host": ["{{baseUrl}}"],
+              "path": ["tags", "admin"],
+              "query": [{ "key": "locale", "value": "en" }]
+            }
+          },
+          "response": []
+        },
+        {
+          "name": "[Admin] Update Tag Status",
+          "request": {
+            "method": "PATCH",
+            "url": {
+              "raw": "{{baseUrl}}/tags/admin/{{publicId}}/status/{{approved}}",
+              "host": ["{{baseUrl}}"],
+              "path": ["tags", "admin", "{{publicId}}", "status", "{{approved}}"]
+            }
+          },
+          "response": []
+        },
+        {
+          "name": "[Admin] Update Tag",
+          "request": {
+            "method": "PUT",
+            "header": [{ "key": "Content-Type", "value": "application/json" }],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"slug\": \"test-tag\",\n  \"type\": \"flavor\",\n  \"scope\": \"both\",\n  \"specificTranslation\": { \"langCode\": \"it\", \"label\": \"Test\" }\n}"
+            },
+            "url": {
+              "raw": "{{baseUrl}}/tags/admin/{{publicId}}",
+              "host": ["{{baseUrl}}"],
+              "path": ["tags", "admin", "{{publicId}}"]
+            }
+          },
+          "response": []
+        },
+        {
+          "name": "[Admin] Delete Tag",
+          "request": {
+            "method": "DELETE",
+            "url": {
+              "raw": "{{baseUrl}}/tags/admin/{{publicId}}",
+              "host": ["{{baseUrl}}"],
+              "path": ["tags", "admin", "{{publicId}}"]
+            }
+          },
+          "response": []
+        }
+      ]
+    },
+    {
+      "name": "Ingredients",
+      "item": [
+        {
+          "name": "[Contributor, Admin] Get Ingredients",
+          "request": {
+            "method": "GET",
+            "url": {
+              "raw": "{{baseUrl}}/ingredients?page=0&take=10&locale=en",
+              "host": ["{{baseUrl}}"],
+              "path": ["ingredients"],
+              "query": [
+                { "key": "page", "value": "0" },
+                { "key": "take", "value": "10" },
+                { "key": "searchKey", "value": "", "disabled": true },
+                { "key": "locale", "value": "en" }
+              ]
+            }
+          },
+          "response": []
+        },
+        {
+          "name": "[Admin] Get All Ingredients",
+          "request": {
+            "method": "GET",
+            "url": {
+              "raw": "{{baseUrl}}/ingredients/admin?page=0&take=10&sortBy=name&sort=asc&locale=en",
+              "host": ["{{baseUrl}}"],
+              "path": ["ingredients", "admin"],
+              "query": [
+                { "key": "page", "value": "0" },
+                { "key": "take", "value": "10" },
+                { "key": "sortBy", "value": "name" },
+                { "key": "sort", "value": "asc" },
+                { "key": "searchKey", "value": "", "disabled": true },
+                { "key": "locale", "value": "en" },
+                { "key": "foodGroup", "value": "", "disabled": true },
+                { "key": "isVegetarian", "value": "", "disabled": true },
+                { "key": "isVegan", "value": "", "disabled": true },
+                { "key": "isGlutenFree", "value": "", "disabled": true },
+                { "key": "minCalories", "value": "", "disabled": true },
+                { "key": "maxCalories", "value": "", "disabled": true }
+              ]
+            }
+          },
+          "response": []
+        },
+        {
+          "name": "[Admin] Get Ingredient By Id",
+          "request": {
+            "method": "GET",
+            "url": {
+              "raw": "{{baseUrl}}/ingredients/admin/{{publicId}}?locale=en",
+              "host": ["{{baseUrl}}"],
+              "path": ["ingredients", "admin", "{{publicId}}"],
+              "query": [{ "key": "locale", "value": "en" }]
+            }
+          },
+          "response": []
+        },
+        {
+          "name": "[Admin] Create Ingredient",
+          "request": {
+            "method": "POST",
+            "header": [{ "key": "Content-Type", "value": "application/json" }],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"slug\": \"test-ingredient\",\n  \"foodGroup\": \"vegetable\",\n  \"caloriesPer100g\": 18.0,\n  \"allergens\": [],\n  \"isVegetarian\": true,\n  \"isVegan\": true,\n  \"isGlutenFree\": true,\n  \"translations\": [\n    { \"langCode\": \"it\", \"name\": \"Test\" },\n    { \"langCode\": \"en\", \"name\": \"Test\" }\n  ],\n  \"ingredientTagsIds\": []\n}"
+            },
+            "url": {
+              "raw": "{{baseUrl}}/ingredients/admin?locale=en",
+              "host": ["{{baseUrl}}"],
+              "path": ["ingredients", "admin"],
+              "query": [{ "key": "locale", "value": "en" }]
+            }
+          },
+          "response": []
+        },
+        {
+          "name": "[Admin] Update Ingredient",
+          "request": {
+            "method": "PUT",
+            "header": [{ "key": "Content-Type", "value": "application/json" }],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"slug\": \"test-ingredient\",\n  \"foodGroup\": \"vegetable\",\n  \"caloriesPer100g\": 20.0,\n  \"allergens\": [],\n  \"isVegetarian\": true,\n  \"isVegan\": true,\n  \"isGlutenFree\": true,\n  \"ingredientTagsIds\": [],\n  \"specificTranslation\": { \"langCode\": \"it\", \"name\": \"Test\" }\n}"
+            },
+            "url": {
+              "raw": "{{baseUrl}}/ingredients/admin/{{publicId}}",
+              "host": ["{{baseUrl}}"],
+              "path": ["ingredients", "admin", "{{publicId}}"]
+            }
+          },
+          "response": []
+        },
+        {
+          "name": "[Admin] Delete Ingredient",
+          "request": {
+            "method": "DELETE",
+            "url": {
+              "raw": "{{baseUrl}}/ingredients/admin/{{publicId}}",
+              "host": ["{{baseUrl}}"],
+              "path": ["ingredients", "admin", "{{publicId}}"]
+            }
+          },
+          "response": []
+        }
+      ]
+    },
+    {
+      "name": "Recipes",
+      "item": [
+        {
+          "name": "[Public] Home Feed By Category",
+          "request": {
+            "auth": { "type": "noauth" },
+            "method": "GET",
+            "url": {
+              "raw": "{{baseUrl}}/recipes/home/category/{{categoryId}}?locale=en",
+              "host": ["{{baseUrl}}"],
+              "path": ["recipes", "home", "category", "{{categoryId}}"],
+              "query": [{ "key": "locale", "value": "en" }]
+            }
+          },
+          "response": []
+        },
+        {
+          "name": "[Public] Search Recipes",
+          "request": {
+            "auth": { "type": "noauth" },
+            "method": "GET",
+            "url": {
+              "raw": "{{baseUrl}}/recipes/search?page=0&take=10&searchKey=pasta&locale=en",
+              "host": ["{{baseUrl}}"],
+              "path": ["recipes", "search"],
+              "query": [
+                { "key": "page", "value": "0" },
+                { "key": "take", "value": "10" },
+                { "key": "searchKey", "value": "pasta" },
+                { "key": "locale", "value": "en" }
+              ]
+            }
+          },
+          "response": []
+        },
+        {
+          "name": "[Public] Search Recipes By Category",
+          "request": {
+            "auth": { "type": "noauth" },
+            "method": "GET",
+            "url": {
+              "raw": "{{baseUrl}}/recipes/search/category/{{categoryId}}?page=0&take=10&searchKey=&locale=en",
+              "host": ["{{baseUrl}}"],
+              "path": ["recipes", "search", "category", "{{categoryId}}"],
+              "query": [
+                { "key": "page", "value": "0" },
+                { "key": "take", "value": "10" },
+                { "key": "searchKey", "value": "" },
+                { "key": "locale", "value": "en" }
+              ]
+            }
+          },
+          "response": []
+        },
+        {
+          "name": "[Public] Get Recipe By Public Id",
+          "request": {
+            "auth": { "type": "noauth" },
+            "method": "GET",
+            "url": {
+              "raw": "{{baseUrl}}/recipes/details/{{publicId}}?locale=en",
+              "host": ["{{baseUrl}}"],
+              "path": ["recipes", "details", "{{publicId}}"],
+              "query": [{ "key": "locale", "value": "en" }]
+            }
+          },
+          "response": []
+        },
+        {
+          "name": "Get All My Favorite Recipes",
+          "request": {
+            "method": "GET",
+            "url": {
+              "raw": "{{baseUrl}}/recipes/favorites?page=0&take=10&locale=en",
+              "host": ["{{baseUrl}}"],
+              "path": ["recipes", "favorites"],
+              "query": [
+                { "key": "page", "value": "0" },
+                { "key": "take", "value": "10" },
+                { "key": "locale", "value": "en" }
+              ]
+            }
+          },
+          "response": []
+        },
+        {
+          "name": "[Admin] Get All Recipes",
+          "request": {
+            "method": "GET",
+            "url": {
+              "raw": "{{baseUrl}}/recipes/admin?page=0&take=10&sortBy=title&sort=asc&locale=en",
+              "host": ["{{baseUrl}}"],
+              "path": ["recipes", "admin"],
+              "query": [
+                { "key": "page", "value": "0" },
+                { "key": "take", "value": "10" },
+                { "key": "sortBy", "value": "title" },
+                { "key": "sort", "value": "asc" },
+                { "key": "locale", "value": "en" },
+                { "key": "searchKey", "value": "", "disabled": true },
+                { "key": "difficulty", "value": "", "disabled": true },
+                { "key": "mealType", "value": "", "disabled": true },
+                { "key": "season", "value": "", "disabled": true },
+                { "key": "isVegetarian", "value": "", "disabled": true },
+                { "key": "isVegan", "value": "", "disabled": true },
+                { "key": "isGlutenFree", "value": "", "disabled": true },
+                { "key": "isPublished", "value": "", "disabled": true }
+              ]
+            }
+          },
+          "response": []
+        },
+        {
+          "name": "[Admin] Get All Recipes By Category",
+          "request": {
+            "method": "GET",
+            "url": {
+              "raw": "{{baseUrl}}/recipes/admin/category/{{categoryId}}?page=0&take=10&sortBy=title&sort=asc&locale=en",
+              "host": ["{{baseUrl}}"],
+              "path": ["recipes", "admin", "category", "{{categoryId}}"],
+              "query": [
+                { "key": "page", "value": "0" },
+                { "key": "take", "value": "10" },
+                { "key": "sortBy", "value": "title" },
+                { "key": "sort", "value": "asc" },
+                { "key": "locale", "value": "en" }
+              ]
+            }
+          },
+          "response": []
+        },
+        {
+          "name": "[Admin] Get Recipe By Public Id",
+          "request": {
+            "method": "GET",
+            "url": {
+              "raw": "{{baseUrl}}/recipes/admin/details/{{publicId}}?locale=en",
+              "host": ["{{baseUrl}}"],
+              "path": ["recipes", "admin", "details", "{{publicId}}"],
+              "query": [{ "key": "locale", "value": "en" }]
+            }
+          },
+          "response": []
+        },
+        {
+          "name": "[Contributor, Admin] Create Recipe",
+          "request": {
+            "method": "POST",
+            "header": [{ "key": "Content-Type", "value": "application/json" }],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"categoryPublicId\": \"{{categoryId}}\",\n  \"difficulty\": \"easy\",\n  \"mealType\": \"lunch\",\n  \"season\": \"all_year\",\n  \"prepTimeMin\": 10,\n  \"cookTimeMin\": 15,\n  \"servings\": 4,\n  \"isVegetarian\": true,\n  \"isVegan\": false,\n  \"isGlutenFree\": false,\n  \"recipeTagsIds\": [\"{{tagId}}\"],\n  \"ingredients\": [\n    {\n      \"ingredientPublicId\": \"{{ingredientId}}\",\n      \"quantity\": 100.0,\n      \"unit\": \"g\",\n      \"preparationNote\": \"chopped\",\n      \"sortOrder\": 0\n    }\n  ],\n  \"translations\": [\n    { \"langCode\": \"en\", \"title\": \"Test Recipe\", \"description\": \"Test description\", \"instructions\": [\"Boil water\", \"Add pasta\", \"Drain and serve\"] },\n    { \"langCode\": \"it\", \"title\": \"Ricetta di prova\", \"description\": \"Descrizione di prova\", \"instructions\": [\"Bolli l'acqua\", \"Aggiungi la pasta\", \"Scola e servi\"] }\n  ]\n}"
+            },
+            "url": {
+              "raw": "{{baseUrl}}/recipes?locale=en",
+              "host": ["{{baseUrl}}"],
+              "path": ["recipes"],
+              "query": [{ "key": "locale", "value": "en" }]
+            }
+          },
+          "response": []
+        },
+        {
+          "name": "[Contributor(own), Admin] Update Recipe",
+          "request": {
+            "method": "PUT",
+            "header": [{ "key": "Content-Type", "value": "application/json" }],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"categoryPublicId\": \"{{categoryId}}\",\n  \"difficulty\": \"medium\",\n  \"mealType\": \"dinner\",\n  \"season\": \"all_year\",\n  \"prepTimeMin\": 15,\n  \"cookTimeMin\": 20,\n  \"servings\": 4,\n  \"isVegetarian\": true,\n  \"isVegan\": false,\n  \"isGlutenFree\": false,\n  \"recipeTagsIds\": [\"{{tagId}}\"],\n  \"ingredients\": [\n    {\n      \"ingredientPublicId\": \"{{ingredientId}}\",\n      \"quantity\": 150.0,\n      \"unit\": \"g\",\n      \"preparationNote\": \"chopped\",\n      \"sortOrder\": 0\n    }\n  ],\n  \"specificTranslation\": { \"langCode\": \"en\", \"title\": \"Test Recipe Updated\", \"description\": \"Updated description\", \"instructions\": [\"Boil water\", \"Add pasta\", \"Toss with sauce\", \"Serve hot\"] }\n}"
+            },
+            "url": {
+              "raw": "{{baseUrl}}/recipes/{{publicId}}",
+              "host": ["{{baseUrl}}"],
+              "path": ["recipes", "{{publicId}}"]
+            }
+          },
+          "response": []
+        },
+        {
+          "name": "[Admin] Publish Recipe",
+          "request": {
+            "method": "PATCH",
+            "url": {
+              "raw": "{{baseUrl}}/recipes/admin/{{publicId}}/publish?locale=en",
+              "host": ["{{baseUrl}}"],
+              "path": ["recipes", "admin", "{{publicId}}", "publish"],
+              "query": [{ "key": "locale", "value": "en" }]
+            }
+          },
+          "response": []
+        },
+        {
+          "name": "[Admin] Unpublish Recipe",
+          "request": {
+            "method": "PATCH",
+            "url": {
+              "raw": "{{baseUrl}}/recipes/admin/{{publicId}}/unpublish?locale=en",
+              "host": ["{{baseUrl}}"],
+              "path": ["recipes", "admin", "{{publicId}}", "unpublish"],
+              "query": [{ "key": "locale", "value": "en" }]
+            }
+          },
+          "response": []
+        },
+        {
+          "name": "[Contributor(own), Admin] Delete Recipe",
+          "request": {
+            "method": "DELETE",
+            "url": {
+              "raw": "{{baseUrl}}/recipes/{{publicId}}",
+              "host": ["{{baseUrl}}"],
+              "path": ["recipes", "{{publicId}}"]
+            }
+          },
+          "response": []
+        }
+      ]
+    },
+    {
+      "name": "Favorites",
+      "item": [
+        {
+          "name": "Add Favorite",
+          "request": {
+            "method": "POST",
+            "url": {
+              "raw": "{{baseUrl}}/favorites/{{publicId}}",
+              "host": ["{{baseUrl}}"],
+              "path": ["favorites", "{{publicId}}"]
+            }
+          },
+          "response": []
+        },
+        {
+          "name": "Remove Favorite",
+          "request": {
+            "method": "DELETE",
+            "url": {
+              "raw": "{{baseUrl}}/favorites/{{publicId}}",
+              "host": ["{{baseUrl}}"],
+              "path": ["favorites", "{{publicId}}"]
+            }
+          },
+          "response": []
+        }
+      ]
+    },
+    {
+      "name": "Ratings",
+      "item": [
+        {
+          "name": "Get Rating Stats",
+          "request": {
+            "method": "GET",
+            "url": {
+              "raw": "{{baseUrl}}/ratings/recipe/{{publicId}}/stats",
+              "host": ["{{baseUrl}}"],
+              "path": ["ratings", "recipe", "{{publicId}}", "stats"]
+            }
+          },
+          "response": []
+        },
+        {
+          "name": "Add Rating",
+          "request": {
+            "method": "POST",
+            "header": [{ "key": "Content-Type", "value": "application/json" }],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"recipePublicId\": \"{{publicId}}\",\n  \"score\": 5,\n  \"comment\": \"Great recipe!\"\n}"
+            },
+            "url": { "raw": "{{baseUrl}}/ratings", "host": ["{{baseUrl}}"], "path": ["ratings"] }
+          },
+          "response": []
+        },
+        {
+          "name": "Edit Rating",
+          "request": {
+            "method": "PUT",
+            "header": [{ "key": "Content-Type", "value": "application/json" }],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"score\": 4,\n  \"comment\": \"Updated my opinion after a second try.\"\n}"
+            },
+            "url": {
+              "raw": "{{baseUrl}}/ratings/recipe/{{publicId}}",
+              "host": ["{{baseUrl}}"],
+              "path": ["ratings", "recipe", "{{publicId}}"]
+            }
+          },
+          "response": []
+        }
+      ]
+    }
+  ]
+}

@@ -8,6 +8,7 @@ import com.sb.sfrigola_core.domains.categories.dto.view.CategoryPublicViewDto;
 import com.sb.sfrigola_core.domains.categories.dto.view.CategoryPreviewAdminDto;
 import com.sb.sfrigola_core.domains.categories.dto.input.AddCategoryDto;
 import com.sb.sfrigola_core.domains.categories.dto.input.ReorderedCategoriesTreeDto;
+import com.sb.sfrigola_core.domains.languages.exception.LocaleNotActiveException;
 import jakarta.annotation.Nullable;
 import org.jspecify.annotations.NonNull;
 
@@ -29,10 +30,10 @@ public interface ICategoryService {
      * @param locale      BCP-47 language code used to filter and localize results
      * @return a {@link com.sb.sfrigola_core.common.models.contracts.SCPagedResult} of
      *         {@link CategoryPublicViewDto}; never {@code null}
-     * @throws com.sb.sfrigola_core.domains.languages.exception.LocaleNotActiveException
-     *         if {@code locale} does not match an active language
+     * @throws LocaleNotActiveException
+     *         if {@code locale} does not match an active language (thrown by the languages domain bridge)
      */
-    SCPagedResult<CategoryPublicViewDto> getAll(SCFilterQuery<Void> filterQuery, String locale);
+    SCPagedResult<CategoryPublicViewDto> getAll(SCFilterQuery<Void> filterQuery, @NonNull String locale);
 
     /**
      * Returns a paginated admin preview of ALL categories (regardless of translation coverage for
@@ -46,8 +47,8 @@ public interface ICategoryService {
      * @param isActive    when non-{@code null}, filters by active/inactive status
      * @return a {@link com.sb.sfrigola_core.common.models.contracts.SCPagedResult} of
      *         {@link CategoryPreviewAdminDto}; never {@code null}
-     * @throws com.sb.sfrigola_core.domains.categories.exception.InvalidCategoryLocaleException
-     *         if {@code locale} does not match an active language
+     * @throws LocaleNotActiveException
+     *         if {@code locale} does not match an active language (thrown by the languages domain bridge)
      */
     SCPagedResult<CategoryPreviewAdminDto> getAllAdmin(SCFilterQuery<Void> filterQuery, @NonNull String locale, Boolean isActive);
 
@@ -64,8 +65,8 @@ public interface ICategoryService {
      * @return a {@link CategoryDetailsAdminDto}
      * @throws com.sb.sfrigola_core.domains.categories.exception.NoCategoryFoundException
      *         if no category exists with the given {@code publicId}
-     * @throws com.sb.sfrigola_core.domains.languages.exception.LocaleNotActiveException
-     *         if {@code locale} does not match an active language
+     * @throws LocaleNotActiveException
+     *         if {@code locale} does not match an active language (thrown by the languages domain bridge)
      */
     CategoryDetailsAdminDto getByPublicIdAdmin(UUID publicId, @NonNull String locale);
 
@@ -85,8 +86,8 @@ public interface ICategoryService {
      *         if a category with the same slug already exists
      * @throws com.sb.sfrigola_core.domains.categories.exception.NoCategoryFoundException
      *         if {@code parentPublicId} is non-{@code null} but no matching category exists
-     * @throws com.sb.sfrigola_core.domains.categories.exception.InvalidCategoryLocaleException
-     *         if any translation references a locale that is not active
+     * @throws LocaleNotActiveException
+     *         if any translation references a locale that is not active (thrown by the languages domain bridge)
      * @throws com.sb.sfrigola_core.domains.categories.exception.DuplicateCategoryLocaleException
      *         if the same locale appears more than once in the translations list
      * @throws com.sb.sfrigola_core.domains.categories.exception.MissingCategoryLocalesException
@@ -109,8 +110,8 @@ public interface ICategoryService {
      *         if no category exists with the given {@code publicId}
      * @throws com.sb.sfrigola_core.domains.categories.exception.CategorySlugAlreadyExistsException
      *         if the new slug is already taken by a different category
-     * @throws com.sb.sfrigola_core.domains.categories.exception.InvalidCategoryLocaleException
-     *         if any translation references a locale that is not active
+     * @throws LocaleNotActiveException
+     *         if any translation references a locale that is not active (thrown by the languages domain bridge)
      * @throws com.sb.sfrigola_core.domains.categories.exception.DuplicateCategoryLocaleException
      *         if the same locale appears more than once in the translations list
      */

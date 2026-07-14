@@ -1,6 +1,7 @@
 package com.sb.sfrigola_core.domains.users.service;
 
 import com.sb.sfrigola_core.common.models.context.SCAuthUser;
+import com.sb.sfrigola_core.domains.users.entity.SCUser;
 
 import java.util.Optional;
 import java.util.UUID;
@@ -67,5 +68,17 @@ public interface ISCUserDomainBridgeService {
      * @param updatedBy         username of the actor performing the update (for audit)
      */
     void updatePasswordHashOrThrow(UUID publicId, String newHashedPassword, String updatedBy);
+
+    /**
+     * Resolves the {@link SCUser} entity for the given public ID, for cross-domain services that
+     * need a direct entity reference (e.g. to build a {@code @ManyToOne} relationship such as
+     * {@code recipes.author}).
+     *
+     * @param publicId public identifier of the user to resolve
+     * @return the {@link SCUser} entity
+     * @throws com.sb.sfrigola_core.domains.users.exceptions.NoUserFoundException
+     *         if no user exists with the given public ID
+     */
+    SCUser getUserEntityByPublicIdOrThrow(UUID publicId);
 
 }

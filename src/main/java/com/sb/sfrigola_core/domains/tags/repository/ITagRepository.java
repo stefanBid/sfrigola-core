@@ -13,17 +13,23 @@ import java.util.UUID;
 
 public interface ITagRepository extends JpaRepository<Tag, Long> {
 
-    @Query("""
+    @Query(value = """
             SELECT t.id FROM Tag t
-            JOIN t.translations tr
-            JOIN tr.language l
-            WHERE l.code = :locale
-                AND (:searchKey IS NULL OR LOWER(tr.label) LIKE LOWER(CONCAT('%', CAST(:searchKey AS string), '%')))
+            LEFT JOIN t.translations tr ON tr.language.code = :locale
+            WHERE (:searchKey IS NULL OR LOWER(tr.label) LIKE LOWER(CONCAT('%', CAST(:searchKey AS string), '%')))
                 AND (:status IS NULL OR CAST(t.status AS string) = :status)
                 AND (:scope IS NULL OR CAST(t.scope AS string) = :scope)
                 AND (:type IS NULL OR CAST(t.type AS string) = :type)
             ORDER BY tr.label ASC
-           """)
+            """,
+            countQuery = """
+            SELECT COUNT(t.id) FROM Tag t
+            LEFT JOIN t.translations tr ON tr.language.code = :locale
+            WHERE (:searchKey IS NULL OR LOWER(tr.label) LIKE LOWER(CONCAT('%', CAST(:searchKey AS string), '%')))
+                AND (:status IS NULL OR CAST(t.status AS string) = :status)
+                AND (:scope IS NULL OR CAST(t.scope AS string) = :scope)
+                AND (:type IS NULL OR CAST(t.type AS string) = :type)
+            """)
     Page<Long> findIdsByFiltersAndLocaleAsc(
             @Param("locale") String locale,
             @Param("searchKey") String searchKey,
@@ -33,17 +39,23 @@ public interface ITagRepository extends JpaRepository<Tag, Long> {
             Pageable pageable
     );
 
-    @Query("""
+    @Query(value = """
             SELECT t.id FROM Tag t
-            JOIN t.translations tr
-            JOIN tr.language l
-            WHERE l.code = :locale
-                AND (:searchKey IS NULL OR LOWER(tr.label) LIKE LOWER(CONCAT('%', CAST(:searchKey AS string), '%')))
+            LEFT JOIN t.translations tr ON tr.language.code = :locale
+            WHERE (:searchKey IS NULL OR LOWER(tr.label) LIKE LOWER(CONCAT('%', CAST(:searchKey AS string), '%')))
                 AND (:status IS NULL OR CAST(t.status AS string) = :status)
                 AND (:scope IS NULL OR CAST(t.scope AS string) = :scope)
                 AND (:type IS NULL OR CAST(t.type AS string) = :type)
             ORDER BY tr.label DESC
-           """)
+            """,
+            countQuery = """
+            SELECT COUNT(t.id) FROM Tag t
+            LEFT JOIN t.translations tr ON tr.language.code = :locale
+            WHERE (:searchKey IS NULL OR LOWER(tr.label) LIKE LOWER(CONCAT('%', CAST(:searchKey AS string), '%')))
+                AND (:status IS NULL OR CAST(t.status AS string) = :status)
+                AND (:scope IS NULL OR CAST(t.scope AS string) = :scope)
+                AND (:type IS NULL OR CAST(t.type AS string) = :type)
+            """)
     Page<Long> findIdsByFiltersAndLocaleDesc(
             @Param("locale") String locale,
             @Param("searchKey") String searchKey,
@@ -53,99 +65,24 @@ public interface ITagRepository extends JpaRepository<Tag, Long> {
             Pageable pageable
     );
 
-
     @Query(value = """
             SELECT t.id FROM Tag t
-            JOIN t.translations tr
+            LEFT JOIN t.translations tr ON tr.language.code = :locale
             WHERE (:searchKey IS NULL OR LOWER(tr.label) LIKE LOWER(CONCAT('%', CAST(:searchKey AS string), '%')))
                 AND (:status IS NULL OR CAST(t.status AS string) = :status)
                 AND (:scope IS NULL OR CAST(t.scope AS string) = :scope)
                 AND (:type IS NULL OR CAST(t.type AS string) = :type)
-            GROUP BY t.id
-            ORDER BY MIN(tr.label) ASC
-           """,
+            """,
             countQuery = """
-            SELECT COUNT(DISTINCT t.id) FROM Tag t
-            JOIN t.translations tr
+            SELECT COUNT(t.id) FROM Tag t
+            LEFT JOIN t.translations tr ON tr.language.code = :locale
             WHERE (:searchKey IS NULL OR LOWER(tr.label) LIKE LOWER(CONCAT('%', CAST(:searchKey AS string), '%')))
                 AND (:status IS NULL OR CAST(t.status AS string) = :status)
                 AND (:scope IS NULL OR CAST(t.scope AS string) = :scope)
                 AND (:type IS NULL OR CAST(t.type AS string) = :type)
-           """
-    )
-    Page<Long> findIdsByFiltersAsc(
-            @Param("searchKey") String searchKey,
-            @Param("status") String status,
-            @Param("scope") String scope,
-            @Param("type") String type,
-            Pageable pageable
-    );
-
-    @Query(value = """
-            SELECT t.id FROM Tag t
-            JOIN t.translations tr
-            WHERE (:searchKey IS NULL OR LOWER(tr.label) LIKE LOWER(CONCAT('%', CAST(:searchKey AS string), '%')))
-                AND (:status IS NULL OR CAST(t.status AS string) = :status)
-                AND (:scope IS NULL OR CAST(t.scope AS string) = :scope)
-                AND (:type IS NULL OR CAST(t.type AS string) = :type)
-            GROUP BY t.id
-            ORDER BY MIN(tr.label) DESC
-           """,
-            countQuery = """
-            SELECT COUNT(DISTINCT t.id) FROM Tag t
-            JOIN t.translations tr
-            WHERE (:searchKey IS NULL OR LOWER(tr.label) LIKE LOWER(CONCAT('%', CAST(:searchKey AS string), '%')))
-                AND (:status IS NULL OR CAST(t.status AS string) = :status)
-                AND (:scope IS NULL OR CAST(t.scope AS string) = :scope)
-                AND (:type IS NULL OR CAST(t.type AS string) = :type)
-           """
-    )
-    Page<Long> findIdsByFiltersDesc(
-            @Param("searchKey") String searchKey,
-            @Param("status") String status,
-            @Param("scope") String scope,
-            @Param("type") String type,
-            Pageable pageable
-    );
-
-    @Query("""
-            SELECT t.id FROM Tag t
-            JOIN t.translations tr
-            JOIN tr.language l
-            WHERE l.code = :locale
-                AND (:searchKey IS NULL OR LOWER(tr.label) LIKE LOWER(CONCAT('%', CAST(:searchKey AS string), '%')))
-                AND (:status IS NULL OR CAST(t.status AS string) = :status)
-                AND (:scope IS NULL OR CAST(t.scope AS string) = :scope)
-                AND (:type IS NULL OR CAST(t.type AS string) = :type)
-           """)
+            """)
     Page<Long> findIdsByFiltersAndLocaleOtherSort(
             @Param("locale") String locale,
-            @Param("searchKey") String searchKey,
-            @Param("status") String status,
-            @Param("scope") String scope,
-            @Param("type") String type,
-            Pageable pageable
-    );
-
-    @Query(value = """
-            SELECT t.id FROM Tag t
-            JOIN t.translations tr
-            WHERE (:searchKey IS NULL OR LOWER(tr.label) LIKE LOWER(CONCAT('%', CAST(:searchKey AS string), '%')))
-                AND (:status IS NULL OR CAST(t.status AS string) = :status)
-                AND (:scope IS NULL OR CAST(t.scope AS string) = :scope)
-                AND (:type IS NULL OR CAST(t.type AS string) = :type)
-            GROUP BY t.id
-           """,
-            countQuery = """
-            SELECT COUNT(DISTINCT t.id) FROM Tag t
-            JOIN t.translations tr
-            WHERE (:searchKey IS NULL OR LOWER(tr.label) LIKE LOWER(CONCAT('%', CAST(:searchKey AS string), '%')))
-                AND (:status IS NULL OR CAST(t.status AS string) = :status)
-                AND (:scope IS NULL OR CAST(t.scope AS string) = :scope)
-                AND (:type IS NULL OR CAST(t.type AS string) = :type)
-           """
-    )
-    Page<Long> findIdsByFiltersOtherSort(
             @Param("searchKey") String searchKey,
             @Param("status") String status,
             @Param("scope") String scope,

@@ -2,6 +2,7 @@ package com.sb.sfrigola_core.domains.tags.enums;
 
 import com.fasterxml.jackson.annotation.JsonCreator;
 import com.fasterxml.jackson.annotation.JsonValue;
+import com.sb.sfrigola_core.common.exception.ex.SCEnumValidationException;
 import lombok.Getter;
 
 import java.util.Arrays;
@@ -23,6 +24,7 @@ public enum TagStatus {
         return Arrays.stream(values())
                 .filter(status -> status.value.equalsIgnoreCase(value))
                 .findFirst()
-                .orElseThrow(() -> new IllegalArgumentException("Invalid tag status: " + value + " Accepted values: " + Arrays.toString(values())));
+                .orElseThrow(() -> new SCEnumValidationException(
+                        TagStatus.class.getSimpleName(), value, values(), TagStatus::getValue));
     }
 }
