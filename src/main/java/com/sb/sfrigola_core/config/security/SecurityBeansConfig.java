@@ -65,6 +65,7 @@ public class SecurityBeansConfig {
         return List.of(
                 "/api/recipes",
                 "/api/recipes/home/category/**",
+                "/api/recipes/feed/**",
                 "/api/recipes/search/**",
                 "/api/recipes/details/**"
         );

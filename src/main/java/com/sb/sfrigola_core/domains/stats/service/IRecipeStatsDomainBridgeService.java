@@ -2,6 +2,8 @@ package com.sb.sfrigola_core.domains.stats.service;
 
 import com.sb.sfrigola_core.domains.recipes.entity.Recipe;
 import com.sb.sfrigola_core.domains.stats.entity.RecipeStats;
+import org.springframework.data.domain.Page;
+import org.springframework.data.domain.Pageable;
 
 import java.util.List;
 import java.util.Map;
@@ -28,6 +30,29 @@ public interface IRecipeStatsDomainBridgeService {
      *         if no stats row exists yet (i.e. the recipe has never been favorited or rated)
      */
     Optional<RecipeStats> getStats(Long recipeId);
+
+    /**
+     * Returns the top 10 recipes ranked by virality (most favorited first), for the VIRAL home
+     * feed row.
+     *
+     * @param categoryIds internal category IDs to restrict to (as resolved by the recipes domain's
+     *                     {@code resolveCategoryFilterIds}); {@code null} means no restriction
+     * @return recipe ID → {@link RecipeStats}, at most 10 entries, ordered by {@code favoritesCount}
+     *         descending; never {@code null}
+     */
+    Map<Long, RecipeStats> getPreviewByStats(List<Long> categoryIds);
+
+    /**
+     * Returns a full page of published recipe IDs ranked by virality (most favorited first), for
+     * the paginated VIRAL feed row (unlike {@link #getPreviewByStats}, which is capped at a fixed
+     * top-10 for the home-feed preview). Recipes with no {@code recipe_stats} row (never favorited
+     * or rated) are excluded entirely rather than sorted last.
+     *
+     * @param pageable page/size to fetch; any sort it carries is ignored, ordering is always by
+     *                 {@code favoritesCount} descending
+     * @return a {@link Page} of recipe IDs, ordered by {@code favoritesCount} descending; never {@code null}
+     */
+    Page<Long> getPublishedRecipeIdsOrderByFavoritesDesc(Pageable pageable);
 
     /**
      * Batch variant of {@link #getStats}: returns the stats row for every recipe in

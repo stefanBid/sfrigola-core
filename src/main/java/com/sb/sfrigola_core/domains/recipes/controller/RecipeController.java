@@ -48,6 +48,22 @@ public class RecipeController {
     }
 
     // [Public]
+    @GetMapping(value = "feed/{feedType}", version = "1.0")
+    public ResponseEntity<SCGeneralResponseDto<List<RecipeDto>, SCPagedOptionDto>> getRecipesByGroup(
+            @PathVariable(value = "feedType") String feedType,
+            @Min(value = 0, message = SCRequestParamValidationCodeConstants.PAGE_MUST_BE_AT_LEAST_ZERO)
+            @RequestParam(value = "page", required = false, defaultValue = "0") int page,
+            @Min(value = 1, message = SCRequestParamValidationCodeConstants.TAKE_MUST_BE_AT_LEAST_ONE) @Max(value = 100, message = SCRequestParamValidationCodeConstants.TAKE_MUST_BE_AT_MOST_HUNDRED)
+            @RequestParam(value = "take", required = false, defaultValue = "10") int take,
+            @RequestParam(required = false) @NotBlank(message = SCRequestParamValidationCodeConstants.LOCALE_MUST_NOT_BE_BLANK) String locale
+    ){
+
+        var filterQuery = SCFilterQuery.pagedOnly(take, page);
+        var paginatedSpecificRecipeFeed = recipeService.getAllByFeed(FeedType.fromString(feedType), filterQuery, locale);
+        return ResponseEntity.ok(SCGeneralResponseDto.success(paginatedSpecificRecipeFeed.content(), paginatedSpecificRecipeFeed.pagedOptionDto()));
+    }
+
+    // [Public]
     @GetMapping(value = {"/search", "/search/category/{categoryId}"}, version = "1.0")
     public ResponseEntity<SCGeneralResponseDto<List<RecipeDto>, SCPagedOptionDto>> searchRecipes(
             @PathVariable(value = "categoryId", required = false) UUID categoryId,

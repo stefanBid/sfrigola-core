@@ -45,6 +45,7 @@ import jakarta.annotation.Nullable;
 import lombok.RequiredArgsConstructor;
 import org.jspecify.annotations.NonNull;
 import org.springframework.data.domain.Page;
+import org.springframework.data.domain.Pageable;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -75,26 +76,57 @@ public class RecipeServiceImpl implements IRecipeService {
         List<Long> categoryCalculatedIds = resolveCategoryFilterIds(categoryId);
         Long userId = resolveUserIdOrNull(SCAuthenticationUtils.getAuthUserByContextHolder());
 
-        // VIRAL FEED (Not Implemented yet)
-
         Map<FeedType, RecipesFeedDto> homeFeed = new EnumMap<>(FeedType.class);
+
+        // VIRAL FEED - stats data of recipes
+        var viralRecipesMap = recipeStatsDomainBridgeService.getPreviewByStats(categoryCalculatedIds);
+        homeFeed.put(FeedType.VIRAL, new RecipesFeedDto(getFeedGroupPreviewViral(viralRecipesMap.keySet().stream().toList(),locale, userId), (short) 0));
 
         // QUICK FEED — shortest prep + cook time first
         var quickFilter = new RecipeSpecificFilter(null, null, null, null, null, null, true);
         var quickFilterQuery = SCFilterQuery.powerful(null, RecipeSortField.TOTAL_TIME_MIN, SortDirection.ASC, 10, 0, quickFilter);
-        homeFeed.put(FeedType.QUICK, new RecipesFeedDto(getFilteredPublished(quickFilterQuery, categoryCalculatedIds, locale, userId), (short) 0));
+        homeFeed.put(FeedType.QUICK, new RecipesFeedDto(getFeedGroupPreview(quickFilterQuery, categoryCalculatedIds, locale, userId), (short) 1));
 
         // LIKE_A_CHEF FEED — hard difficulty, longest prep + cook time first
         var gourmetFilter = new RecipeSpecificFilter(DifficultyLevel.HARD, null, null, null, null, null, true);
         var gourmetFilterQuery = SCFilterQuery.powerful(null, RecipeSortField.TOTAL_TIME_MIN, SortDirection.DESC, 10, 0, gourmetFilter);
-        homeFeed.put(FeedType.LIKE_A_CHEF, new RecipesFeedDto(getFilteredPublished(gourmetFilterQuery, categoryCalculatedIds, locale, userId), (short) 1));
+        homeFeed.put(FeedType.LIKE_A_CHEF, new RecipesFeedDto(getFeedGroupPreview(gourmetFilterQuery, categoryCalculatedIds, locale, userId), (short) 2));
 
         // ECONOMICAL FEED — lowest ingredient-count-to-servings ratio first
         var economicalFilter = new RecipeSpecificFilter(null, null, null, null, null, null, true);
         var economicalFilterQuery = SCFilterQuery.powerful(null, RecipeSortField.ECONOMICAL_RATIO, SortDirection.ASC, 10, 0, economicalFilter);
-        homeFeed.put(FeedType.ECONOMICAL, new RecipesFeedDto(getFilteredPublished(economicalFilterQuery,categoryCalculatedIds, locale, userId), (short) 2));
+        homeFeed.put(FeedType.ECONOMICAL, new RecipesFeedDto(getFeedGroupPreview(economicalFilterQuery,categoryCalculatedIds, locale, userId), (short) 3));
 
         return homeFeed;
+    }
+
+    @Override
+    public SCPagedResult<RecipeDto> getAllByFeed(@NonNull FeedType feedType, SCFilterQuery<Void> filterQuery, @NonNull String locale) {
+        languageDomainBridgeService.validateLocaleIsActiveOrThrow(locale);
+
+        Long userId = resolveUserIdOrNull(SCAuthenticationUtils.getAuthUserByContextHolder());
+
+        return switch (feedType) {
+            case QUICK -> {
+                var filter = new RecipeSpecificFilter(null, null, null, null, null, null, true);
+                var feedFilterQuery = SCFilterQuery.powerful(null, RecipeSortField.TOTAL_TIME_MIN, SortDirection.ASC, filterQuery.take(), filterQuery.page(), filter);
+                yield getFeedGroupPage(feedFilterQuery, locale, userId);
+            }
+            case LIKE_A_CHEF -> {
+                var filter = new RecipeSpecificFilter(DifficultyLevel.HARD, null, null, null, null, null, true);
+                var feedFilterQuery = SCFilterQuery.powerful(null, RecipeSortField.TOTAL_TIME_MIN, SortDirection.DESC, filterQuery.take(), filterQuery.page(), filter);
+                yield getFeedGroupPage(feedFilterQuery, locale, userId);
+            }
+            case ECONOMICAL -> {
+                var filter = new RecipeSpecificFilter(null, null, null, null, null, null, true);
+                var feedFilterQuery = SCFilterQuery.powerful(null, RecipeSortField.ECONOMICAL_RATIO, SortDirection.ASC, filterQuery.take(), filterQuery.page(), filter);
+                yield getFeedGroupPage(feedFilterQuery, locale, userId);
+            }
+            case VIRAL -> {
+                var pageable = SCPaginationUtils.toPageable(filterQuery);
+                yield getFeedGroupPageViral(pageable, locale, userId);
+            }
+        };
     }
 
     @Override
@@ -564,7 +596,7 @@ public class RecipeServiceImpl implements IRecipeService {
      *                             or {@code null} if anonymous — passed down instead of re-resolved per row
      * @return recipes for this row, empty if none match
      */
-    private List<RecipeDto> getFilteredPublished(SCFilterQuery<RecipeSpecificFilter> filterQuery, List<Long> categoryCalculatedIds, @NonNull String locale, @Nullable Long userId) {
+    private List<RecipeDto> getFeedGroupPreview(SCFilterQuery<RecipeSpecificFilter> filterQuery, List<Long> categoryCalculatedIds, @NonNull String locale, @Nullable Long userId) {
         var pageable = SCPaginationUtils.toPageable(filterQuery);
         var filter = filterQuery.other();
 
@@ -595,6 +627,94 @@ public class RecipeServiceImpl implements IRecipeService {
 
 
         return List.of(); // Placeholder
+    }
+
+    private List<RecipeDto> getFeedGroupPreviewViral(List<Long> recipeIds, @NonNull String locale, @Nullable Long userId) {
+        if (recipeIds.isEmpty()) return List.of();
+
+        Map<Long, Recipe> byId = recipeRepository.findByIdsWithSpecificTranslation(recipeIds, locale)
+                .stream().collect(Collectors.toMap(Recipe::getId, r -> r));
+        List<Recipe> ordered = recipeIds.stream().map(byId::get).filter(Objects::nonNull).filter(Recipe::isPublished).toList();
+
+        // Decorate Ordered Recipe with info like favourites and stats
+        List<DecorateRecipe> decorateRecipes = decorateRecipes(ordered, userId);
+        return decorateRecipes.stream().map(this::toRecipeDto).toList();
+    }
+
+    /**
+     * Runs one full, paginated "see all" feed page for {@link #getAllByFeed} (QUICK, LIKE_A_CHEF,
+     * ECONOMICAL): same underlying query as {@link #getFeedGroupPreview}, but returns the real
+     * {@link SCPagedResult} (total elements/pages) instead of a capped, unpaginated top-N list —
+     * {@link #getFeedGroupPreview} is for the fixed-size home-feed row preview, this is for the
+     * full listing behind it. Never restricted to a category, unlike {@link #getFeedGroupPreview}.
+     *
+     * @param filterQuery pagination plus this feed's fixed sort field/direction and dietary/difficulty filter
+     * @param locale      locale used both to filter (recipe must have a translation for it) and to localize the result
+     * @param userId      internal ID of the authenticated user resolved once by {@link #getAllByFeed},
+     *                    or {@code null} if anonymous — passed down instead of re-resolved here
+     * @return a {@link SCPagedResult} of {@link RecipeDto}; never {@code null}
+     */
+    private SCPagedResult<RecipeDto> getFeedGroupPage(SCFilterQuery<RecipeSpecificFilter> filterQuery, @NonNull String locale, @Nullable Long userId) {
+        var pageable = SCPaginationUtils.toPageable(filterQuery);
+        var filter = filterQuery.other();
+
+        var recipeIdsPage = recipeRepository.findIdsByFiltersAndLocaleOtherSort(
+                locale,
+                filterQuery.searchKey(),
+                true,
+                filter.difficulty() != null ? filter.difficulty().getValue() : null,
+                filter.mealType() != null ? filter.mealType().getValue() : null,
+                filter.season() != null ? filter.season().getValue() : null,
+                filter.isVegetarian(),
+                filter.isVegan(),
+                filter.isGlutenFree(),
+                null,
+                pageable
+        );
+
+        if (recipeIdsPage.hasContent()) {
+            var ids = recipeIdsPage.getContent();
+            Map<Long, Recipe> byId = recipeRepository.findByIdsWithSpecificTranslation(ids, locale)
+                    .stream().collect(Collectors.toMap(Recipe::getId, r -> r));
+            List<Recipe> ordered = ids.stream().map(byId::get).filter(Objects::nonNull).toList();
+
+            List<DecorateRecipe> decoratedRecipes = decorateRecipes(ordered, userId);
+            return new SCPagedResult<>(
+                    decoratedRecipes.stream().map(this::toRecipeDto).toList(),
+                    SCPaginationUtils.toPagedOption(recipeIdsPage)
+            );
+        }
+        return SCPagedResult.empty();
+    }
+
+    /**
+     * Runs one full, paginated VIRAL feed page for {@link #getAllByFeed}: recipe IDs come from
+     * {@link IRecipeStatsDomainBridgeService#getPublishedRecipeIdsOrderByFavoritesDesc}
+     * (most favorited first, drafts and never-favorited/rated recipes excluded) rather than from
+     * {@link IRecipeRepository}'s filter queries used by {@link #getFeedGroupPage}.
+     *
+     * @param pageable page/size only — VIRAL's ordering is fixed by the stats bridge, not client-supplied
+     * @param locale   locale used both to filter (recipe must have a translation for it) and to localize the result
+     * @param userId   internal ID of the authenticated user resolved once by {@link #getAllByFeed},
+     *                 or {@code null} if anonymous — passed down instead of re-resolved here
+     * @return a {@link SCPagedResult} of {@link RecipeDto}; never {@code null}
+     */
+    private SCPagedResult<RecipeDto> getFeedGroupPageViral(Pageable pageable, @NonNull String locale, @Nullable Long userId) {
+        var recipeIdsPage = recipeStatsDomainBridgeService.getPublishedRecipeIdsOrderByFavoritesDesc(pageable);
+
+        if (recipeIdsPage.hasContent()) {
+            var ids = recipeIdsPage.getContent();
+            Map<Long, Recipe> byId = recipeRepository.findByIdsWithSpecificTranslation(ids, locale)
+                    .stream().collect(Collectors.toMap(Recipe::getId, r -> r));
+            List<Recipe> ordered = ids.stream().map(byId::get).filter(Objects::nonNull).toList();
+
+            List<DecorateRecipe> decoratedRecipes = decorateRecipes(ordered, userId);
+            return new SCPagedResult<>(
+                    decoratedRecipes.stream().map(this::toRecipeDto).toList(),
+                    SCPaginationUtils.toPagedOption(recipeIdsPage)
+            );
+        }
+        return SCPagedResult.empty();
     }
 
     /**

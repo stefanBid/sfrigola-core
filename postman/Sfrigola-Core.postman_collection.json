@@ -18,7 +18,8 @@
     { "key": "tagId", "value": "", "type": "string" },
     { "key": "ingredientId", "value": "", "type": "string" },
     { "key": "it", "value": "it", "type": "string" },
-    { "key": "approved", "value": "approved", "type": "string" }
+    { "key": "approved", "value": "approved", "type": "string" },
+    { "key": "feedType", "value": "quick", "type": "string" }
   ],
   "item": [
     {
@@ -581,6 +582,24 @@
               "host": ["{{baseUrl}}"],
               "path": ["recipes", "home", "category", "{{categoryId}}"],
               "query": [{ "key": "locale", "value": "en" }]
+            }
+          },
+          "response": []
+        },
+        {
+          "name": "[Public] Get Recipes By Feed Group",
+          "request": {
+            "auth": { "type": "noauth" },
+            "method": "GET",
+            "url": {
+              "raw": "{{baseUrl}}/recipes/feed/{{feedType}}?page=0&take=10&locale=en",
+              "host": ["{{baseUrl}}"],
+              "path": ["recipes", "feed", "{{feedType}}"],
+              "query": [
+                { "key": "page", "value": "0" },
+                { "key": "take", "value": "10" },
+                { "key": "locale", "value": "en" }
+              ]
             }
           },
           "response": []

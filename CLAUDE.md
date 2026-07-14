@@ -719,6 +719,18 @@ Jakarta Validation on DTOs. Message constants in `SCRequestParamValidationCodeCo
 
 ---
 
+## Postman Collection
+
+`postman/Sfrigola-Core.postman_collection.json` must stay in sync with every new/changed endpoint.
+
+- **Every path variable in a request's URL must be a collection variable** (`{{name}}`), both in `url.raw` and in the `url.path` array — never a hardcoded literal segment (e.g. `"QUICK"`, `"en"` typed straight into the path). Follow the existing pattern: `{{publicId}}`, `{{categoryId}}`, `{{it}}`, `{{approved}}`.
+- Declare new path variables in the collection-level `variable` array (top of the file) with a sensible default value, the same way `feedType`, `approved`, `it` are declared — don't invent a one-off local variable scoped to a single request.
+- Query params always go in the `query` array (mirroring `url.raw`), `disabled: true` for optional ones with no default worth pre-filling — same pattern as `searchKey`, `isActive`, etc.
+- Public (`noauth`) endpoints get `"auth": { "type": "noauth" }` on the request, matching the controller's `[Public]` marker.
+- New requests go in the folder matching their domain, in the same order as the controller's methods.
+
+---
+
 ## Code Conventions
 
 - Classes: `PascalCase`

@@ -49,6 +49,30 @@ public interface IRecipeService {
     Map<FeedType, RecipesFeedDto> getAllHomeFeed(@NonNull UUID categoryId, @NonNull String locale);
 
     /**
+     * Returns a full paginated listing of published recipes for a single {@link FeedType}, ranked
+     * by that feed's own criterion — unlike {@link #getAllHomeFeed}, which returns a fixed,
+     * unpaginated top-N row per feed type for the home page preview, this is the "see all" view
+     * for one specific row, spanning every category. Only published recipes with a translation
+     * for {@code locale} are considered.
+     * <ul>
+     *     <li>{@link FeedType#QUICK}: shortest {@code prepTimeMin + cookTimeMin} first.</li>
+     *     <li>{@link FeedType#LIKE_A_CHEF}: {@code difficulty = hard}, longest
+     *     {@code prepTimeMin + cookTimeMin} first.</li>
+     *     <li>{@link FeedType#ECONOMICAL}: lowest ingredient-count-to-servings ratio first.</li>
+     *     <li>{@link FeedType#VIRAL}: most favorited first (recipes never favorited or rated
+     *     are excluded, not sorted last), sourced from {@link com.sb.sfrigola_core.domains.stats.service.IRecipeStatsDomainBridgeService}.</li>
+     * </ul>
+     *
+     * @param feedType    which feed row to list; its ranking criterion is fixed, not client-supplied
+     * @param filterQuery pagination only — {@code page}/{@code take}; any {@code sortBy}/{@code searchKey} is ignored
+     * @param locale      BCP-47 language code used to filter and localize results
+     * @return a {@link SCPagedResult} of {@link RecipeDto}; never {@code null}
+     * @throws LocaleNotActiveException
+     *         if {@code locale} does not match an active language (thrown by the languages domain bridge)
+     */
+    SCPagedResult<RecipeDto> getAllByFeed(@NonNull FeedType feedType, SCFilterQuery<Void> filterQuery, @NonNull String locale);
+
+    /**
      * Returns a paginated admin preview of ALL recipes (published and draft), including
      * localization coverage counts (present and missing) to support CMS overviews.
      * Only recipes that have a translation for {@code locale} are returned; the preview uses
