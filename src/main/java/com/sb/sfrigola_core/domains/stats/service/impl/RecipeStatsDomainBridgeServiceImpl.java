@@ -1,10 +1,16 @@
 package com.sb.sfrigola_core.domains.stats.service.impl;
 
+import com.sb.sfrigola_core.common.enums.SortDirection;
+import com.sb.sfrigola_core.common.models.contracts.SCFilterQuery;
+import com.sb.sfrigola_core.common.util.SCPaginationUtils;
 import com.sb.sfrigola_core.domains.recipes.entity.Recipe;
 import com.sb.sfrigola_core.domains.stats.entity.RecipeStats;
+import com.sb.sfrigola_core.domains.stats.enums.RecipeStatsSortField;
 import com.sb.sfrigola_core.domains.stats.repository.IRecipeStatsRepository;
 import com.sb.sfrigola_core.domains.stats.service.IRecipeStatsDomainBridgeService;
 import lombok.RequiredArgsConstructor;
+import org.springframework.data.domain.Page;
+import org.springframework.data.domain.Pageable;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -34,6 +40,19 @@ public class RecipeStatsDomainBridgeServiceImpl implements IRecipeStatsDomainBri
         if (recipeIds.isEmpty()) return Map.of();
         return recipeStatsRepository.findAllById(recipeIds).stream()
                 .collect(Collectors.toMap(RecipeStats::getRecipeId, Function.identity()));
+    }
+
+    @Override
+    public Map<Long, RecipeStats> getPreviewByStats(List<Long> categoryIds) {
+        var filterQuery = SCFilterQuery.essential(RecipeStatsSortField.FAVORITES_COUNT, SortDirection.DESC, 10, 0);
+
+        return recipeStatsRepository.findAllByCategoryIds(categoryIds, SCPaginationUtils.toPageable(filterQuery)).stream()
+                .collect(Collectors.toMap(RecipeStats::getRecipeId, Function.identity()));
+    }
+
+    @Override
+    public Page<Long> getPublishedRecipeIdsOrderByFavoritesDesc(Pageable pageable) {
+        return recipeStatsRepository.findPublishedRecipeIdsOrderByFavoritesDesc(pageable);
     }
 
     @Override
