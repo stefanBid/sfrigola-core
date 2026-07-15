@@ -102,14 +102,10 @@
           "request": {
             "method": "GET",
             "url": {
-              "raw": "{{baseUrl}}/languages?page=0&take=10&sortBy=name&sort=asc",
+              "raw": "{{baseUrl}}/languages",
               "host": ["{{baseUrl}}"],
               "path": ["languages"],
               "query": [
-                { "key": "page", "value": "0" },
-                { "key": "take", "value": "10" },
-                { "key": "sortBy", "value": "name" },
-                { "key": "sort", "value": "asc" },
                 { "key": "isActive", "value": "", "disabled": true }
               ]
             }
