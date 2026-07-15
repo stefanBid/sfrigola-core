@@ -21,6 +21,7 @@ import com.sb.sfrigola_core.domains.languages.service.ILanguageDomainBridgeServi
 import lombok.RequiredArgsConstructor;
 import org.jspecify.annotations.NonNull;
 import org.jspecify.annotations.Nullable;
+import org.springframework.cache.annotation.CacheEvict;
 import org.springframework.data.domain.Page;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
@@ -44,7 +45,7 @@ public class CategoryServiceImpl implements ICategoryService {
 
         // Step 1: Fetch the IDs of active categories for the given locale
         // Remove Category that are inactive or translation that are not in the given locale
-        var categoryIds = categoryRepository.findIdsByLocaleAndIsActiveAndSearchKeyAsc(locale,true,null, pageable);
+        var categoryIds = categoryRepository.findIdsForViewUse(locale, pageable);
 
         // Step 2: Fetch and restore the ordered ID sequence from step 1
         if(categoryIds.hasContent()) {
@@ -122,6 +123,7 @@ public class CategoryServiceImpl implements ICategoryService {
 
     @Override
     @Transactional
+    @CacheEvict(value = "categories", allEntries = true)
     public CategoryPreviewAdminDto createNewCategory(AddCategoryDto addCategoryDto, @Nullable UUID parentPublicId, @NonNull String locale) {
         // SLUG CHECK: If slug already exists, throw an exception
         if (categoryRepository.existsBySlug(addCategoryDto.slug()))
@@ -183,6 +185,7 @@ public class CategoryServiceImpl implements ICategoryService {
 
     @Override
     @Transactional
+    @CacheEvict(value = "categories", allEntries = true)
     public CategoryPreviewAdminDto updateCategory(UpdateCategoryDto updateCategoryDto, UUID publicId) {
 
         // ID CHECK: If the public id passed match an existing Category
@@ -226,6 +229,7 @@ public class CategoryServiceImpl implements ICategoryService {
 
     @Override
     @Transactional
+    @CacheEvict(value = "categories", allEntries = true)
     public UUID deleteCategory(UUID publicId) {
         // ID CHECK: If the public id passed match an existing Category
         var categoryToDelete = categoryRepository.findByPublicId(publicId)
@@ -241,6 +245,7 @@ public class CategoryServiceImpl implements ICategoryService {
 
     @Override
     @Transactional
+    @CacheEvict(value = "categories", allEntries = true)
     public List<CategoryPreviewAdminDto> reorderCategories(ReorderedCategoriesTreeDto reorderDto) {
         // PARENT CHECK: If parentPublicId is present, check if it exists
         Long parentId = null;
