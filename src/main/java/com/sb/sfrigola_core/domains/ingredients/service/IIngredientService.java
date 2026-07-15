@@ -72,7 +72,7 @@ public interface IIngredientService {
      *         if an ingredient with the same slug already exists
      * @throws com.sb.sfrigola_core.domains.ingredients.exception.DuplicateIngredientLocaleException
      *         if the same locale appears more than once in {@code inputDto}
-     * @throws com.sb.sfrigola_core.domains.ingredients.exception.IngredientLanguageNotActiveException
+     * @throws com.sb.sfrigola_core.domains.languages.exception.LocaleNotActiveException
      *         if a translation references a language that is not active
      * @throws com.sb.sfrigola_core.domains.ingredients.exception.MissingIngredientLocalesException
      *         if {@code addIngredientDto.translations()} does not cover all active languages
@@ -92,7 +92,7 @@ public interface IIngredientService {
      *         if no ingredient exists with the given public ID
      * @throws com.sb.sfrigola_core.domains.ingredients.exception.IngredientSlugAlreadyExistsException
      *         if the new slug is already used by another ingredient
-     * @throws com.sb.sfrigola_core.domains.ingredients.exception.IngredientLanguageNotActiveException
+     * @throws com.sb.sfrigola_core.domains.languages.exception.LocaleNotActiveException
      *         if {@code updateIngredientDto.specificTranslation()} references a language that is not active
      */
     IngredientPreviewAdminDto updateIngredient(UUID publicId, UpdateIngredientDto updateIngredientDto);

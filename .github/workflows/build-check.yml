@@ -25,7 +25,7 @@ jobs:
     # Postgres, ddl-auto=none means the schema must be loaded explicitly (see step below).
     services:
       postgres:
-        image: postgres:16.14
+        image: postgres:16.14-alpine
         env:
           POSTGRES_DB: sfrigola_db
           POSTGRES_USER: berau

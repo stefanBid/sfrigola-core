@@ -449,6 +449,7 @@ Base path: `/sfrigola-core`
 | Method | Path | Access | Notes |
 |--------|------|--------|-------|
 | GET | `/recipes/home/category/{categoryId}` | public | fixed short rows per `FeedType` (QUICK, LIKE_A_CHEF, ECONOMICAL; VIRAL not yet implemented) |
+| GET | `/recipes/feed/{feedType}` | public | paginated recipe feed-group; `feedType` is any `FeedType` (QUICK, LIKE_A_CHEF, ECONOMICAL, VIRAL — VIRAL routed through `IRecipeStatsDomainBridgeService` instead of the filter repository) |
 | GET | `/recipes/search`, `/recipes/search/category/{categoryId}` | public | paginated, `searchKey` matches title/description |
 | GET | `/recipes/favorites` | authenticated | the authenticated user's favorited recipes — see Favorites section below for why this lives here |
 | GET | `/recipes/details/{publicId}` | public | draft recipes 404 exactly like non-existent ones |

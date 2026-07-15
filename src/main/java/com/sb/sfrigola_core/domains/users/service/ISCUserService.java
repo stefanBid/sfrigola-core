@@ -22,7 +22,7 @@ public interface ISCUserService {
      *
      * @param dto DTO containing the fields to update (first name, last name, avatar, bio)
      * @return updated user data as {@link SCUserDto}
-     * @throws jakarta.persistence.EntityNotFoundException if the authenticated user is not found in the database
+     * @throws com.sb.sfrigola_core.domains.users.exceptions.NoUserFoundException if the authenticated user is not found in the database
      */
     SCUserDto updateProfile(UpdateProfileDto dto);
 
@@ -44,7 +44,7 @@ public interface ISCUserService {
      * @param active   {@code true} to activate, {@code false} to deactivate
      * @return updated user data as {@link SCUserDto}
      * @throws com.sb.sfrigola_core.domains.users.exceptions.SCCanNotActiveOrDeactivateYourselfException if the admin targets themselves
-     * @throws jakarta.persistence.EntityNotFoundException if no user with the given public ID exists
+     * @throws com.sb.sfrigola_core.domains.users.exceptions.NoUserFoundException if no user with the given public ID exists
      * @throws com.sb.sfrigola_core.common.exception.ex.SCNoRowsAffectedException if no rows were updated
      */
     SCUserDto setUserActive(UUID publicId, boolean active);

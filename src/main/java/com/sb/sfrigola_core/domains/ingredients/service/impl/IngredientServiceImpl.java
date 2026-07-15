@@ -13,7 +13,6 @@ import com.sb.sfrigola_core.domains.ingredients.entity.Ingredient;
 import com.sb.sfrigola_core.domains.ingredients.entity.IngredientTag;
 import com.sb.sfrigola_core.domains.ingredients.entity.IngredientTranslation;
 import com.sb.sfrigola_core.domains.ingredients.exception.DuplicateIngredientLocaleException;
-import com.sb.sfrigola_core.domains.ingredients.exception.IngredientLanguageNotActiveException;
 import com.sb.sfrigola_core.domains.ingredients.exception.IngredientSlugAlreadyExistsException;
 import com.sb.sfrigola_core.domains.ingredients.exception.MissingIngredientLocalesException;
 import com.sb.sfrigola_core.domains.ingredients.exception.NoIngredientFoundException;
@@ -212,8 +211,7 @@ public class IngredientServiceImpl implements IIngredientService {
 
         // TRANSLATION CHECK: Update translation is of an active locale
         var activeLangMap = languageDomainBridgeService.getActiveLanguageEntitiesMap();
-        Language lang = activeLangMap.get(updateIngredientDto.specificTranslation().langCode());
-        if (lang == null) throw new IngredientLanguageNotActiveException(updateIngredientDto.specificTranslation().langCode());
+        Language lang = languageDomainBridgeService.getLangFromEntitiesMapFromKeyOrThrow(activeLangMap, updateIngredientDto.specificTranslation().langCode());
 
         var ingredientTranslationToUpdate = ingredientToUpdate.getTranslations().stream()
                 .filter(t -> t.getLanguage().getCode().equals(updateIngredientDto.specificTranslation().langCode()))
