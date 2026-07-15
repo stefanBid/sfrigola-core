@@ -21,6 +21,23 @@ jobs:
     # github.event.pull_request is null, so the check evaluates to true.
     if: github.event.pull_request.draft != true
 
+    # Same image/credentials as docker-compose.yaml - contextLoads (@SpringBootTest) needs a real
+    # Postgres, ddl-auto=none means the schema must be loaded explicitly (see step below).
+    services:
+      postgres:
+        image: postgres:16.14
+        env:
+          POSTGRES_DB: sfrigola_db
+          POSTGRES_USER: berau
+          POSTGRES_PASSWORD: admin
+        ports:
+          - 5432:5432
+        options: >-
+          --health-cmd="pg_isready -U berau -d sfrigola_db"
+          --health-interval=10s
+          --health-timeout=5s
+          --health-retries=5
+
     steps:
       # Checkout repository code
       - name: Checkout code
@@ -34,6 +51,12 @@ jobs:
           distribution: 'temurin'
           cache: 'maven'
 
-      # Compile the project (no tests present)
-      - name: Build with Maven (compile only)
-        run: mvn -B clean compile
+      # Service containers start before checkout, so the init-script volume trick from
+      # docker-compose.yaml doesn't apply here - load the schema explicitly instead.
+      - name: Load DB schema
+        env:
+          PGPASSWORD: admin
+        run: psql -h localhost -U berau -d sfrigola_db -f src/main/resources/sql/createSfrigolaDB.sql
+
+      - name: Build with Maven
+        run: mvn -B clean test
