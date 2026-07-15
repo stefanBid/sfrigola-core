@@ -13,11 +13,11 @@ import com.sb.sfrigola_core.domains.users.dto.UpdateProfileDto;
 import com.sb.sfrigola_core.domains.users.entity.SCUser;
 import com.sb.sfrigola_core.common.enums.SCUserRole;
 import com.sb.sfrigola_core.domains.users.exceptions.NoChangeRoleToAdminException;
+import com.sb.sfrigola_core.domains.users.exceptions.NoUserFoundException;
 import com.sb.sfrigola_core.domains.users.exceptions.SCCanNotActiveOrDeactivateYourselfException;
 import com.sb.sfrigola_core.domains.users.repository.ISCUserRepository;
 import com.sb.sfrigola_core.domains.users.service.ISCUserService;
 import jakarta.annotation.Nullable;
-import jakarta.persistence.EntityNotFoundException;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
@@ -38,7 +38,7 @@ public class SCUserServiceImpl implements ISCUserService {
     public SCUserDto updateProfile(UpdateProfileDto dto) {
         var authUser = SCAuthenticationUtils.getAuthUserByContextHolder();
         SCUser user = userRepository.findByPublicId(authUser.publicId())
-                .orElseThrow(() -> new EntityNotFoundException("User not found: " + authUser.publicId()));
+                .orElseThrow(() -> new NoUserFoundException(authUser.publicId()));
 
         if (dto.firstName() != null && !dto.firstName().equals(user.getFirstName())) user.setFirstName(dto.firstName());
         if (dto.lastName()  != null && !dto.lastName().equals(user.getLastName()))   user.setLastName(dto.lastName());
@@ -84,7 +84,7 @@ public class SCUserServiceImpl implements ISCUserService {
         }
 
         var scUserByPublicId = userRepository.findByPublicId(publicId)
-                .orElseThrow(() -> new EntityNotFoundException("User not found with public ID: " + publicId));
+                .orElseThrow(() -> new NoUserFoundException(publicId));
         if (scUserByPublicId.isActive() == active) {
             return convertToExternalDto(scUserByPublicId);
         }
