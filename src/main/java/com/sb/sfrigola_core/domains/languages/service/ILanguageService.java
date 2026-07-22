@@ -1,8 +1,8 @@
 package com.sb.sfrigola_core.domains.languages.service;
 
-import com.sb.sfrigola_core.common.models.contracts.SCFilterQuery;
-import com.sb.sfrigola_core.common.models.contracts.SCPagedResult;
 import com.sb.sfrigola_core.domains.languages.dto.LanguageDto;
+
+import java.util.List;
 
 /**
  * Contract for language management operations.
@@ -12,13 +12,12 @@ import com.sb.sfrigola_core.domains.languages.dto.LanguageDto;
 public interface ILanguageService {
 
     /**
-     * Returns a paginated list of languages, optionally filtered by active status.
+     * Returns the list of languages, optionally filtered by active status.
      *
-     * @param filterQuery pagination and sorting parameters
-     * @param isActive    {@code true} to return only active languages, {@code false} or {@code null} to return all languages regardless of status
-     * @return paginated result wrapping a list of {@link LanguageDto}
+     * @param isActive {@code true} to return only active languages, {@code false} or {@code null} to return all languages regardless of status
+     * @return list of {@link LanguageDto}
      */
-    SCPagedResult<LanguageDto> getAllLanguages(SCFilterQuery<Void> filterQuery, Boolean isActive);
+    List<LanguageDto> getAllLanguages(Boolean isActive);
 
 
     /**

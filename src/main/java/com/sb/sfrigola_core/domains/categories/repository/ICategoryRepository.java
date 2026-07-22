@@ -1,6 +1,7 @@
 package com.sb.sfrigola_core.domains.categories.repository;
 
 import com.sb.sfrigola_core.domains.categories.entity.Category;
+import org.springframework.cache.annotation.Cacheable;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
 import org.springframework.data.jpa.repository.JpaRepository;
@@ -19,6 +20,25 @@ public interface ICategoryRepository extends JpaRepository<Category, Long> {
                OR (:parentId IS NOT NULL AND c.parent.id = :parentId)
             """)
     Integer findMaxSortOrderInGroup(@Param("parentId") Long parentId);
+
+    @Cacheable(value = "categories", key = "'categories_' + #locale + '_' + #pageable.pageNumber + '_' + #pageable.pageSize")
+    @Query(value = """
+            SELECT c.id FROM Category c
+            LEFT JOIN c.parent p
+            LEFT JOIN c.translations t ON t.language.code = :locale
+            WHERE ( c.isActive = true)
+            ORDER BY COALESCE(p.sortOrder, c.sortOrder) ASC,
+                     CASE WHEN p IS NULL THEN 0 ELSE 1 END ASC,
+                     c.sortOrder ASC
+            """,
+            countQuery = """
+            SELECT COUNT(c.id) FROM Category c
+            LEFT JOIN c.translations t ON t.language.code = :locale
+            WHERE ( c.isActive = true)
+            """)
+    Page<Long> findIdsForViewUse(
+            @Param("locale") String locale,
+            Pageable pageable);
 
     @Query(value = """
             SELECT c.id FROM Category c

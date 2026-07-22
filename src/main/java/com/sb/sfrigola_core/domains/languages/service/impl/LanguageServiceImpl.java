@@ -1,8 +1,5 @@
 package com.sb.sfrigola_core.domains.languages.service.impl;
 
-import com.sb.sfrigola_core.common.models.contracts.SCFilterQuery;
-import com.sb.sfrigola_core.common.models.contracts.SCPagedResult;
-import com.sb.sfrigola_core.common.util.SCPaginationUtils;
 import com.sb.sfrigola_core.domains.languages.dto.LanguageDto;
 import com.sb.sfrigola_core.domains.languages.entity.Language;
 import com.sb.sfrigola_core.domains.languages.exception.NoValidLangCodeToChangeException;
@@ -11,6 +8,8 @@ import com.sb.sfrigola_core.domains.languages.service.ILanguageService;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
+
+import java.util.List;
 
 @Service
 @Transactional(readOnly = true)
@@ -21,16 +20,12 @@ public class LanguageServiceImpl implements ILanguageService {
 
 
     @Override
-    public SCPagedResult<LanguageDto> getAllLanguages(SCFilterQuery<Void> filterQuery, Boolean isActive) {
-        var pageable = SCPaginationUtils.toPageable(filterQuery);
+    public List<LanguageDto> getAllLanguages(Boolean isActive) {
         var fetchedLanguages = Boolean.TRUE.equals(isActive)
-                ? languageRepository.findAllByIsActiveTrue(pageable)
-                : languageRepository.findAll(pageable);
+                ? languageRepository.findAllByIsActiveTrue()
+                : languageRepository.findAll();
 
-        return new SCPagedResult<>(
-                fetchedLanguages.getContent().stream().map(this::toDto).toList(),
-                SCPaginationUtils.toPagedOption(fetchedLanguages)
-        );
+        return fetchedLanguages.stream().map(this::toDto).toList();
     }
 
     @Override

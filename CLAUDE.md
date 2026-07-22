@@ -718,6 +718,15 @@ Jakarta Validation on DTOs. Message constants in `SCRequestParamValidationCodeCo
 
 `@Slf4j` + SLF4J. Never log passwords, tokens, or personal data.
 
+### Caching
+
+- `CacheManager` bean lives in `config/cache/CacheConfig.java` (`@Configuration @EnableCaching`) — never on `SfrigolaCoreApplication`, keep the entry-point file clean.
+- Provider: Caffeine, wired manually via `SimpleCacheManager` holding one named `CaffeineCache` per cache (not Spring Boot's Caffeine auto-config) — each cache gets its own `maximumSize` + `expireAfterWrite`, set per use case, not a single global spec.
+- `@Cacheable` goes directly on the repository interface method (not the service layer), so each query is cached independently instead of lumping every repo call inside a service method under one policy. Cache key is built explicitly (e.g. `'categories_' + #locale + '_' + #pageable.pageNumber + '_' + #pageable.pageSize`) — include every parameter that changes the result set.
+- Every new cache name used in a `@Cacheable` must have a matching `CaffeineCache` registered in `CacheConfig` — an unregistered cache name fails at runtime (`Cannot find cache named '...'`).
+- **Eviction rule:** if the cached entity has any in-app CRUD surface (create/update/delete/reorder endpoints), every mutating service method must carry `@CacheEvict(value = "<cache>", allEntries = true)` — do not rely on `expireAfterWrite` alone to cover writes. Reference-data caches with zero in-app CRUD surface (e.g. `languages`, `roles` — writes only happen out-of-band directly on Postgres) may skip eviction entirely, since `@CacheEvict` could never fire anyway; the Caffeine TTL is then a staleness backstop, not a substitute for eviction where writes do exist.
+- A harmless JSpecify `@NullMarked` override warning may appear on inherited repo methods (e.g. `findAll()`) once `@Cacheable` is added — ignore it, don't add a `package-info.java` just to silence it.
+
 ---
 
 ## Postman Collection

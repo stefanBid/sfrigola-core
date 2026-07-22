@@ -201,7 +201,7 @@ class CategoryServiceImplTest {
         var filterQuery = SCFilterQuery.pagedOnly(10, 0);
         var pageable = PageRequest.of(0, 10);
         var idsPage = new PageImpl<>(List.of(1L), pageable, 1);
-        when(categoryRepository.findIdsByLocaleAndIsActiveAndSearchKeyAsc("en", true, null, pageable)).thenReturn(idsPage);
+        when(categoryRepository.findIdsForViewUse("en", pageable)).thenReturn(idsPage);
 
         var category = new Category();
         category.setId(1L);
@@ -225,7 +225,7 @@ class CategoryServiceImplTest {
     void getAll_returnsEmptyResultWhenNoCategoriesMatch() {
         var filterQuery = SCFilterQuery.pagedOnly(10, 0);
         var pageable = PageRequest.of(0, 10);
-        when(categoryRepository.findIdsByLocaleAndIsActiveAndSearchKeyAsc("en", true, null, pageable)).thenReturn(Page.empty(pageable));
+        when(categoryRepository.findIdsForViewUse("en", pageable)).thenReturn(Page.empty(pageable));
 
         var result = categoryService.getAll(filterQuery, "en");
 
