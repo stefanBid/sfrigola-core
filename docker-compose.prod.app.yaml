@@ -1,0 +1,26 @@
+name: sfrigola-core-prod
+
+services:
+  app:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    container_name: sfrigola_prod_app
+    environment:
+      SPRING_DOCKER_COMPOSE_ENABLED: "false"
+      SERVER_PORT: ${SERVER_PORT:-8080}
+      DB_URL: jdbc:postgresql://db:5432/${DB_NAME:?DB_NAME is required}
+      DB_USERNAME: ${DB_USERNAME:?DB_USERNAME is required}
+      DB_PASSWORD: ${DB_PASSWORD:?DB_PASSWORD is required}
+      JWT_SECRET_KEY: ${JWT_SECRET_KEY:?JWT_SECRET_KEY is required}
+      JWT_EXPIRATION_MS: ${JWT_EXPIRATION_MS:-3600000}
+    ports:
+      - "${SERVER_PORT:-8080}:8080"
+    networks:
+      - prod_net
+    restart: unless-stopped
+
+networks:
+  prod_net:
+    external: true
+    name: sfrigola-core-prod_prod_net

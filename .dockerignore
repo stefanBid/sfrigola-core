@@ -1,0 +1,13 @@
+target/
+logs/
+.idea/
+.git/
+.gitattributes
+.gitignore
+.env
+*.md
+postman/
+Dockerfile
+docker-compose.yaml
+docker-compose.prod.db.yaml
+docker-compose.prod.app.yaml

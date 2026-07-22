@@ -74,7 +74,8 @@ SERVER_PORT=...
 DB_URL=...
 DB_USERNAME=...
 DB_PASSWORD=...
-JWT_SECRET=...
+JWT_SECRET_KEY=...
+JWT_EXPIRATION_MS=...
 ```
 
 ### Running locally
@@ -103,7 +104,64 @@ Every endpoint lives under `/sfrigola-core/api`, versioned per-mapping via Sprin
 
 ### Database
 
-Schema is managed **manually**, not by Hibernate (`ddl-auto=none`). Run `src/main/resources/sql/createSfrigolaDB.sql` against your Postgres instance before first boot — it creates every table, enum, index and seed row (languages, roles, the 11-category hierarchy).
+Schema is managed **manually**, not by Hibernate (`ddl-auto=none`). The Postgres container runs `src/main/resources/sql/createSfrigolaDB.sql` as its init script on first boot — it creates every table, enum, index and seed row (languages, roles, the 11-category hierarchy).
+
+### Docker
+
+Three Compose files. Local dev and production are two fully independent lifecycles — different containers, different env source, no file shared between them:
+
+| File | Purpose | Services | Env source |
+|---|---|---|---|
+| `docker-compose.yaml` | local dev | `db` (`sfrigola_db`) | `.env` (auto-loaded, same directory) |
+| `docker-compose.prod.db.yaml` | prod — database | `db` (`sfrigola_prod_db`) | `.env.prod` (git-ignored, passed with `--env-file`) |
+| `docker-compose.prod.app.yaml` | prod — backend | `app` (`sfrigola_prod_app`) | `.env.prod` |
+
+**Local dev** — unchanged. `docker-compose.yaml` is picked up automatically by Spring Boot's own docker-compose integration (`spring.docker.compose.file`, see [Dependencies](#12-dependencies)) every time you run `SfrigolaCoreApplication` (IDE Run/Debug or `./mvnw spring-boot:run`). It creates the Postgres image/volume the first time if they don't exist, reuses them after. No manual `docker compose` command needed — just hit Run.
+
+**Production** — two separate images, two separate containers, started with two separate commands, in order. This is also how you test the production setup locally, on your own machine, before an actual deploy:
+
+```bash
+# 1. DB — creates image/volume/network if missing, runs in background
+docker compose -f docker-compose.prod.db.yaml --env-file .env.prod up -d
+
+# 2. Wait until it's healthy before continuing
+docker ps --filter name=sfrigola_prod_db
+#    STATUS column must say "(healthy)"
+
+# 3. Backend — builds the image from Dockerfile, connects to the DB started above
+docker compose -f docker-compose.prod.app.yaml --env-file .env.prod up --build
+```
+
+Starting `app` before `db` exists fails immediately with a "network not found" error (see below) — that's intentional, not a bug.
+
+**Stopping the stack:**
+
+```bash
+docker compose -f docker-compose.prod.app.yaml down
+docker compose -f docker-compose.prod.db.yaml down
+```
+
+Add `-v` to the `db` command only if you also want to wipe the Postgres volume (`postgres_data_prod`) — that deletes all data, so leave it off unless you mean it.
+
+There's no `depends_on` between the two files — `depends_on` only works for services declared in the *same* `docker compose up` invocation, and these are two deliberately separate ones. The order is on you: run the DB command first, confirm it's healthy, then run the app command. Both files declare the same project name (`name: sfrigola-core-prod`), so:
+
+- Docker Desktop groups them under one stack (`sfrigola-core-prod`), distinct from the local dev container (`sfrigola_db`) — you'll see both side by side without ever mixing them up.
+- They share one Docker network (`sfrigola-core-prod_prod_net`), so `app` can resolve `db` by hostname. `docker-compose.prod.app.yaml` declares that network as `external: true` — if you try to start the app before the DB, Compose fails immediately with a clear "network not found" instead of silently misbehaving.
+
+`DB_PASSWORD` and `JWT_SECRET_KEY` are mandatory in both prod files (`${VAR:?...}`) — Compose refuses to start instead of silently falling back to a default secret. `.env.prod` (git-ignored, currently seeded with the same values as `.env` as a placeholder) holds them — swap in real secrets before an actual production deploy.
+
+> Don't rely on plain `.env` for prod: Docker Compose auto-loads any file literally named `.env` sitting in the working directory, with no flag needed. Since the repo already has one at the root (dev values), running either prod command from that same directory without `--env-file .env.prod` would silently pick up the dev one instead.
+
+### `Dockerfile`
+
+Two-stage build for the `app` image, used **only** by `docker-compose.prod.app.yaml` (`app.build.dockerfile: Dockerfile`) — it plays no part in local dev, since `docker-compose.yaml` has no `app` service to build.
+
+1. **Build stage** (`eclipse-temurin:25-jdk`) — copies `mvnw`/`pom.xml`/`lombok.config` first and runs `dependency:go-offline` before copying `src/`, so Docker's layer cache keeps dependency downloads cached across builds where only source changed; then `./mvnw clean package -DskipTests`. `lombok.config` has to be copied explicitly here — Lombok needs it to copy `@Qualifier`/`@Lazy` onto generated constructor parameters (see [Architecture & Patterns](#5-architecture--patterns)); without it, Spring can't disambiguate the multiple `List<String>` path beans in `SecurityBeansConfig` and the container fails at startup.
+2. **Runtime stage** (`eclipse-temurin:25-jre`) — copies just the built jar from the build stage and runs it. Smaller final image, no JDK/Maven left in it.
+
+Still needed: yes, it's the only thing that turns this Spring Boot project into a runnable container image — required for the production flow, irrelevant to the "hit Run in the IDE" flow.
+
+The `app` container also sets `SPRING_DOCKER_COMPOSE_ENABLED=false` — without it, Spring Boot would try to run its own docker-compose integration (`spring.docker.compose.file=docker-compose.yaml`, the *local dev* file) from inside the already-containerized app, which has neither that file nor a Docker socket available, and would fail to start.
 
 ---
 
