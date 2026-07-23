@@ -1,6 +1,6 @@
 <div align="center">
   <div style="background: white; padding: 20px; border-radius: 12px; display: inline-block;">
-    <img src="https://i.postimg.cc/CMNxPvTr/Chat-GPT-Image-22-lug-2026-17-02-53.png" alt="Sfrigola Core cover" width="640" height="427">
+    <img src="https://i.ibb.co/0jRSJQYY/sfrigola-core-banner.png" alt="logo" border="0" width="600" >
   </div>
 
   # Sfrigola Core
