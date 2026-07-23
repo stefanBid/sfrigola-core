@@ -1,0 +1,27 @@
+name: sfrigola-core-prod
+
+services:
+  db:
+    image: postgres:16.14
+    container_name: sfrigola_prod_db
+    environment:
+      POSTGRES_DB: ${DB_NAME:?DB_NAME is required}
+      POSTGRES_USER: ${DB_USERNAME:?DB_USERNAME is required}
+      POSTGRES_PASSWORD: ${DB_PASSWORD:?DB_PASSWORD is required}
+    volumes:
+      - postgres_sfrigola_data_prod:/var/lib/postgresql/data
+      - ./src/main/resources/sql/createSfrigolaDB.sql:/docker-entrypoint-initdb.d/01-createSfrigolaDB.sql
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U ${DB_USERNAME} -d ${DB_NAME}"]
+      interval: 5s
+      timeout: 5s
+      retries: 10
+    networks:
+      - prod_net
+    restart: unless-stopped
+
+networks:
+  prod_net:
+
+volumes:
+  postgres_sfrigola_data_prod:

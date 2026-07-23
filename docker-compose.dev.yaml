@@ -1,0 +1,17 @@
+services:
+  db:
+    image: postgres:16.14
+    container_name: sfrigola_dev_db
+    environment:
+      POSTGRES_DB: ${DB_NAME}
+      POSTGRES_USER: ${DB_USERNAME}
+      POSTGRES_PASSWORD: ${DB_PASSWORD}
+    ports:
+      - "${DB_PORT}:5432"
+    volumes:
+      - postgres_sfrigola_data_dev:/var/lib/postgresql/data
+      - ./src/main/resources/sql/createSfrigolaDB.sql:/docker-entrypoint-initdb.d/01-createSfrigolaDB.sql
+    restart: unless-stopped
+
+volumes:
+  postgres_sfrigola_data_dev:

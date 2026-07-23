@@ -10,21 +10,28 @@
 	</parent>
 	<groupId>com.sb</groupId>
 	<artifactId>sfrigola-core</artifactId>
-	<version>0.0.1-SNAPSHOT</version>
-	<name/>
-	<description/>
-	<url/>
+	<version>1.0.0</version>
+	<name>sfrigola-core</name>
+	<description>Backend REST API for the Sfrigola recipe platform.</description>
+	<url>https://github.com/stefanBid/sfrigola-core</url>
 	<licenses>
-		<license/>
+		<license>
+			<name>MIT License</name>
+			<url>https://opensource.org/licenses/MIT</url>
+		</license>
 	</licenses>
 	<developers>
-		<developer/>
+		<developer>
+			<id>stefanBid</id>
+			<name>Stefano Biddau</name>
+			<url>https://www.stefanobiddau.com</url>
+		</developer>
 	</developers>
 	<scm>
-		<connection/>
-		<developerConnection/>
-		<tag/>
-		<url/>
+		<connection>scm:git:https://github.com/stefanBid/sfrigola-core.git</connection>
+		<developerConnection>scm:git:https://github.com/stefanBid/sfrigola-core.git</developerConnection>
+		<tag>v1.0.0</tag>
+		<url>https://github.com/stefanBid/sfrigola-core</url>
 	</scm>
 	<properties>
 		<java.version>25</java.version>

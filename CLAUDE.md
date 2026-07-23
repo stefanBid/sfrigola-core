@@ -9,7 +9,7 @@
 
 - **GroupId:** `com.sb`
 - **ArtifactId:** `sfrigola-core`
-- **Version:** `0.0.1-SNAPSHOT`
+- **Version:** `1.0.0`
 - **Base package:** `com.sb.sfrigola_core`
 - **Context path:** `/sfrigola-core`
 - **Port:** configured via env `SERVER_PORT`
@@ -398,7 +398,7 @@ idx_favorites_user           ON favorites (user_id)
 
 ---
 
-## Implementation Status (Sprint 5 in progress — Sprints 1-4 complete)
+## Implementation Status (v1.0.0 — Sprints 1-5 complete)
 
 | Domain      | Entity | Repository | Service | Controller | Notes |
 |-------------|--------|------------|---------|------------|-------|
