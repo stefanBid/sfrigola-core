@@ -440,25 +440,26 @@ Integration tests cover the controller and service layer for every domain, using
 
 ## 11. Versioning & Releases
 
-The project follows [**Semantic Versioning**](https://semver.org) (`MAJOR.MINOR.PATCH`), tracked in `pom.xml`.
+The project follows [**Semantic Versioning**](https://semver.org) (`MAJOR.MINOR.PATCH`), tracked in `pom.xml`, and the bump is **fully automated** by [release-please](https://github.com/googleapis/release-please) (`.github/workflows/release-please.yml`, config in `release-please-config.json` / `.release-please-manifest.json`). No manual version edits, no manual tagging — `pom.xml`'s `<version>` is only ever touched by the release PR described below.
 
-```bash
-# 1. Bump the version in pom.xml, then stage + commit
-git add pom.xml
-git commit -m "chore: bump version to 1.0.0"
+### How a bump gets triggered
 
-# 2. Tag the release (always annotated)
-git tag -a v1.0.0 -m "Release v1.0.0"
+release-please reads the **commit messages on `main`**, not the PR body. Every PR on this repo is **squash-merged**, so the commit that lands on `main` is exactly the **PR title** — this means the PR title must itself be a valid [Conventional Commit](https://www.conventionalcommits.org), following the same convention already required by this project (`feat:`, `fix:`, `refactor:`, ...).
 
-# 3. Push commit and tag
-git push origin main
-git push origin v1.0.0
-```
-
-| Pattern | Example | When to use |
+| PR title prefix | Bump | Example |
 |---|---|---|
-| `vMAJOR.MINOR.PATCH` | `v1.0.0` | Every production release |
-| `vMAJOR.MINOR.PATCH-beta.N` | `v1.1.0-beta.1` | Pre-release / beta builds |
+| `fix: ...` | patch | `fix: correct pagination offset on categories` → `1.0.0` → `1.0.1` |
+| `feat: ...` | minor | `feat: add ratings stats endpoint` → `1.0.1` → `1.1.0` |
+| `feat!: ...` or a `BREAKING CHANGE:` footer in the PR description | major | `feat!: rename recipe status field` → `1.1.0` → `2.0.0` |
+| `chore:`, `docs:`, `refactor:`, `test:`, `ci:`, `style:`, `perf:`, `build:` | **no bump** | still merges fine, just doesn't move the version |
+
+If a PR mixes an unscoped title with the real change type (e.g. `"Add WebConfig class..."` with no prefix), release-please can't parse it and silently skips it for versioning purposes — the merge still works, it just contributes nothing to the next release.
+
+### The release PR
+
+On every push to `main` with at least one bump-worthy commit since the last release, the workflow opens/updates a standing PR titled `chore(main): release X.Y.Z` that bumps `pom.xml` and appends to `CHANGELOG.md`. **Merging that PR** is what actually creates the `vX.Y.Z` git tag and the GitHub Release — nothing is released until it's merged. Config has `skip-snapshot: true`, so versions stay plain `X.Y.Z` (no `-SNAPSHOT` in between).
+
+`CLAUDE.md`'s `**Version:**` field is **not** touched automatically — update it by hand after a release merges.
 
 ---
 
