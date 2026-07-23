@@ -9,7 +9,7 @@ services:
       POSTGRES_USER: ${DB_USERNAME:?DB_USERNAME is required}
       POSTGRES_PASSWORD: ${DB_PASSWORD:?DB_PASSWORD is required}
     volumes:
-      - postgres_data_prod:/var/lib/postgresql/data
+      - postgres_sfrigola_data_prod:/var/lib/postgresql/data
       - ./src/main/resources/sql/createSfrigolaDB.sql:/docker-entrypoint-initdb.d/01-createSfrigolaDB.sql
     healthcheck:
       test: ["CMD-SHELL", "pg_isready -U ${DB_USERNAME} -d ${DB_NAME}"]
@@ -24,4 +24,4 @@ networks:
   prod_net:
 
 volumes:
-  postgres_data_prod:
+  postgres_sfrigola_data_prod:

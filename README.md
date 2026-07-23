@@ -63,7 +63,7 @@ Sfrigola Core is the backend for **Sfrigola**, a digital recipe book for home co
 - **Java** 25 (JDK)
 - **Maven** (wrapper included — no local install needed)
 - **PostgreSQL** (or Docker, see below)
-- **Docker** (optional — `spring-boot-docker-compose` auto-starts Postgres in dev via `docker-compose.yaml`)
+- **Docker** (optional — `spring-boot-docker-compose` auto-starts Postgres in dev via `docker-compose.dev.yaml`)
 
 ### Environment variables
 
@@ -112,11 +112,11 @@ Three Compose files. Local dev and production are two fully independent lifecycl
 
 | File | Purpose | Services | Env source |
 |---|---|---|---|
-| `docker-compose.yaml` | local dev | `db` (`sfrigola_db`) | `.env` (auto-loaded, same directory) |
+| `docker-compose.dev.yaml` | local dev | `db` (`sfrigola_dev_db`) | `.env` (auto-loaded, same directory) |
 | `docker-compose.prod.db.yaml` | prod — database | `db` (`sfrigola_prod_db`) | `.env.prod` (git-ignored, passed with `--env-file`) |
 | `docker-compose.prod.app.yaml` | prod — backend | `app` (`sfrigola_prod_app`) | `.env.prod` |
 
-**Local dev** — unchanged. `docker-compose.yaml` is picked up automatically by Spring Boot's own docker-compose integration (`spring.docker.compose.file`, see [Dependencies](#12-dependencies)) every time you run `SfrigolaCoreApplication` (IDE Run/Debug or `./mvnw spring-boot:run`). It creates the Postgres image/volume the first time if they don't exist, reuses them after. No manual `docker compose` command needed — just hit Run.
+**Local dev** — unchanged. `docker-compose.dev.yaml` is picked up automatically by Spring Boot's own docker-compose integration (`spring.docker.compose.file`, see [Dependencies](#12-dependencies)) every time you run `SfrigolaCoreApplication` (IDE Run/Debug or `./mvnw spring-boot:run`). It creates the Postgres image/volume the first time if they don't exist, reuses them after. No manual `docker compose` command needed — just hit Run.
 
 **Production** — two separate images, two separate containers, started with two separate commands, in order. This is also how you test the production setup locally, on your own machine, before an actual deploy:
 
@@ -154,14 +154,14 @@ There's no `depends_on` between the two files — `depends_on` only works for se
 
 ### `Dockerfile`
 
-Two-stage build for the `app` image, used **only** by `docker-compose.prod.app.yaml` (`app.build.dockerfile: Dockerfile`) — it plays no part in local dev, since `docker-compose.yaml` has no `app` service to build.
+Two-stage build for the `app` image, used **only** by `docker-compose.prod.app.yaml` (`app.build.dockerfile: Dockerfile`) — it plays no part in local dev, since `docker-compose.dev.yaml` has no `app` service to build.
 
 1. **Build stage** (`eclipse-temurin:25-jdk`) — copies `mvnw`/`pom.xml`/`lombok.config` first and runs `dependency:go-offline` before copying `src/`, so Docker's layer cache keeps dependency downloads cached across builds where only source changed; then `./mvnw clean package -DskipTests`. `lombok.config` has to be copied explicitly here — Lombok needs it to copy `@Qualifier`/`@Lazy` onto generated constructor parameters (see [Architecture & Patterns](#5-architecture--patterns)); without it, Spring can't disambiguate the multiple `List<String>` path beans in `SecurityBeansConfig` and the container fails at startup.
 2. **Runtime stage** (`eclipse-temurin:25-jre`) — copies just the built jar from the build stage and runs it. Smaller final image, no JDK/Maven left in it.
 
 Still needed: yes, it's the only thing that turns this Spring Boot project into a runnable container image — required for the production flow, irrelevant to the "hit Run in the IDE" flow.
 
-The `app` container also sets `SPRING_DOCKER_COMPOSE_ENABLED=false` — without it, Spring Boot would try to run its own docker-compose integration (`spring.docker.compose.file=docker-compose.yaml`, the *local dev* file) from inside the already-containerized app, which has neither that file nor a Docker socket available, and would fail to start.
+The `app` container also sets `SPRING_DOCKER_COMPOSE_ENABLED=false` — without it, Spring Boot would try to run its own docker-compose integration (`spring.docker.compose.file=docker-compose.dev.yaml`, the *local dev* file) from inside the already-containerized app, which has neither that file nor a Docker socket available, and would fail to start.
 
 ---
 

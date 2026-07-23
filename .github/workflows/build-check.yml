@@ -21,7 +21,7 @@ jobs:
     # github.event.pull_request is null, so the check evaluates to true.
     if: github.event.pull_request.draft != true
 
-    # Same image/credentials as docker-compose.yaml - contextLoads (@SpringBootTest) needs a real
+    # Same image/credentials as docker-compose.dev.yaml - contextLoads (@SpringBootTest) needs a real
     # Postgres, ddl-auto=none means the schema must be loaded explicitly (see step below).
     services:
       postgres:
@@ -52,7 +52,7 @@ jobs:
           cache: 'maven'
 
       # Service containers start before checkout, so the init-script volume trick from
-      # docker-compose.yaml doesn't apply here - load the schema explicitly instead.
+      # docker-compose.dev.yaml doesn't apply here - load the schema explicitly instead.
       - name: Load DB schema
         env:
           PGPASSWORD: admin
