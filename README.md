@@ -5,7 +5,7 @@
 
   # Sfrigola Core
 
-  ![Version](https://img.shields.io/badge/version-1.0.0-blue)
+  ![Version](https://img.shields.io/badge/version-1.0.2-blue)
   ![Java](https://img.shields.io/badge/java-25-ED8B00?logo=openjdk&logoColor=white)
   ![Spring Boot](https://img.shields.io/badge/spring--boot-4.1.0-6DB33F?logo=springboot&logoColor=white)
   ![PostgreSQL](https://img.shields.io/badge/postgresql-336791?logo=postgresql&logoColor=white)
