@@ -7,7 +7,7 @@ import org.springframework.http.HttpStatus;
 public class SCBadCredentialException extends SCGeneralException {
     public SCBadCredentialException(String message) {
         super(
-                HttpStatus.UNAUTHORIZED,
+                HttpStatus.BAD_REQUEST,
                 SecurityErrorCode.BAD_CREDENTIALS,
                 message);
     }

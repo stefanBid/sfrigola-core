@@ -5,7 +5,7 @@
 
   # Sfrigola Core
 
-  ![Version](https://img.shields.io/badge/version-1.0.0-blue)
+  ![Version](https://img.shields.io/badge/version-1.0.2-blue)
   ![Java](https://img.shields.io/badge/java-25-ED8B00?logo=openjdk&logoColor=white)
   ![Spring Boot](https://img.shields.io/badge/spring--boot-4.1.0-6DB33F?logo=springboot&logoColor=white)
   ![PostgreSQL](https://img.shields.io/badge/postgresql-336791?logo=postgresql&logoColor=white)
@@ -30,12 +30,13 @@
 5. [Architecture & Patterns](#5-architecture--patterns)
 6. [Caching](#6-caching)
 7. [Security & Roles](#7-security--roles)
-8. [API Reference](#8-api-reference)
-9. [API Docs & Postman](#9-api-docs--postman)
-10. [Testing](#10-testing)
-11. [Versioning & Releases](#11-versioning--releases)
-12. [Dependencies](#12-dependencies)
-13. [License](#13-license)
+8. [Error Handling & HTTP Status Codes](#8-error-handling--http-status-codes)
+9. [API Reference](#9-api-reference)
+10. [API Docs & Postman](#10-api-docs--postman)
+11. [Testing](#11-testing)
+12. [Versioning & Releases](#12-versioning--releases)
+13. [Dependencies](#13-dependencies)
+14. [License](#14-license)
 
 ---
 
@@ -116,23 +117,31 @@ Three Compose files. Local dev and production are two fully independent lifecycl
 | `docker-compose.prod.db.yaml` | prod — database | `db` (`sfrigola_prod_db`) | `.env.prod` (git-ignored, passed with `--env-file`) |
 | `docker-compose.prod.app.yaml` | prod — backend | `app` (`sfrigola_prod_app`) | `.env.prod` |
 
-**Local dev** — unchanged. `docker-compose.dev.yaml` is picked up automatically by Spring Boot's own docker-compose integration (`spring.docker.compose.file`, see [Dependencies](#12-dependencies)) every time you run `SfrigolaCoreApplication` (IDE Run/Debug or `./mvnw spring-boot:run`). It creates the Postgres image/volume the first time if they don't exist, reuses them after. No manual `docker compose` command needed — just hit Run.
+**Local dev** — unchanged. `docker-compose.dev.yaml` is picked up automatically by Spring Boot's own docker-compose integration (`spring.docker.compose.file`, see [Dependencies](#13-dependencies)) every time you run `SfrigolaCoreApplication` (IDE Run/Debug or `./mvnw spring-boot:run`). It creates the Postgres image/volume the first time if they don't exist, reuses them after. No manual `docker compose` command needed — just hit Run.
 
 **Production** — two separate images, two separate containers, started with two separate commands, in order. This is also how you test the production setup locally, on your own machine, before an actual deploy:
 
 ```bash
-# 1. DB — creates image/volume/network if missing, runs in background
-docker compose -f docker-compose.prod.db.yaml --env-file .env.prod up -d
+# 1. DB — creates image/volume/network if missing, container stays stopped
+docker compose -f docker-compose.prod.db.yaml --env-file .env.prod create
 
-# 2. Wait until it's healthy before continuing
-docker ps --filter name=sfrigola_prod_db
-#    STATUS column must say "(healthy)"
-
-# 3. Backend — builds the image from Dockerfile, connects to the DB started above
-docker compose -f docker-compose.prod.app.yaml --env-file .env.prod up --build
+# 2. Backend — builds the image from Dockerfile, container stays stopped
+docker compose -f docker-compose.prod.app.yaml --env-file .env.prod build
+docker compose -f docker-compose.prod.app.yaml --env-file .env.prod create
 ```
 
+Neither command starts the containers — `create` only builds the image/volume/network and leaves the container stopped, ready to start from Docker Desktop (`db` first, wait for "healthy", then `app`).
+
 Starting `app` before `db` exists fails immediately with a "network not found" error (see below) — that's intentional, not a bug.
+
+**Optional — start the already-created containers from the CLI instead of Docker Desktop:**
+
+```bash
+docker compose -f docker-compose.prod.db.yaml --env-file .env.prod up -d
+docker compose -f docker-compose.prod.app.yaml --env-file .env.prod up -d
+```
+
+Wait for `db` to report "(healthy)" (`docker ps --filter name=sfrigola_prod_db`) before starting `app`.
 
 **Stopping the stack:**
 
@@ -301,7 +310,50 @@ A `RoleHierarchy` bean (`scHierarchy`) makes `ROLE_ADMIN > ROLE_CONTRIBUTOR > RO
 
 ---
 
-## 8. API Reference
+## 8. Error Handling & HTTP Status Codes
+
+Every error response uses the same envelope as a success response, just with `errorData` populated instead of `data`:
+
+```json
+{
+  "data": null,
+  "option": null,
+  "errorData": { "errorMap": { "TAG_SLUG_ALREADY_EXISTS": "A tag with slug 'spicy' already exists" } }
+}
+```
+
+**The status code tells the client which of two buckets the error falls into — this is the contract every client (Flutter app, web portal) is built against:**
+
+| Bucket | Codes | Client behavior |
+|---|---|---|
+| **Global** | `401`, `5xx` | Handled once, centrally, by an HTTP interceptor. The calling screen never reads `errorData`. `401` → refresh-or-logout + redirect to login (session/token invalid — never used for "wrong password"). `5xx` → generic "Something went wrong, try again" toast. |
+| **Case-by-case** | `400`, `403`, `404`, `409` | Never intercepted. The calling screen always reads `errorData.errorMap`'s key and reacts specifically — inline field error, "not found" empty state, "already exists" message, disabled-action message, etc. |
+
+This split is a deliberate design choice, not incidental: it means a client only ever needs *one* interceptor rule ("is it 401 or 5xx?") to decide whether to handle an error itself — everything else is guaranteed to carry an `errorCode` worth showing to the user.
+
+### Error code legend
+
+**500 — server fault, global bucket** (`errorCode` not meant to be shown to the user):
+`SERVER_ERROR` (generic fallback) · `NO_ROWS_AFFECTED` · `DATA_CORRUPTED` · `SECURITY_SYSTEM_ERROR` · `INVALID_ROLE_FROM_STRING`
+
+**401 — session/token invalid, global bucket:**
+`ENV_NOT_AVAILABLE` / `JWT_EXPIRED` / `JWT_VALIDATION_FAILED` (JWT filter) · `NOT_AUTHORIZED` (no auth on protected route) · `NO_USER_AUTH` (token valid, user gone)
+
+**403 — authenticated but not allowed, case-by-case:**
+`NOT_AUTHORIZED` (Spring Security role/path denial) · `USER_NOT_ACTIVE` (account deactivated) · `NOT_RECIPE_OWNER` · `CANNOT_CHANGE_ROLE_TO_ADMIN` · `CANNOT_CHANGE_OWN_ACTIVE_STATUS`
+
+**404 — resource not found, case-by-case:**
+`ENTITY_NOT_FOUND` (generic fallback) · `SELECTED_CATEGORY_NOT_FOUND` · `TAG_NOT_FOUND` · `RECIPE_NOT_FOUND` · `INGREDIENT_NOT_FOUND` · `USER_NOT_FOUND` · `FAVORITE_NOT_FOUND` · `RATING_NOT_FOUND`
+
+**409 — resource already exists, case-by-case:**
+`USER_ALREADY_EXISTS` · `CATEGORY_SLUG_ALREADY_EXISTS` · `TAG_SLUG_ALREADY_EXISTS` · `TAG_LABEL_ALREADY_EXISTS` · `INGREDIENT_SLUG_ALREADY_EXISTS` · `FAVORITE_ALREADY_EXISTS` · `RATING_ALREADY_EXISTS`
+
+**400 — validation & business-rule violations, case-by-case:**
+per-field Jakarta Validation messages · `MALFORMED_JSON` · `ILLEGAL_ARGUMENT` · `INVALID_ENUM_CODE` · `BAD_CREDENTIALS` (wrong email/password on login — deliberately not `401`) · `NEW_PASSWORD_SAME_AS_OLD_PASSWORD` · `PASSWORD_DOES_NOT_MATCH_CONFIRMATION_PASSWORD` · `COMPROMISED_PASSWORD` · `OLD_PASSWORD_NOT_MATCH` · `LOCALE_NOT_ACTIVE` · `INVALID_LANG_CODE` · `MISSING_*_LOCALES` · `DUPLICATE_*_LOCALE` · `CATEGORY_HAS_CHILDREN` · `CATEGORY_REORDER_MISMATCH` · `TAG_SCOPE_NOT_ALLOWED` · `CONTRIBUTOR_TRANSLATION_LIMIT_EXCEEDED`
+
+---
+
+## 9. API Reference
 
 Base path for every route below: `/sfrigola-core/api`.
 
@@ -400,7 +452,7 @@ Base path for every route below: `/sfrigola-core/api`.
 
 ---
 
-## 9. API Docs & Postman
+## 10. API Docs & Postman
 
 ### Swagger / OpenAPI
 
@@ -428,7 +480,7 @@ Re-run **Login** with different credentials to switch user (e.g. admin vs. regul
 
 ---
 
-## 10. Testing
+## 11. Testing
 
 ```bash
 ./mvnw test
@@ -438,7 +490,7 @@ Integration tests cover the controller and service layer for every domain, using
 
 ---
 
-## 11. Versioning & Releases
+## 12. Versioning & Releases
 
 The project follows [**Semantic Versioning**](https://semver.org) (`MAJOR.MINOR.PATCH`), tracked in `pom.xml`, and the bump is **fully automated** by [release-please](https://github.com/googleapis/release-please) (`.github/workflows/release-please.yml`, config in `release-please-config.json` / `.release-please-manifest.json`). No manual version edits, no manual tagging — `pom.xml`'s `<version>` is only ever touched by the release PR described below.
 
@@ -463,7 +515,7 @@ On every push to `main` with at least one bump-worthy commit since the last rele
 
 ---
 
-## 12. Dependencies
+## 13. Dependencies
 
 | Package | Version | Purpose |
 |---|---|---|
@@ -483,7 +535,7 @@ On every push to `main` with at least one bump-worthy commit since the last rele
 
 ---
 
-## 13. License
+## 14. License
 
 Released under the [MIT License](LICENSE).
 
