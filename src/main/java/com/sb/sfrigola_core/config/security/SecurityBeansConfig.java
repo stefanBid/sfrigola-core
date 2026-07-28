@@ -125,7 +125,7 @@ public class SecurityBeansConfig {
     public List<String> allowedOriginsPaths() {
         var allowedOrigins = env.getProperty(SCGeneralConstants.ALLOWED_ORIGINS);
         if (allowedOrigins == null || allowedOrigins.isBlank())
-            return List.of();
+            throw new IllegalStateException("ALLOWED_ORIGINS is not configured");
         return List.of(allowedOrigins.split(","));
     }
 }

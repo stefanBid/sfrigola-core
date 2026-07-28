@@ -1,0 +1,37 @@
+spring:
+  application:
+    name: sfrigola-core
+  profiles:
+    default: dev
+
+  # ===== PostgreSQL =====
+  datasource:
+    url: ${DB_URL}
+    username: ${DB_USERNAME}
+    password: ${DB_PASSWORD}
+    driver-class-name: org.postgresql.Driver
+  sql:
+    init:
+      mode: never
+
+  # ===== JPA / Hibernate =====
+  jpa:
+    hibernate:
+      ddl-auto: none
+    open-in-view: false
+    database-platform: org.hibernate.dialect.PostgreSQLDialect
+    properties:
+      hibernate:
+        format_sql: true
+
+server:
+  servlet:
+    context-path: /sfrigola-core
+  port: ${SERVER_PORT}
+
+# ===== Aspects =====
+sc:
+  aspect:
+    execution-time:
+      fast-threshold-ms: 100
+      slow-threshold-ms: 500
