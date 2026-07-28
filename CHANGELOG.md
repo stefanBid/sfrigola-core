@@ -1,5 +1,12 @@
 # Changelog
 
+## [1.1.0](https://github.com/stefanBid/sfrigola-core/compare/v1.0.2...v1.1.0) (2026-07-28)
+
+
+### Features
+
+* update application profiles ([#19](https://github.com/stefanBid/sfrigola-core/issues/19)) ([a8b0a0c](https://github.com/stefanBid/sfrigola-core/commit/a8b0a0c90c334cc7d4cf8beb88d960b2c1d24678))
+
 ## [1.0.2](https://github.com/stefanBid/sfrigola-core/compare/v1.0.1...v1.0.2) (2026-07-24)
 
 
