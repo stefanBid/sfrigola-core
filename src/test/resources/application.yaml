@@ -1,0 +1,52 @@
+spring:
+  application:
+    name: sfrigola-core
+
+  # Tests connect to an already-running Postgres (local docker-compose, or CI service
+  # container) - no Docker Compose lifecycle management needed here.
+  docker:
+    compose:
+      enabled: false
+
+  # ===== PostgreSQL =====
+  # Same credentials as docker-compose.dev.yaml (local/CI throwaway DB, not a real secret).
+  datasource:
+    url: jdbc:postgresql://localhost:5432/sfrigola_db
+    username: berau
+    password: admin
+    driver-class-name: org.postgresql.Driver
+  sql:
+    init:
+      mode: never
+
+  # ===== JPA / Hibernate =====
+  jpa:
+    show-sql: false
+    properties:
+      hibernate:
+        format_sql: true
+    hibernate:
+      ddl-auto: none
+    open-in-view: false
+    database-platform: org.hibernate.dialect.PostgreSQLDialect
+
+server:
+  servlet:
+    context-path: /sfrigola-core
+  port: 8080
+
+# ===== Aspects =====
+sc:
+  aspect:
+    execution-time:
+      fast-threshold-ms: 100
+      slow-threshold-ms: 500
+
+# ===== JWT =====
+# Self-contained: not inherited from application-dev.yaml (even though it's also on
+# the test classpath) - test config must not depend on the app's dev-profile defaults.
+JWT_SECRET_KEY: test-only-jwt-secret-key-not-for-production-use-1234567890
+JWT_EXPIRATION_MS: 3600000
+
+# ===== CORS =====
+ALLOWED_ORIGINS: http://localhost:3000

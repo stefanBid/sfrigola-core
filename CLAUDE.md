@@ -794,8 +794,12 @@ Jakarta Validation on DTOs. Message constants in `SCRequestParamValidationCodeCo
 
 ### Configuration
 
-- Secrets always via env vars (`${DB_URL}`, `${DB_USERNAME}`, `${DB_PASSWORD}`, `${SERVER_PORT}`).
-- `application.properties` contains no sensitive values.
+- Config is YAML, split by profile: `application.yaml` (common — context path, datasource wiring, JPA, aspect thresholds), `application-dev.yaml`, `application-prod.yaml`. No single `application.properties` anymore. `spring.profiles.default: dev` in the base file — no `SPRING_PROFILES_ACTIVE` set at all falls back to `dev`.
+- Secrets always via env vars (`${DB_URL}`, `${DB_USERNAME}`, `${DB_PASSWORD}`, `${SERVER_PORT}`, `${JWT_SECRET_KEY}`). No YAML file, in any profile, ever contains a literal secret value.
+- **App code never hardcodes a fallback default for an externally-configured value — that's a config-layer concern only.** Every `Environment.getProperty(KEY)` call in Java either uses the resolved value or throws; it never supplies a Java-side default (no `env.getProperty(KEY, someHardcodedDefault)`). Convenience defaults for non-secret, environment-specific values (`JWT_EXPIRATION_MS`, `ALLOWED_ORIGINS`, and — dev only — `JWT_SECRET_KEY`) live exclusively in `application-dev.yaml`/`application-prod.yaml` as `${VAR:default}`; `application-prod.yaml` omits the default (and omits the key entirely if it has no default — a self-referencing `KEY: ${KEY}` with nothing backing it resolves as a circular-placeholder boot failure instead of the intended clean error) so a missing value fails the same way in every deploy method (bare `java -jar`, systemd, Docker).
+  - Missing `JWT_SECRET_KEY`/`JWT_EXPIRATION_MS` at token-generation/validation time → `SCAuthSecuritySystemException` (500) from `JwtService`, or `ENV_NOT_AVAILABLE` (401) from `JwtValidationFilter` — never a silently-reused hardcoded secret.
+  - Missing `ALLOWED_ORIGINS` → `SecurityBeansConfig.allowedOriginsPaths()` throws `IllegalStateException` at boot — application context fails to start, never a silent empty-CORS fallback.
+  - Applies to every future externally-configured value, not just JWT/CORS — same standard project-wide.
 - DB schema managed via `src/main/resources/sql/createSfrigolaDB.sql`, not by Hibernate.
 
 ### Logging
@@ -840,11 +844,15 @@ Jakarta Validation on DTOs. Message constants in `SCRequestParamValidationCodeCo
 ## Useful Commands
 
 ```bash
-# Run locally
+# Run locally (dev profile, default)
 ./mvnw spring-boot:run
 
 # Build
 ./mvnw clean package -DskipTests
+
+# Run the built jar with an explicit profile
+java -jar target/sfrigola-core-<version>.jar --spring.profiles.active=dev
+java -jar target/sfrigola-core-<version>.jar --spring.profiles.active=prod
 
 # Compile only (check for errors)
 ./mvnw compile
@@ -869,4 +877,5 @@ Jakarta Validation on DTOs. Message constants in `SCRequestParamValidationCodeCo
 - Tag approval flow (`pending → approved/rejected`) is ROLE_ADMIN only.
 - `tags/enums/` holds both the enum and its converter — keep them co-located, never split to `common/`.
 - For any new PostgreSQL native ENUM: create the enum + `AttributeConverter` in the domain's `enums/` package; use `columnDefinition` on the entity `@Column`.
+- Never add `env.getProperty(KEY, hardcodedDefault)` (or any Java-side fallback) for an externally-configured value — get-or-throw only, defaults belong in `application-dev.yaml`/`application-prod.yaml` (see Configuration).
 - Flag any request that violates these conventions before proceeding.

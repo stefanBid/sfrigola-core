@@ -1,0 +1,14 @@
+spring:
+  jpa:
+    show-sql: false
+
+# ===== JWT =====
+# JWT_SECRET_KEY: no default here on purpose — must come from the real env var,
+# missing value is caught by JwtService/JwtValidationFilter (clean error), not by this file.
+# Plain literal, NOT ${JWT_EXPIRATION_MS:...} — same-name placeholder default is circular
+# in Spring with no higher-precedence source; a real env var still overrides this value.
+JWT_EXPIRATION_MS: 3600000
+
+# ===== CORS =====
+# ALLOWED_ORIGINS: no default here on purpose — must come from the real env var,
+# missing value is caught by SecurityBeansConfig (clean error), not by this file.

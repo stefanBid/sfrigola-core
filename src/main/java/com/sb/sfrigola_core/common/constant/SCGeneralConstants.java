@@ -12,7 +12,6 @@ public class SCGeneralConstants {
     // JWT TOKEN CONSTANTS
     public static final String JWT_HEADER = "Authorization";
     public static final String JWT_HEADER_PREFIX = "Bearer ";
-    public static final String JWT_SECRET_KEY_DEFAULT = "mySecretKeyForJWTGenerationWhichShouldBeLongEnoughToBeSecure";
     public static final String JWT_SECRET_KEY = "JWT_SECRET_KEY";
     public static final String JWT_EXPIRATION_MS = "JWT_EXPIRATION_MS";
 }

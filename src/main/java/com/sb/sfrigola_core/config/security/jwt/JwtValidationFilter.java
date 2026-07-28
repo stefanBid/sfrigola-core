@@ -50,12 +50,11 @@ public class JwtValidationFilter extends OncePerRequestFilter {
 
     @Override
     protected void doFilterInternal(@NonNull HttpServletRequest request, @NonNull HttpServletResponse response, @NonNull FilterChain filterChain) throws ServletException, IOException {
-        if(env == null ){
-            SCErrorDataBuilderUtils.handleError(request, response, objectMapper, Map.of(GeneralErrorCode.ENV_NOT_AVAILABLE.code(), "Environment is not available so JWT validation cannot proceed"), HttpStatus.UNAUTHORIZED);
+        String secret = env.getProperty(SCGeneralConstants.JWT_SECRET_KEY);
+        if (secret == null || secret.isBlank()) {
+            SCErrorDataBuilderUtils.handleError(request, response, objectMapper, Map.of(GeneralErrorCode.ENV_NOT_AVAILABLE.code(), "JWT secret key is not configured so JWT validation cannot proceed"), HttpStatus.UNAUTHORIZED);
             return;
         }
-
-        String secret = env.getProperty(SCGeneralConstants.JWT_SECRET_KEY, SCGeneralConstants.JWT_SECRET_KEY_DEFAULT);
         String authHeader = request.getHeader(SCGeneralConstants.JWT_HEADER);
 
         if (authHeader != null) {

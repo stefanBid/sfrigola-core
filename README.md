@@ -66,9 +66,23 @@ Sfrigola Core is the backend for **Sfrigola**, a digital recipe book for home co
 - **PostgreSQL** (or Docker, see below)
 - **Docker** (optional — `spring-boot-docker-compose` auto-starts Postgres in dev via `docker-compose.dev.yaml`)
 
+### Configuration — YAML + profiles
+
+Config lives in `src/main/resources/`, split by profile — no single `application.properties` anymore:
+
+| File | Scope |
+|---|---|
+| `application.yaml` | common to every profile — context path, datasource wiring, JPA, aspect thresholds. `spring.profiles.default: dev`, so no `SPRING_PROFILES_ACTIVE` set at all falls back to `dev`. |
+| `application-dev.yaml` | local dev — Docker Compose auto-start, `show-sql: true`, dev-only fallback defaults for `JWT_SECRET_KEY`/`JWT_EXPIRATION_MS`/`ALLOWED_ORIGINS` (so a fresh clone runs with just DB/JWT secrets in `.env`, no CORS setup needed). |
+| `application-prod.yaml` | prod — `show-sql: false`, no dev fallbacks. `JWT_SECRET_KEY`/`ALLOWED_ORIGINS` have **no default anywhere** — must come from a real env var or the app refuses to start/serve. |
+
+**Hard rule for this codebase: application code never hardcodes a fallback for an externally-configured value.** Every `Environment.getProperty(KEY)` call gets the raw value and either uses it or throws — defaults belong exclusively in the profile YAML (dev-only convenience), never in Java. Concretely:
+- Missing `JWT_SECRET_KEY`/`JWT_EXPIRATION_MS` at token-generation or validation time → `SCAuthSecuritySystemException` (500) / `ENV_NOT_AVAILABLE` (401 on the validation filter), never a silently-used hardcoded secret.
+- Missing `ALLOWED_ORIGINS` → the `allowedOriginsPaths` bean throws at boot, application context fails to start — never a silent empty-CORS fallback.
+
 ### Environment variables
 
-`application.properties` holds no sensitive values — everything is injected via env vars:
+Actual secrets (always via env var, zero sensitive values in any YAML file):
 
 ```
 SERVER_PORT=...
@@ -76,17 +90,17 @@ DB_URL=...
 DB_USERNAME=...
 DB_PASSWORD=...
 JWT_SECRET_KEY=...
-JWT_EXPIRATION_MS=...
 ```
+
+Non-secret, environment-specific values (`JWT_EXPIRATION_MS`, `ALLOWED_ORIGINS`) have sane defaults in `application-dev.yaml`, still overridable via the same-named env var; `application-prod.yaml` requires them explicitly with no default.
 
 ### Running locally
 
 ```bash
-# Start (Docker Compose spins up PostgreSQL automatically)
+# Start with the dev profile (Docker Compose spins up PostgreSQL automatically)
 ./mvnw spring-boot:run
-
-# Build (skip tests)
-./mvnw clean package -DskipTests
+# same, explicit:
+./mvnw spring-boot:run -Dspring-boot.run.profiles=dev
 
 # Compile only (check for errors)
 ./mvnw compile
@@ -94,6 +108,28 @@ JWT_EXPIRATION_MS=...
 # Run tests
 ./mvnw test
 ```
+
+### Building & running a jar from the terminal
+
+> **What this actually verifies:** that the project builds and the jar boots — package/compile sanity check, config/profile wiring, fail-fast behavior on missing env vars. **It is not the official way to test the `prod` deployment.** The real prod path is a Docker image built from `Dockerfile` and run via `docker-compose.prod.app.yaml`/`docker-compose.prod.db.yaml` (see [Docker](#docker) above) — that's what actually runs on the server, and it's the only flow that faithfully reproduces prod (it composes `DB_URL` for you, sets `SPRING_PROFILES_ACTIVE`, wires the internal Docker network). Running the bare jar skips all of that: you'd have to reconstruct `DB_URL` etc. by hand, and a passing bare-jar run does **not** mean the containerized prod setup works — always confirm with the actual Docker Compose flow before considering `prod` verified.
+>
+> `spring-boot-docker-compose` is also declared `optional` in `pom.xml`, so `spring-boot-maven-plugin` strips it out of the packaged jar on `repackage` — the auto-start-Postgres behavior described above simply isn't present in `target/sfrigola-core-<version>.jar`, by design (same treatment as `devtools`: dev-loop convenience, not meant to ship). So running the bare jar with `--spring.profiles.active=dev` will start the app but never bring up `db` for you — for the dev loop, always use `./mvnw spring-boot:run` instead (see above).
+
+```bash
+# Build the jar (skip tests)
+./mvnw clean package -DskipTests
+# → target/sfrigola-core-<version>.jar
+
+# Load prod env vars from file into the current shell before running
+set -a && source .env.prod && set +a
+
+# Run it with the prod profile
+java -jar target/sfrigola-core-<version>.jar --spring.profiles.active=prod
+```
+
+`set -a` exports every var `source` defines into the shell's environment (not just as a local shell variable) so the `java` child process can see them; `set +a` turns that off right after, so anything defined later isn't auto-exported too.
+
+`SPRING_PROFILES_ACTIVE=prod` as an env var works identically to `--spring.profiles.active=prod` — pick whichever fits your process manager. No active profile at all → falls back to `dev` (see `spring.profiles.default` above). Required env vars (`DB_URL`, `DB_USERNAME`, `DB_PASSWORD`, `JWT_SECRET_KEY`, and — for `prod` — `ALLOWED_ORIGINS`) must already be exported in the shell, or the app fails fast per the rule above.
 
 ### Base URL
 
@@ -157,7 +193,7 @@ There's no `depends_on` between the two files — `depends_on` only works for se
 - Docker Desktop groups them under one stack (`sfrigola-core-prod`), distinct from the local dev container (`sfrigola_db`) — you'll see both side by side without ever mixing them up.
 - They share one Docker network (`sfrigola-core-prod_prod_net`), so `app` can resolve `db` by hostname. `docker-compose.prod.app.yaml` declares that network as `external: true` — if you try to start the app before the DB, Compose fails immediately with a clear "network not found" instead of silently misbehaving.
 
-`DB_PASSWORD` and `JWT_SECRET_KEY` are mandatory in both prod files (`${VAR:?...}`) — Compose refuses to start instead of silently falling back to a default secret. `.env.prod` (git-ignored, currently seeded with the same values as `.env` as a placeholder) holds them — swap in real secrets before an actual production deploy.
+`DB_NAME`, `DB_USERNAME`, `DB_PASSWORD`, `JWT_SECRET_KEY` and `ALLOWED_ORIGINS` are mandatory in `docker-compose.prod.app.yaml` (`${VAR:?...}`) — Compose refuses to start instead of silently falling back to a default. `.env.prod` (git-ignored) holds them — set real values (including your actual prod domain for `ALLOWED_ORIGINS`) before an actual production deploy. `docker-compose.prod.app.yaml` also sets `SPRING_PROFILES_ACTIVE: prod` explicitly — the built jar is profile-agnostic, this is what tells it which config to load.
 
 > Don't rely on plain `.env` for prod: Docker Compose auto-loads any file literally named `.env` sitting in the working directory, with no flag needed. Since the repo already has one at the root (dev values), running either prod command from that same directory without `--env-file .env.prod` would silently pick up the dev one instead.
 

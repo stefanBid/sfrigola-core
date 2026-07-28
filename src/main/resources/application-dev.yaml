@@ -1,0 +1,19 @@
+spring:
+  # ===== Docker Compose (auto-starts local Postgres container) =====
+  docker:
+    compose:
+      file: docker-compose.dev.yaml
+
+  jpa:
+    show-sql: true
+
+# ===== JWT =====
+# Plain literal values on purpose, NOT ${JWT_SECRET_KEY:...} — a same-name placeholder
+# default is circular in Spring when no higher-precedence source (OS env var) provides
+# the value first. A plain value here is still overridden by a real env var of the
+# same name (OS env > profile YAML in Spring's property source precedence).
+JWT_SECRET_KEY: dev-only-jwt-secret-key-not-for-production-use-1234567890
+JWT_EXPIRATION_MS: 86400000
+
+# ===== CORS =====
+ALLOWED_ORIGINS: http://localhost:3000
