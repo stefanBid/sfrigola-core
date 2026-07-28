@@ -111,17 +111,23 @@ Non-secret, environment-specific values (`JWT_EXPIRATION_MS`, `ALLOWED_ORIGINS`)
 
 ### Building & running a jar from the terminal
 
+> **What this actually verifies:** that the project builds and the jar boots — package/compile sanity check, config/profile wiring, fail-fast behavior on missing env vars. **It is not the official way to test the `prod` deployment.** The real prod path is a Docker image built from `Dockerfile` and run via `docker-compose.prod.app.yaml`/`docker-compose.prod.db.yaml` (see [Docker](#docker) above) — that's what actually runs on the server, and it's the only flow that faithfully reproduces prod (it composes `DB_URL` for you, sets `SPRING_PROFILES_ACTIVE`, wires the internal Docker network). Running the bare jar skips all of that: you'd have to reconstruct `DB_URL` etc. by hand, and a passing bare-jar run does **not** mean the containerized prod setup works — always confirm with the actual Docker Compose flow before considering `prod` verified.
+>
+> `spring-boot-docker-compose` is also declared `optional` in `pom.xml`, so `spring-boot-maven-plugin` strips it out of the packaged jar on `repackage` — the auto-start-Postgres behavior described above simply isn't present in `target/sfrigola-core-<version>.jar`, by design (same treatment as `devtools`: dev-loop convenience, not meant to ship). So running the bare jar with `--spring.profiles.active=dev` will start the app but never bring up `db` for you — for the dev loop, always use `./mvnw spring-boot:run` instead (see above).
+
 ```bash
 # Build the jar (skip tests)
 ./mvnw clean package -DskipTests
 # → target/sfrigola-core-<version>.jar
 
-# Run it with the dev profile
-java -jar target/sfrigola-core-<version>.jar --spring.profiles.active=dev
+# Load prod env vars from file into the current shell before running
+set -a && source .env.prod && set +a
 
 # Run it with the prod profile
 java -jar target/sfrigola-core-<version>.jar --spring.profiles.active=prod
 ```
+
+`set -a` exports every var `source` defines into the shell's environment (not just as a local shell variable) so the `java` child process can see them; `set +a` turns that off right after, so anything defined later isn't auto-exported too.
 
 `SPRING_PROFILES_ACTIVE=prod` as an env var works identically to `--spring.profiles.active=prod` — pick whichever fits your process manager. No active profile at all → falls back to `dev` (see `spring.profiles.default` above). Required env vars (`DB_URL`, `DB_USERNAME`, `DB_PASSWORD`, `JWT_SECRET_KEY`, and — for `prod` — `ALLOWED_ORIGINS`) must already be exported in the shell, or the app fails fast per the rule above.
 
