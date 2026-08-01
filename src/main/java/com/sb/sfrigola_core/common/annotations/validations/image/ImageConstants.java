@@ -23,13 +23,10 @@ public class ImageConstants {
     public static final String IMAGE_HEIGHT_TOO_LARGE = "IMAGE_HEIGHT_TOO_LARGE";
     public static final String IMAGE_HEIGHT_TOO_SMALL = "IMAGE_HEIGHT_TOO_SMALL";
 
-    // --- REGEX (structural shape only — extension allow-list checked separately via SCImageValidatorUtils) ---
+    // --- REGEX (structural shape only — extension allow-list checked separately) ---
 
-    // data:image/<subtype>;base64,<payload> — subtype captured in group(1), generic token, not a fixed extension list
-    public static final Pattern DATA_URI_IMAGE_PATTERN =
-            Pattern.compile("^data:image/([a-zA-Z0-9.+-]+);base64,[A-Za-z0-9+/]+={0,2}$");
-
-    // plain filename or path ending in a dot-extension — matches "photo.jpg", "/uploads/photo.jpg", "C:\\Users\\x\\photo.png"
+    // MultipartFile#getOriginalFilename() shape — matches "photo.jpg", or with a path prefix if the
+    // client sends one, e.g. "/uploads/photo.jpg", "C:\\Users\\x\\photo.png"
     public static final Pattern FILE_PATH_PATTERN =
             Pattern.compile("^(?:[\\w.\\-]+[/\\\\])*[\\w\\-. ]+\\.[a-zA-Z0-9]+$");
 

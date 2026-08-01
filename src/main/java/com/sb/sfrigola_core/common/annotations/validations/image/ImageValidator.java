@@ -2,16 +2,29 @@ package com.sb.sfrigola_core.common.annotations.validations.image;
 
 import jakarta.validation.ConstraintValidator;
 import jakarta.validation.ConstraintValidatorContext;
+import org.springframework.web.multipart.MultipartFile;
 
+import javax.imageio.ImageIO;
+import java.awt.image.BufferedImage;
+import java.io.IOException;
+import java.io.InputStream;
 import java.util.Arrays;
 import java.util.Locale;
 import java.util.Set;
 import java.util.regex.Matcher;
 import java.util.stream.Collectors;
 
-public class ImageValidator implements ConstraintValidator<ValidImage, String> {
+public class ImageValidator implements ConstraintValidator<ValidImage, MultipartFile> {
+
+    private static final long BYTES_PER_MB = 1024L * 1024L;
 
     private Set<String> allowedFormats;
+    private long maxSizeMb;
+    private long minSizeMb;
+    private long maxWidthPx;
+    private long maxHeightPx;
+    private long minWidthPx;
+    private long minHeightPx;
 
     // Guards against dev typos in @ValidImage(allowedFormats = ...): a stray leading dot (".gif"),
     // stray whitespace, or mixed case would otherwise never match declaredExtension (always bare, lowercase).
@@ -25,36 +38,62 @@ public class ImageValidator implements ConstraintValidator<ValidImage, String> {
     @Override
     public void initialize(ValidImage constraintAnnotation) {
         this.allowedFormats = purifyAllowedFormats(constraintAnnotation.allowedFormats());
+        this.maxSizeMb = constraintAnnotation.maxSizeMb();
+        this.minSizeMb = constraintAnnotation.minSizeMb();
+        this.maxWidthPx = constraintAnnotation.maxWidthPx();
+        this.maxHeightPx = constraintAnnotation.maxHeightPx();
+        this.minWidthPx = constraintAnnotation.minWidthPx();
+        this.minHeightPx = constraintAnnotation.minHeightPx();
     }
 
     @Override
-    public boolean isValid(String imageValue, ConstraintValidatorContext context) {
-        if (imageValue == null) return true;
+    public boolean isValid(MultipartFile file, ConstraintValidatorContext context) {
+        if (file == null || file.isEmpty()) return true;
         context.disableDefaultConstraintViolation();
-        Matcher dataUriMatcher = ImageConstants.DATA_URI_IMAGE_PATTERN.matcher(imageValue);
-        Matcher filePathMatcher = ImageConstants.FILE_PATH_PATTERN.matcher(imageValue);
-        boolean isDataUri = dataUriMatcher.matches();
-        boolean isFilePath = filePathMatcher.matches();
 
-        // Check format
-        if (!isDataUri && !isFilePath) {
-            context.buildConstraintViolationWithTemplate(ImageConstants.IMAGE_INVALID_FORMAT)
-                    .addConstraintViolation();
-            return false;
+        String originalFilename = file.getOriginalFilename();
+        Matcher filePathMatcher = originalFilename == null
+                ? null
+                : ImageConstants.FILE_PATH_PATTERN.matcher(originalFilename);
+
+        if (filePathMatcher == null || !filePathMatcher.matches()) {
+            return violate(context, ImageConstants.IMAGE_INVALID_FORMAT);
         }
 
-        // After passing the format check, split the extension-check by branch: Data URI carries
-        // its subtype in the regex group, a plain path/URL carries it after the last dot.
-        String declaredExtension = isDataUri
-                ? dataUriMatcher.group(1).toLowerCase()
-                : filePathMatcher.group().substring(filePathMatcher.group().lastIndexOf('.') + 1).toLowerCase();
-
+        String declaredExtension = originalFilename.substring(originalFilename.lastIndexOf('.') + 1).toLowerCase(Locale.ROOT);
         if (!allowedFormats.contains(declaredExtension)) {
-            context.buildConstraintViolationWithTemplate(ImageConstants.IMAGE_INVALID_FORMAT)
-                    .addConstraintViolation();
-            return false;
+            return violate(context, ImageConstants.IMAGE_INVALID_FORMAT);
+        }
+
+        long sizeBytes = file.getSize();
+        if (maxSizeMb > 0 && sizeBytes > maxSizeMb * BYTES_PER_MB) {
+            return violate(context, ImageConstants.IMAGE_SIZE_TOO_LARGE);
+        }
+        if (minSizeMb > 0 && sizeBytes < minSizeMb * BYTES_PER_MB) {
+            return violate(context, ImageConstants.IMAGE_SIZE_TOO_SMALL);
+        }
+
+        if (maxWidthPx > 0 || maxHeightPx > 0 || minWidthPx > 0 || minHeightPx > 0) {
+            BufferedImage image;
+            try (InputStream is = file.getInputStream()) {
+                image = ImageIO.read(is);
+            } catch (IOException e) {
+                image = null;
+            }
+            if (image == null) {
+                return violate(context, ImageConstants.IMAGE_UNREADABLE);
+            }
+            if (maxWidthPx > 0 && image.getWidth() > maxWidthPx) return violate(context, ImageConstants.IMAGE_WIDTH_TOO_LARGE);
+            if (minWidthPx > 0 && image.getWidth() < minWidthPx) return violate(context, ImageConstants.IMAGE_WIDTH_TOO_SMALL);
+            if (maxHeightPx > 0 && image.getHeight() > maxHeightPx) return violate(context, ImageConstants.IMAGE_HEIGHT_TOO_LARGE);
+            if (minHeightPx > 0 && image.getHeight() < minHeightPx) return violate(context, ImageConstants.IMAGE_HEIGHT_TOO_SMALL);
         }
 
         return true;
+    }
+
+    private boolean violate(ConstraintValidatorContext context, String messageTemplate) {
+        context.buildConstraintViolationWithTemplate(messageTemplate).addConstraintViolation();
+        return false;
     }
 }
