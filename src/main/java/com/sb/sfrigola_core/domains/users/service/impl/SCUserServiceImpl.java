@@ -42,7 +42,6 @@ public class SCUserServiceImpl implements ISCUserService {
 
         if (dto.firstName() != null && !dto.firstName().equals(user.getFirstName())) user.setFirstName(dto.firstName());
         if (dto.lastName()  != null && !dto.lastName().equals(user.getLastName()))   user.setLastName(dto.lastName());
-        if (dto.avatarUrl() != null && !dto.avatarUrl().equals(user.getAvatarUrl())) user.setAvatarUrl(dto.avatarUrl());
         if (dto.bio()       != null && !dto.bio().equals(user.getBio()))             user.setBio(dto.bio());
 
         user.setUpdatedAt(Instant.now());

@@ -331,7 +331,6 @@ public class RecipeServiceImpl implements IRecipeService {
         newRecipe.setPublished(authUser.role().isAdmin());
         newRecipe.setAuthor(author);
         newRecipe.setCategory(resolveCategoryOrNull(addRecipeDto.categoryPublicId()));
-        newRecipe.setImageUrl(addRecipeDto.imageUrl());
         newRecipe.setDifficulty(addRecipeDto.difficulty());
         newRecipe.setMealType(addRecipeDto.mealType());
         newRecipe.setSeason(addRecipeDto.season());
@@ -402,8 +401,6 @@ public class RecipeServiceImpl implements IRecipeService {
         }
 
         recipeToUpdate.setCategory(resolveCategoryOrNull(updateRecipeDto.categoryPublicId()));
-        if (!Objects.equals(recipeToUpdate.getImageUrl(), updateRecipeDto.imageUrl()))
-            recipeToUpdate.setImageUrl(updateRecipeDto.imageUrl());
         if (!recipeToUpdate.getDifficulty().equals(updateRecipeDto.difficulty()))
             recipeToUpdate.setDifficulty(updateRecipeDto.difficulty());
         if (!Objects.equals(recipeToUpdate.getMealType(), updateRecipeDto.mealType()))
