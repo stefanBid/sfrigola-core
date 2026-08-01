@@ -21,6 +21,9 @@ public record AddRecipeDto(
 
         MealType mealType,
 
+        @Size(max = 1000, message = RecipeValidationCodeConstants.IMAGE_URL_TOO_LONG)
+        String imageUrl,
+
         @NotNull
         SeasonType season,
 

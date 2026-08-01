@@ -13,6 +13,7 @@ public record RecipePreviewAdminDto(
         UUID publicId,
         UUID authorPublicId,
         UUID categoryPublicId,
+        String imageUrl,
         DifficultyLevel difficulty,
         MealType mealType,
         SeasonType season,

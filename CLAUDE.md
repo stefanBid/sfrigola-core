@@ -204,7 +204,7 @@ tag_status        → approved | pending | rejected
 - `is_active` BOOLEAN NOT NULL DEFAULT TRUE
 - `first_name` VARCHAR(100) nullable
 - `last_name` VARCHAR(100) nullable
-- `avatar_url` VARCHAR(500) nullable
+- `avatar_url` VARCHAR(1000) nullable — no value yet at signup; once image storage is in place this will default to a preset placeholder URL, user can override with a personal photo
 - `bio` TEXT nullable
 - audit columns
 
@@ -285,6 +285,7 @@ Bridge ingredient ↔ tag (scope='ingredient' or 'both' only).
 - `public_id` UUID NOT NULL UNIQUE
 - `author_id` BIGINT NOT NULL FK → users(id)
 - `category_id` BIGINT nullable FK → categories(id) ON DELETE SET NULL
+- `image_url` VARCHAR(1000) nullable — recipe cover photo
 - `difficulty` difficulty_level NOT NULL DEFAULT 'medium'
 - `meal_type` meal_type nullable
 - `season` season_type NOT NULL DEFAULT 'all_year'

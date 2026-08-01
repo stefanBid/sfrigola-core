@@ -331,6 +331,7 @@ public class RecipeServiceImpl implements IRecipeService {
         newRecipe.setPublished(authUser.role().isAdmin());
         newRecipe.setAuthor(author);
         newRecipe.setCategory(resolveCategoryOrNull(addRecipeDto.categoryPublicId()));
+        newRecipe.setImageUrl(addRecipeDto.imageUrl());
         newRecipe.setDifficulty(addRecipeDto.difficulty());
         newRecipe.setMealType(addRecipeDto.mealType());
         newRecipe.setSeason(addRecipeDto.season());
@@ -401,6 +402,8 @@ public class RecipeServiceImpl implements IRecipeService {
         }
 
         recipeToUpdate.setCategory(resolveCategoryOrNull(updateRecipeDto.categoryPublicId()));
+        if (!Objects.equals(recipeToUpdate.getImageUrl(), updateRecipeDto.imageUrl()))
+            recipeToUpdate.setImageUrl(updateRecipeDto.imageUrl());
         if (!recipeToUpdate.getDifficulty().equals(updateRecipeDto.difficulty()))
             recipeToUpdate.setDifficulty(updateRecipeDto.difficulty());
         if (!Objects.equals(recipeToUpdate.getMealType(), updateRecipeDto.mealType()))
@@ -561,6 +564,7 @@ public class RecipeServiceImpl implements IRecipeService {
                 recipe.getPublicId(),
                 recipe.getAuthor().getPublicId(),
                 recipe.getCategory() != null ? recipe.getCategory().getPublicId() : null,
+                recipe.getImageUrl() != null ? recipe.getImageUrl() : null,
                 translation.getTitle(),
                 translation.getDescription(),
                 decorated.ratingAverage(),
@@ -830,6 +834,7 @@ public class RecipeServiceImpl implements IRecipeService {
                 recipe.getPublicId(),
                 recipe.getAuthor().getPublicId(),
                 recipe.getCategory() != null ? recipe.getCategory().getPublicId() : null,
+                recipe.getImageUrl() != null ? recipe.getImageUrl() : null,
                 recipe.getDifficulty(),
                 recipe.getMealType(),
                 recipe.getSeason(),
@@ -865,6 +870,7 @@ public class RecipeServiceImpl implements IRecipeService {
                 recipe.getAuthor().getPublicId(),
                 recipe.getCategory() != null ? recipe.getCategory().getPublicId() : null,
                 recipe.getDifficulty(),
+                recipe.getImageUrl() != null ? recipe.getImageUrl() : null,
                 recipe.getMealType(),
                 recipe.getSeason(),
                 recipe.getPrepTimeMin(),
@@ -903,6 +909,7 @@ public class RecipeServiceImpl implements IRecipeService {
                 recipe.getAuthor().getPublicId(),
                 recipe.getCategory() != null ? recipe.getCategory().getPublicId() : null,
                 recipe.getDifficulty(),
+                recipe.getImageUrl() != null ? recipe.getImageUrl() : null,
                 recipe.getMealType(),
                 recipe.getSeason(),
                 recipe.getPrepTimeMin(),

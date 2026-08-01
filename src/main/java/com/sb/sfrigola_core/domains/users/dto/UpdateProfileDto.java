@@ -13,7 +13,7 @@ public record UpdateProfileDto(
         @Size(max = 100, message = UserValidationCodeConstants.LAST_NAME_TOO_LONG)
         String lastName,
 
-        @Size(max = 500, message = UserValidationCodeConstants.AVATAR_URL_TOO_LONG)
+        @Size(max = 1000, message = UserValidationCodeConstants.AVATAR_URL_TOO_LONG)
         String avatarUrl,
 
         @Size(max = 1000, message = UserValidationCodeConstants.BIO_TOO_LONG)

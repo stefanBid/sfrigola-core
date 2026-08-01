@@ -7,6 +7,7 @@ import com.sb.sfrigola_core.domains.recipes.enums.SeasonType;
 import jakarta.validation.Valid;
 import jakarta.validation.constraints.Min;
 import jakarta.validation.constraints.NotNull;
+import jakarta.validation.constraints.Size;
 
 import java.io.Serializable;
 import java.util.List;
@@ -19,6 +20,9 @@ public record UpdateRecipeDto(
         DifficultyLevel difficulty,
 
         MealType mealType,
+
+        @Size(max = 1000, message = RecipeValidationCodeConstants.IMAGE_URL_TOO_LONG)
+        String imageUrl,
 
         @NotNull
         SeasonType season,

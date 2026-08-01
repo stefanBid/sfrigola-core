@@ -45,7 +45,7 @@ public class SCUser extends BaseEntity {
     @Column(name = "last_name", length = 100)
     private String lastName;
 
-    @Column(name = "avatar_url", length = 500)
+    @Column(name = "avatar_url", length = 1000)
     private String avatarUrl;
 
     @Column(name = "bio", columnDefinition = "TEXT")

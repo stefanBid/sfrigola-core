@@ -8,6 +8,7 @@ public record RecipeDto(
         UUID publicId,
         UUID authorPublicId,
         UUID categoryPublicId,
+        String imageUrl,
         String specificTranslationTitle,
         String specificTranslationDescription,
         BigDecimal avgRating,
