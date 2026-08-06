@@ -20,6 +20,8 @@ public @interface ValidImage {
     long maxHeightPx() default 0; // Maximum height in pixels (0 means no limit)
     long minWidthPx() default 0; // Minimum width in pixels (0 means no limit)
     long minHeightPx() default 0; // Minimum height in pixels (0 means no limit)
+    double minAspectRatio() default 0; // Minimum aspect ratio (width/height) (0 means no limit)
+    double maxAspectRatio() default 0; // Maximum aspect ratio (width/height) (0 means no limit)
     String[] allowedFormats() default {
             ImageConstants.EXT_JPG, ImageConstants.EXT_JPEG, ImageConstants.EXT_PNG,
             ImageConstants.EXT_GIF, ImageConstants.EXT_BMP, ImageConstants.EXT_WEBP

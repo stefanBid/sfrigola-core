@@ -9,6 +9,9 @@ public class SCGeneralConstants {
     public static final String ALLOWED_ORIGINS = "ALLOWED_ORIGINS";
     public static final String SYSTEM_USERNAME = "system";
 
+    // FILE STORAGE CONSTANTS
+    public static final String FILE_STORAGE_ROOT_DIR = "FILE_STORAGE_ROOT_DIR";
+
     // JWT TOKEN CONSTANTS
     public static final String JWT_HEADER = "Authorization";
     public static final String JWT_HEADER_PREFIX = "Bearer ";

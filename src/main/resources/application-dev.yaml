@@ -17,3 +17,6 @@ JWT_EXPIRATION_MS: 86400000
 
 # ===== CORS =====
 ALLOWED_ORIGINS: http://localhost:3000
+
+# ===== FILE STORAGE =====
+FILE_STORAGE_ROOT_DIR: ${FILE_STORAGE_ROOT_DIR:./uploads}

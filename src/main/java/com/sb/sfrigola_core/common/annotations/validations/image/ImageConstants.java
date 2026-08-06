@@ -23,6 +23,10 @@ public class ImageConstants {
     public static final String IMAGE_HEIGHT_TOO_LARGE = "IMAGE_HEIGHT_TOO_LARGE";
     public static final String IMAGE_HEIGHT_TOO_SMALL = "IMAGE_HEIGHT_TOO_SMALL";
 
+    // --- ASPECT RATIO (maxAspectRatio / minAspectRatio) ---
+    public static final String IMAGE_ASPECT_RATIO_TOO_WIDE  = "IMAGE_ASPECT_RATIO_TOO_WIDE";
+    public static final String IMAGE_ASPECT_RATIO_TOO_NARROW = "IMAGE_ASPECT_RATIO_TOO_NARROW";
+
     // --- REGEX (structural shape only — extension allow-list checked separately) ---
 
     // MultipartFile#getOriginalFilename() shape — matches "photo.jpg", or with a path prefix if the
