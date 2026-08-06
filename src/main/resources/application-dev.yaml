@@ -12,11 +12,13 @@ spring:
 # default is circular in Spring when no higher-precedence source (OS env var) provides
 # the value first. A plain value here is still overridden by a real env var of the
 # same name (OS env > profile YAML in Spring's property source precedence).
-JWT_SECRET_KEY: dev-only-jwt-secret-key-not-for-production-use-1234567890
+JWT_SECRET_KEY: 7680c768591932767e15e38642bd3208af87a37e944a422ab5b3e28be1bc7c69
 JWT_EXPIRATION_MS: 86400000
 
 # ===== CORS =====
 ALLOWED_ORIGINS: http://localhost:3000
 
 # ===== FILE STORAGE =====
-FILE_STORAGE_ROOT_DIR: ${FILE_STORAGE_ROOT_DIR:./uploads}
+# Plain literal, NOT ${FILE_STORAGE_ROOT_DIR:...} — same-name placeholder default is
+# circular in Spring with no higher-precedence source; a real env var still overrides this.
+FILE_STORAGE_ROOT_DIR: ./uploads
