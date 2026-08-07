@@ -1,5 +1,6 @@
 package com.sb.sfrigola_core.common.exception;
 
+import com.sb.sfrigola_core.common.annotations.validations.image.ImageConstants;
 import com.sb.sfrigola_core.common.dto.response.SCGeneralResponseDto;
 import com.sb.sfrigola_core.common.enums.GeneralErrorCode;
 import com.sb.sfrigola_core.common.exception.ex.SCGeneralException;
@@ -16,6 +17,7 @@ import org.springframework.web.bind.annotation.ExceptionHandler;
 import org.springframework.web.bind.annotation.RestControllerAdvice;
 import org.springframework.web.context.request.WebRequest;
 import org.springframework.web.method.annotation.HandlerMethodValidationException;
+import org.springframework.web.multipart.MaxUploadSizeExceededException;
 
 import java.util.HashMap;
 import java.util.Map;
@@ -85,6 +87,13 @@ public class SCExceptionHandler {
     @ExceptionHandler(HttpMessageNotReadableException.class)
     public ResponseEntity<SCGeneralResponseDto<Void, Void>> handleHttpMessageNotReadable(HttpMessageNotReadableException ex, WebRequest request) {
         return SCErrorDataBuilderUtils.build(HttpStatus.BAD_REQUEST, Map.of(GeneralErrorCode.MALFORMED_JSON.code(), ex.getMostSpecificCause().getMessage()), request);
+    }
+
+    // 400 — Uploaded file exceeds spring.servlet.multipart.max-file-size/max-request-size.
+    // Caused by client input, not a server fault — must not fall through to the 500 fallback below.
+    @ExceptionHandler(MaxUploadSizeExceededException.class)
+    public ResponseEntity<SCGeneralResponseDto<Void, Void>> handleMaxUploadSizeExceeded(MaxUploadSizeExceededException ex, WebRequest request) {
+        return SCErrorDataBuilderUtils.build(HttpStatus.BAD_REQUEST, Map.of(ImageConstants.IMAGE_SIZE_TOO_LARGE, "Uploaded file exceeds the maximum allowed size"), request);
     }
 
     @ExceptionHandler(SCGeneralException.class)

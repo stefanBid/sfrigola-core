@@ -595,6 +595,7 @@ INSERT INTO users (
     is_active,
     first_name,
     last_name,
+    avatar_storage_ref,
     created_by,
     updated_by
 )
@@ -607,6 +608,7 @@ VALUES (
     TRUE,
     'Admin',
     'Sfrigola',
+    'avatar/default/avatar_01.png',
     'system',
     'system'
 );
@@ -621,6 +623,7 @@ INSERT INTO users (
     is_active,
     first_name,
     last_name,
+    avatar_storage_ref,
     created_by,
     updated_by
 )
@@ -633,6 +636,7 @@ VALUES (
     TRUE,
     'Contributor',
     'Sfrigola',
+    'avatar/default/avatar_02.png',
     'system',
     'system'
 );
@@ -647,6 +651,7 @@ INSERT INTO users (
     is_active,
     first_name,
     last_name,
+    avatar_storage_ref,
     created_by,
     updated_by
 )
@@ -659,6 +664,7 @@ VALUES (
     TRUE,
     'User',
     'Sfrigola',
+    'avatar/default/avatar_03.png',
     'system',
     'system'
 );
