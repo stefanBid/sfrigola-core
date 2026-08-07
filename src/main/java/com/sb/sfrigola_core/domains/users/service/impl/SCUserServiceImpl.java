@@ -23,6 +23,7 @@ import jakarta.annotation.Nullable;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
+import org.springframework.web.servlet.support.ServletUriComponentsBuilder;
 
 import java.time.Instant;
 import java.util.UUID;
@@ -147,6 +148,10 @@ public class SCUserServiceImpl implements ISCUserService {
     // =========================================================
 
     private SCUserDto convertToExternalDto(SCUser user) {
+        String avatarUrl = user.getAvatarUrl() != null
+                ? ServletUriComponentsBuilder.fromCurrentContextPath().path("/uploads/").path(user.getAvatarUrl()).toUriString()
+                : null;
+
         return new SCUserDto(
                 user.getPublicId(),
                 user.getUsername(),
@@ -155,7 +160,7 @@ public class SCUserServiceImpl implements ISCUserService {
                 user.isActive(),
                 user.getFirstName(),
                 user.getLastName(),
-                user.getAvatarUrl(),
+                avatarUrl,
                 user.getBio()
         );
     }
