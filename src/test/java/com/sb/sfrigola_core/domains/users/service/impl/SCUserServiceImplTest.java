@@ -3,6 +3,7 @@ package com.sb.sfrigola_core.domains.users.service.impl;
 import com.sb.sfrigola_core.common.enums.SCUserRole;
 import com.sb.sfrigola_core.common.exception.ex.SCNoRowsAffectedException;
 import com.sb.sfrigola_core.common.models.context.SCAuthUser;
+import com.sb.sfrigola_core.common.interfaces.service_interfaces.ISCFileStorageService;
 import com.sb.sfrigola_core.common.models.contracts.SCFilterQuery;
 import com.sb.sfrigola_core.domains.languages.service.ILanguageService;
 import com.sb.sfrigola_core.domains.users.dto.UpdateProfileDto;
@@ -45,6 +46,8 @@ class SCUserServiceImplTest {
     private ISCUserRepository userRepository;
     @Mock
     private ILanguageService languageService;
+    @Mock
+    private ISCFileStorageService fileStorageService;
 
     private SCUserServiceImpl userService;
 
@@ -52,7 +55,7 @@ class SCUserServiceImplTest {
 
     @BeforeEach
     void setUp() {
-        userService = new SCUserServiceImpl(userRepository, languageService);
+        userService = new SCUserServiceImpl(userRepository, languageService, fileStorageService);
 
         authUser = new SCAuthUser(UUID.randomUUID(), SCUserRole.ROLE_USER, "john", "john@example.com", null, "en", true, "John", "Doe");
         authenticateAs(authUser);

@@ -28,6 +28,7 @@ Base path: `/sfrigola-core`
 |--------|------|--------|-------|
 | PATCH | `/users/settings/change-preferred-lang/{code}` | authenticated | |
 | PATCH | `/users/profile/update` | authenticated | |
+| POST | `/users/profile/update-avatar` | authenticated | `multipart/form-data`, body is `SCImageBodyDto` (`imageFile`); returns the new avatar as an absolute, client-loadable URL (not the raw storage reference persisted on the entity) — see File Storage in root `CLAUDE.md` |
 | PATCH | `/users/profile/became-contributor` | authenticated | promotes to ROLE_CONTRIBUTOR |
 | GET | `/users/admin` | ROLE_ADMIN | paginated, sort/search/isActive filters |
 | PATCH | `/users/admin/{publicId}/status` | ROLE_ADMIN | activate/deactivate user |

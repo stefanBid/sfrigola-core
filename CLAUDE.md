@@ -41,7 +41,7 @@ domains/<feature>/
 
 ## Database Schema
 
-Database schema lives in `src/main/resources/sql/createSfrigolaDB.sql` — read it directly, it's the source of truth (`ddl-auto=none`, Hibernate never generates or alters tables). One non-obvious point not visible from a quick skim: `users.avatar_url` is nullable and unset at signup; once image storage exists it will default to a placeholder URL, user can override with a personal photo.
+Database schema lives in `src/main/resources/sql/createSfrigolaDB.sql` — read it directly, it's the source of truth (`ddl-auto=none`, Hibernate never generates or alters tables). One non-obvious point not visible from a quick skim: `users.avatar_storage_ref` is nullable and unset at signup — no default placeholder is assigned at registration; it stays `null` until the user uploads a photo via `POST /users/profile/update-avatar`. The column name is deliberately not `avatar_url`: it stores a **raw storage reference** (e.g. `avatars/<name>.jpg`, whatever `ISCFileStorageService.upsetFile` returns), never a full URL. `SCUser.avatarStorageRef` mirrors that naming (Java field ≠ `SCUserDto.avatarUrl`, on purpose — see below). `SCUserServiceImpl` resolves the reference into an absolute, browser/app-loadable URL (via `ServletUriComponentsBuilder`, shared helper `getAvatarUriString`) only when building `SCUserDto` for a response — never read `user.getAvatarStorageRef()` and hand it to a client as-is.
 
 ---
 
@@ -51,7 +51,7 @@ Database schema lives in `src/main/resources/sql/createSfrigolaDB.sql` — read 
 |-------------|--------|------------|---------|------------|-------|
 | `auth`      | SCUser/SCRole (in users) | — | done | done | login, register, change-email, change-password |
 | `languages` | done | done | done | done | GET paginated |
-| `users`     | done | done | done | done | update-profile, change-lang, become-contributor, admin CRUD |
+| `users`     | done | done | done | done | update-profile, update-avatar (local filesystem storage, see File Storage below), change-lang, become-contributor, admin CRUD |
 | `categories`| done | done | done | done | Category + CategoryTranslation; self-referential parent; has domain bridge |
 | `tags`      | done | done | done | done | Tag + TagTranslation + enums + converters; has domain bridge |
 | `ingredients` | done | done | done | done | Ingredient + IngredientTranslation + IngredientTag bridge table; has domain bridge |
@@ -173,6 +173,15 @@ Applies to every entity with a `*_translations` child table (`categories`, `tags
 **Delete (`deleteX`)** — no `locale` param, no translation preview, no admin-preview DTO returned:
 - Delete the parent row; translations cascade via `CascadeType.ALL` on the JPA relation (and DB `ON DELETE CASCADE`) — never touch/query translations explicitly in the delete method.
 - Return only the deleted entity's `publicId` (`UUID`), not a DTO.
+
+### File Storage
+
+`ISCFileStorageService` (`common/interfaces/service_interfaces/`) is the only cross-domain contract for persisting an uploaded file (avatar, recipe cover, ...). Current implementation, `SCFileSystemImageStorageService`, is a **local-filesystem stand-in** for a real object storage backend (S3/Cloudinary) — not yet wired because no third-party storage account exists yet. Callers must not assume filesystem-specific behavior; everything goes through the interface so swapping the implementation later requires no caller changes.
+
+- `upsetFile(file, folderPath, fileName)` writes atomically (temp file in the same target directory + `Files.move(..., ATOMIC_MOVE, REPLACE_EXISTING)`) and returns a **relative storage reference** (`folderPath/sanitizedName.ext`) — never a URL.
+- That reference is what gets persisted on the owning entity (e.g. `SCUser.avatarUrl` — see Database Schema note above). Resolving it into an absolute, client-loadable URL is the caller domain's job, done only when building the response DTO.
+- Root directory comes from `FILE_STORAGE_ROOT_DIR` (see Configuration below).
+- **Static serving is dev/test-only.** `config/web/LocalUploadsWebConfig` (`@Profile({"dev", "test"})`) exposes `/uploads/**` → `FILE_STORAGE_ROOT_DIR` over HTTP, registered as `publicPath` in `SecurityBeansConfig` (images in an `<img>`/`Image.network` can't carry an `Authorization` header, so serving must be unauthenticated). This bean does not exist in prod — once real object storage is wired, prod URLs will point at that provider directly and this config becomes dev/test-only permanently, not a temporary gap to close.
 
 ### BaseEntity
 
@@ -311,11 +320,16 @@ Jakarta Validation on DTOs. Message constants in `SCRequestParamValidationCodeCo
 
 - Config is YAML, split by profile: `application.yaml` (common — context path, datasource wiring, JPA, aspect thresholds), `application-dev.yaml`, `application-prod.yaml`. No single `application.properties` anymore. `spring.profiles.default: dev` in the base file — no `SPRING_PROFILES_ACTIVE` set at all falls back to `dev`.
 - Secrets always via env vars (`${DB_URL}`, `${DB_USERNAME}`, `${DB_PASSWORD}`, `${SERVER_PORT}`, `${JWT_SECRET_KEY}`). No YAML file, in any profile, ever contains a literal secret value.
-- **App code never hardcodes a fallback default for an externally-configured value — that's a config-layer concern only.** Every `Environment.getProperty(KEY)` call in Java either uses the resolved value or throws; it never supplies a Java-side default (no `env.getProperty(KEY, someHardcodedDefault)`). Convenience defaults for non-secret, environment-specific values (`JWT_EXPIRATION_MS`, `ALLOWED_ORIGINS`, and — dev only — `JWT_SECRET_KEY`) live exclusively in `application-dev.yaml`/`application-prod.yaml` as `${VAR:default}`; `application-prod.yaml` omits the default (and omits the key entirely if it has no default — a self-referencing `KEY: ${KEY}` with nothing backing it resolves as a circular-placeholder boot failure instead of the intended clean error) so a missing value fails the same way in every deploy method (bare `java -jar`, systemd, Docker).
+- **App code never hardcodes a fallback default for an externally-configured value — that's a config-layer concern only.** Every `Environment.getProperty(KEY)` call in Java either uses the resolved value or throws; it never supplies a Java-side default (no `env.getProperty(KEY, someHardcodedDefault)`). Convenience defaults for non-secret, environment-specific values (`JWT_EXPIRATION_MS`, `ALLOWED_ORIGINS`, `FILE_STORAGE_ROOT_DIR`, and — dev only — `JWT_SECRET_KEY`) live exclusively in `application-dev.yaml`/`application-prod.yaml` as `${VAR:default}`; `application-prod.yaml` omits the default (and omits the key entirely if it has no default — a self-referencing `KEY: ${KEY}` with nothing backing it resolves as a circular-placeholder boot failure instead of the intended clean error) so a missing value fails the same way in every deploy method (bare `java -jar`, systemd, Docker).
   - Missing `JWT_SECRET_KEY`/`JWT_EXPIRATION_MS` at token-generation/validation time → `SCAuthSecuritySystemException` (500) from `JwtService`, or `ENV_NOT_AVAILABLE` (401) from `JwtValidationFilter` — never a silently-reused hardcoded secret.
   - Missing `ALLOWED_ORIGINS` → `SecurityBeansConfig.allowedOriginsPaths()` throws `IllegalStateException` at boot — application context fails to start, never a silent empty-CORS fallback.
+  - Missing `FILE_STORAGE_ROOT_DIR` → `SCFileSystemImageStorageService.init()` (`@PostConstruct`) throws `IllegalStateException` at boot — same pattern, no silently-reused hardcoded path. `src/test/resources/application-test.yaml` (loaded via the `test` Spring profile — see Testing below) sets its own value, self-contained like `JWT_SECRET_KEY`/`ALLOWED_ORIGINS` there.
   - Applies to every future externally-configured value, not just JWT/CORS — same standard project-wide.
 - DB schema managed via `src/main/resources/sql/createSfrigolaDB.sql`, not by Hibernate.
+
+### Testing
+
+`mvn test`/`./mvnw test` always run with Spring profile `test` active — forced via `systemPropertyVariables` on the `maven-surefire-plugin` in `pom.xml` (`spring.profiles.active=test`), not something individual test classes opt into. This activates `src/test/resources/application-test.yaml`, which layers on top of (not replaces) the base `application.yaml` — only real overrides live there (test datasource credentials, `spring.docker.compose.enabled: false`, `JWT_SECRET_KEY`/`JWT_EXPIRATION_MS`/`ALLOWED_ORIGINS`/`FILE_STORAGE_ROOT_DIR` test values); anything identical to the base config (context-path, `ddl-auto`, aspect thresholds, ...) is inherited, not duplicated. Test config is deliberately self-contained — it must not depend on `application-dev.yaml`'s values even though that file is also on the test classpath.
 
 ### Logging
 

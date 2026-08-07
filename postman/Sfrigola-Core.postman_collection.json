@@ -136,9 +136,23 @@
             "header": [{ "key": "Content-Type", "value": "application/json" }],
             "body": {
               "mode": "raw",
-              "raw": "{\n  \"firstName\": \"Mario\",\n  \"lastName\": \"Rossi\",\n  \"avatarUrl\": \"https://example.com/avatar.png\",\n  \"bio\": \"Home cook, pasta enthusiast.\"\n}"
+              "raw": "{\n  \"firstName\": \"Mario\",\n  \"lastName\": \"Rossi\",\n  \"bio\": \"Home cook, pasta enthusiast.\"\n}"
             },
             "url": { "raw": "{{baseUrl}}/users/profile/update", "host": ["{{baseUrl}}"], "path": ["users", "profile", "update"] }
+          },
+          "response": []
+        },
+        {
+          "name": "Update Avatar",
+          "request": {
+            "method": "POST",
+            "body": {
+              "mode": "formdata",
+              "formdata": [
+                { "key": "imageFile", "type": "file", "src": [] }
+              ]
+            },
+            "url": { "raw": "{{baseUrl}}/users/profile/update-avatar", "host": ["{{baseUrl}}"], "path": ["users", "profile", "update-avatar"] }
           },
           "response": []
         },

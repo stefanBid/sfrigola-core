@@ -57,8 +57,16 @@ public class SCUserServiceImpl implements ISCUserService {
     @Transactional
     public String updateProfileAvatar(SCImageBodyDto imageBodyDto) {
         var userRecord = checkUserAuthOrThrow();
+        var user = userRecord.user();
+
         String avatarFileName = userRecord.username + "_" +userRecord.user.getPublicId() + "_avatar";
-        return fileStorageService.upsetFile(imageBodyDto.imageFile(), "", avatarFileName);
+        String pathToSaveIntoDB = fileStorageService.upsetFile(imageBodyDto.imageFile(), "", avatarFileName);
+
+        user.setAvatarStorageRef(pathToSaveIntoDB);
+        user.setUpdatedAt(Instant.now());
+        user.setUpdatedBy(userRecord.username());
+
+        return getAvatarUriString(pathToSaveIntoDB);
     }
 
     @Override
@@ -147,11 +155,13 @@ public class SCUserServiceImpl implements ISCUserService {
     // PRIVATE
     // =========================================================
 
-    private SCUserDto convertToExternalDto(SCUser user) {
-        String avatarUrl = user.getAvatarUrl() != null
-                ? ServletUriComponentsBuilder.fromCurrentContextPath().path("/uploads/").path(user.getAvatarUrl()).toUriString()
+    private String getAvatarUriString(String userDynamicPath) {
+        return userDynamicPath != null
+                ? ServletUriComponentsBuilder.fromCurrentContextPath().path("/uploads/").path(userDynamicPath).toUriString()
                 : null;
+    }
 
+    private SCUserDto convertToExternalDto(SCUser user) {
         return new SCUserDto(
                 user.getPublicId(),
                 user.getUsername(),
@@ -160,7 +170,7 @@ public class SCUserServiceImpl implements ISCUserService {
                 user.isActive(),
                 user.getFirstName(),
                 user.getLastName(),
-                avatarUrl,
+                getAvatarUriString(user.getAvatarStorageRef()),
                 user.getBio()
         );
     }

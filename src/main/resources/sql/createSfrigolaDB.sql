@@ -98,7 +98,7 @@ CREATE TABLE users (
    is_active       BOOLEAN         NOT NULL DEFAULT TRUE,
    first_name      VARCHAR(100),
    last_name       VARCHAR(100),
-   avatar_url      VARCHAR(1000),
+   avatar_storage_ref VARCHAR(1000),
    bio             TEXT,
    created_at      TIMESTAMP       NOT NULL DEFAULT NOW(),
    updated_at      TIMESTAMP       NOT NULL DEFAULT NOW(),

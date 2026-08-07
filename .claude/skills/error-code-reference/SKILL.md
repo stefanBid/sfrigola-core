@@ -15,6 +15,7 @@ For the decision rule on picking a bucket for a *new* exception, see "HTTP Statu
 | `SCDataCorruptionException` | `DATA_CORRUPTED` | unmappable value read from DB |
 | `SCAuthSecuritySystemException` | `SECURITY_SYSTEM_ERROR` | JWT generation/validation infra failure |
 | `NoValidRoleFromExternalException` | `INVALID_ROLE_FROM_STRING` | corrupted role value in DB |
+| `SCFileStorageException` | `FILE_STORAGE_ERROR` | local filesystem I/O failure storing/deleting an uploaded file (`ISCFileStorageService`) |
 
 **401 `UNAUTHORIZED`** — session/token invalid, global bucket:
 | Exception / handler | Error code | Cause |

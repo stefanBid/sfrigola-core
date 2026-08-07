@@ -9,6 +9,10 @@ public class SCGeneralConstants {
     public static final String ALLOWED_ORIGINS = "ALLOWED_ORIGINS";
     public static final String SYSTEM_USERNAME = "system";
 
+    public static final String AVATAR_PATH = "avatar";
+    public static final String AVATAR_DEFAULT_PATH = "avatar/default";
+    public static final String RECIPE_COVER_PATH = "recipe";
+
     // FILE STORAGE CONSTANTS
     public static final String FILE_STORAGE_ROOT_DIR = "FILE_STORAGE_ROOT_DIR";
 
