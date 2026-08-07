@@ -1,6 +1,7 @@
 package com.sb.sfrigola_core.domains.users.service.impl;
 
 
+import com.sb.sfrigola_core.common.constant.SCGeneralConstants;
 import com.sb.sfrigola_core.common.dto.body.SCImageBodyDto;
 import com.sb.sfrigola_core.common.dto.option.SCPagedOptionDto;
 import com.sb.sfrigola_core.common.interfaces.service_interfaces.ISCFileStorageService;
@@ -60,7 +61,7 @@ public class SCUserServiceImpl implements ISCUserService {
         var user = userRecord.user();
 
         String avatarFileName = userRecord.username + "_" +userRecord.user.getPublicId() + "_avatar";
-        String pathToSaveIntoDB = fileStorageService.upsetFile(imageBodyDto.imageFile(), "", avatarFileName);
+        String pathToSaveIntoDB = fileStorageService.upsetFile(imageBodyDto.imageFile(), SCGeneralConstants.AVATAR_PATH, avatarFileName);
 
         user.setAvatarStorageRef(pathToSaveIntoDB);
         user.setUpdatedAt(Instant.now());
