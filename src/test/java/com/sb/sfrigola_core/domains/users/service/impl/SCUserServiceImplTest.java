@@ -1,5 +1,7 @@
 package com.sb.sfrigola_core.domains.users.service.impl;
 
+import com.sb.sfrigola_core.common.constant.SCGeneralConstants;
+import com.sb.sfrigola_core.common.dto.body.SCImageBodyDto;
 import com.sb.sfrigola_core.common.enums.SCUserRole;
 import com.sb.sfrigola_core.common.exception.ex.SCNoRowsAffectedException;
 import com.sb.sfrigola_core.common.models.context.SCAuthUser;
@@ -8,6 +10,7 @@ import com.sb.sfrigola_core.common.models.contracts.SCFilterQuery;
 import com.sb.sfrigola_core.domains.languages.service.ILanguageService;
 import com.sb.sfrigola_core.domains.users.dto.UpdateProfileDto;
 import com.sb.sfrigola_core.domains.users.entity.SCUser;
+import com.sb.sfrigola_core.domains.users.exceptions.InvalidDefaultAvatarException;
 import com.sb.sfrigola_core.domains.users.exceptions.NoChangeRoleToAdminException;
 import com.sb.sfrigola_core.domains.users.exceptions.NoUserFoundException;
 import com.sb.sfrigola_core.domains.users.exceptions.SCCanNotActiveOrDeactivateYourselfException;
@@ -21,8 +24,12 @@ import org.mockito.junit.jupiter.MockitoExtension;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.PageImpl;
 import org.springframework.data.domain.PageRequest;
+import org.springframework.mock.web.MockHttpServletRequest;
+import org.springframework.mock.web.MockMultipartFile;
 import org.springframework.security.authentication.UsernamePasswordAuthenticationToken;
 import org.springframework.security.core.context.SecurityContextHolder;
+import org.springframework.web.context.request.RequestContextHolder;
+import org.springframework.web.context.request.ServletRequestAttributes;
 
 import java.time.Instant;
 import java.util.List;
@@ -59,11 +66,16 @@ class SCUserServiceImplTest {
 
         authUser = new SCAuthUser(UUID.randomUUID(), SCUserRole.ROLE_USER, "john", "john@example.com", null, "en", true, "John", "Doe");
         authenticateAs(authUser);
+
+        // getAvatarUriString(...) needs a request bound to build an absolute URL — no real
+        // HTTP request exists in a plain Mockito unit test, so fake one.
+        RequestContextHolder.setRequestAttributes(new ServletRequestAttributes(new MockHttpServletRequest()));
     }
 
     @AfterEach
     void tearDown() {
         SecurityContextHolder.clearContext();
+        RequestContextHolder.resetRequestAttributes();
     }
 
     private void authenticateAs(SCAuthUser user) {
@@ -111,6 +123,149 @@ class SCUserServiceImplTest {
 
         assertThatThrownBy(() -> userService.updateProfile(dto))
                 .isInstanceOf(NoUserFoundException.class);
+    }
+
+    // =========================================================
+    // updateProfileAvatar
+    // =========================================================
+
+    @Test
+    void updateProfileAvatar_storesFileAndPersistsReference() {
+        var user = buildUser(authUser.publicId());
+        when(userRepository.findByPublicId(authUser.publicId())).thenReturn(Optional.of(user));
+        var file = new MockMultipartFile("imageFile", "avatar.jpg", "image/jpeg", "fake-bytes".getBytes());
+        var imageBodyDto = new SCImageBodyDto(file);
+        when(fileStorageService.upsetFile(eq(file), eq(SCGeneralConstants.AVATAR_PATH), any()))
+                .thenReturn(SCGeneralConstants.AVATAR_PATH + "/john_ref.jpg");
+
+        var result = userService.updateProfileAvatar(imageBodyDto);
+
+        assertThat(user.getAvatarStorageRef()).isEqualTo(SCGeneralConstants.AVATAR_PATH + "/john_ref.jpg");
+        assertThat(result).contains("/uploads/" + SCGeneralConstants.AVATAR_PATH + "/john_ref.jpg");
+        assertThat(user.getUpdatedBy()).isEqualTo("john");
+    }
+
+    @Test
+    void updateProfileAvatar_throwsWhenUserNotFound() {
+        when(userRepository.findByPublicId(authUser.publicId())).thenReturn(Optional.empty());
+        var imageBodyDto = new SCImageBodyDto(new MockMultipartFile("imageFile", "avatar.jpg", "image/jpeg", "fake-bytes".getBytes()));
+
+        assertThatThrownBy(() -> userService.updateProfileAvatar(imageBodyDto))
+                .isInstanceOf(NoUserFoundException.class);
+
+        verifyNoInteractions(fileStorageService);
+    }
+
+    // =========================================================
+    // selectDefaultAvatar
+    // =========================================================
+
+    @Test
+    void selectDefaultAvatar_setsReferenceWhenKeyIsValid() {
+        var user = buildUser(authUser.publicId());
+        String reference = SCGeneralConstants.AVATAR_DEFAULT_PATH + "/avatar_01.png";
+        when(fileStorageService.listFiles(SCGeneralConstants.AVATAR_DEFAULT_PATH)).thenReturn(List.of(reference));
+        when(userRepository.findByPublicId(authUser.publicId())).thenReturn(Optional.of(user));
+
+        var result = userService.selectDefaultAvatar("avatar_01.png");
+
+        assertThat(user.getAvatarStorageRef()).isEqualTo(reference);
+        assertThat(result).contains("/uploads/" + reference);
+        verify(fileStorageService, never()).upsetFile(any(), any(), any());
+    }
+
+    @Test
+    void selectDefaultAvatar_throwsWhenKeyIsInvalid() {
+        when(fileStorageService.listFiles(SCGeneralConstants.AVATAR_DEFAULT_PATH))
+                .thenReturn(List.of(SCGeneralConstants.AVATAR_DEFAULT_PATH + "/avatar_01.png"));
+
+        assertThatThrownBy(() -> userService.selectDefaultAvatar("does_not_exist.png"))
+                .isInstanceOf(InvalidDefaultAvatarException.class);
+
+        // Validation happens before the auth/DB lookup — no wasted query on an invalid key.
+        verify(userRepository, never()).findByPublicId(any());
+    }
+
+    // =========================================================
+    // deleteProfileAvatar
+    // =========================================================
+
+    @Test
+    void deleteProfileAvatar_deletesFileWhenCurrentIsCustomUpload() {
+        var user = buildUser(authUser.publicId());
+        user.setAvatarStorageRef(SCGeneralConstants.AVATAR_PATH + "/john_ref.jpg");
+        when(userRepository.findByPublicId(authUser.publicId())).thenReturn(Optional.of(user));
+        String defaultRef = SCGeneralConstants.AVATAR_DEFAULT_PATH + "/avatar_01.png";
+        when(fileStorageService.listFiles(SCGeneralConstants.AVATAR_DEFAULT_PATH)).thenReturn(List.of(defaultRef));
+
+        var result = userService.deleteProfileAvatar();
+
+        verify(fileStorageService).deleteFiles(SCGeneralConstants.AVATAR_PATH + "/john_ref.jpg");
+        assertThat(user.getAvatarStorageRef()).isEqualTo(defaultRef);
+        assertThat(result).contains("/uploads/" + defaultRef);
+    }
+
+    @Test
+    void deleteProfileAvatar_doesNotDeleteFileWhenCurrentIsAlreadyDefault() {
+        var user = buildUser(authUser.publicId());
+        String currentDefault = SCGeneralConstants.AVATAR_DEFAULT_PATH + "/avatar_03.png";
+        user.setAvatarStorageRef(currentDefault);
+        when(userRepository.findByPublicId(authUser.publicId())).thenReturn(Optional.of(user));
+        when(fileStorageService.listFiles(SCGeneralConstants.AVATAR_DEFAULT_PATH)).thenReturn(List.of(currentDefault));
+
+        userService.deleteProfileAvatar();
+
+        // Must never delete a shared default file — other users may point at the same file.
+        verify(fileStorageService, never()).deleteFiles(any());
+    }
+
+    @Test
+    void deleteProfileAvatar_doesNotDeleteWhenNoCurrentAvatar() {
+        var user = buildUser(authUser.publicId());
+        when(userRepository.findByPublicId(authUser.publicId())).thenReturn(Optional.of(user));
+        when(fileStorageService.listFiles(SCGeneralConstants.AVATAR_DEFAULT_PATH))
+                .thenReturn(List.of(SCGeneralConstants.AVATAR_DEFAULT_PATH + "/avatar_01.png"));
+
+        userService.deleteProfileAvatar();
+
+        verify(fileStorageService, never()).deleteFiles(any());
+    }
+
+    @Test
+    void deleteProfileAvatar_throwsWhenNoDefaultsConfigured() {
+        var user = buildUser(authUser.publicId());
+        when(userRepository.findByPublicId(authUser.publicId())).thenReturn(Optional.of(user));
+        when(fileStorageService.listFiles(SCGeneralConstants.AVATAR_DEFAULT_PATH)).thenReturn(List.of());
+
+        assertThatThrownBy(() -> userService.deleteProfileAvatar())
+                .isInstanceOf(IllegalStateException.class);
+    }
+
+    // =========================================================
+    // getAllDefaultAvatars
+    // =========================================================
+
+    @Test
+    void getAllDefaultAvatars_mapsReferencesToDtoWithKeyAndUrl() {
+        when(fileStorageService.listFiles(SCGeneralConstants.AVATAR_DEFAULT_PATH)).thenReturn(List.of(
+                SCGeneralConstants.AVATAR_DEFAULT_PATH + "/avatar_01.png",
+                SCGeneralConstants.AVATAR_DEFAULT_PATH + "/avatar_02.png"
+        ));
+
+        var result = userService.getAllDefaultAvatars();
+
+        assertThat(result).hasSize(2);
+        assertThat(result.getFirst().avatarKey()).isEqualTo("avatar_01.png");
+        assertThat(result.getFirst().url()).contains("/uploads/" + SCGeneralConstants.AVATAR_DEFAULT_PATH + "/avatar_01.png");
+    }
+
+    @Test
+    void getAllDefaultAvatars_returnsEmptyListWhenNoneConfigured() {
+        when(fileStorageService.listFiles(SCGeneralConstants.AVATAR_DEFAULT_PATH)).thenReturn(List.of());
+
+        var result = userService.getAllDefaultAvatars();
+
+        assertThat(result).isEmpty();
     }
 
     // =========================================================

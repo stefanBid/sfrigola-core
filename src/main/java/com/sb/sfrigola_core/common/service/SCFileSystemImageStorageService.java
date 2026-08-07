@@ -14,6 +14,7 @@ import java.io.IOException;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.nio.file.StandardCopyOption;
+import java.util.List;
 import java.util.Locale;
 import java.util.Optional;
 
@@ -83,6 +84,25 @@ public class SCFileSystemImageStorageService implements ISCFileStorageService {
         } catch (IOException e) {
             log.error("Failed to delete file '{}'", fileName, e);
             throw new SCFileStorageException("delete", fileName);
+        }
+    }
+
+    @Override
+    public List<String> listFiles(String folderPath) {
+        if (folderPath == null || folderPath.isBlank()) {
+            throw new SCFileStorageException("list", folderPath, "folderPath is required");
+        }
+        Path targetDir = resolveWithinRoot(rootDir, folderPath);
+        if (!Files.isDirectory(targetDir)) {
+            return List.of();
+        }
+        try (var stream = Files.list(targetDir)) {
+            return stream.filter(Files::isRegularFile)
+                    .map(p -> folderPath + "/" + p.getFileName())
+                    .toList();
+        } catch (IOException e) {
+            log.error("Failed to list files under '{}'", folderPath, e);
+            throw new SCFileStorageException("list", folderPath);
         }
     }
 

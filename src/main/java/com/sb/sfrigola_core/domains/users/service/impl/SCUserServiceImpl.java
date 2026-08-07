@@ -11,10 +11,12 @@ import com.sb.sfrigola_core.common.exception.ex.SCNoRowsAffectedException;
 import com.sb.sfrigola_core.common.util.SCAuthenticationUtils;
 import com.sb.sfrigola_core.common.util.SCPaginationUtils;
 import com.sb.sfrigola_core.domains.languages.service.ILanguageService;
+import com.sb.sfrigola_core.domains.users.dto.DefaultAvatarDto;
 import com.sb.sfrigola_core.domains.users.dto.SCUserDto;
 import com.sb.sfrigola_core.domains.users.dto.UpdateProfileDto;
 import com.sb.sfrigola_core.domains.users.entity.SCUser;
 import com.sb.sfrigola_core.common.enums.SCUserRole;
+import com.sb.sfrigola_core.domains.users.exceptions.InvalidDefaultAvatarException;
 import com.sb.sfrigola_core.domains.users.exceptions.NoChangeRoleToAdminException;
 import com.sb.sfrigola_core.domains.users.exceptions.NoUserFoundException;
 import com.sb.sfrigola_core.domains.users.exceptions.SCCanNotActiveOrDeactivateYourselfException;
@@ -27,7 +29,9 @@ import org.springframework.transaction.annotation.Transactional;
 import org.springframework.web.servlet.support.ServletUriComponentsBuilder;
 
 import java.time.Instant;
+import java.util.List;
 import java.util.UUID;
+import java.util.concurrent.ThreadLocalRandom;
 
 @Service
 @Transactional(readOnly = true)
@@ -68,6 +72,60 @@ public class SCUserServiceImpl implements ISCUserService {
         user.setUpdatedBy(userRecord.username());
 
         return getAvatarUriString(pathToSaveIntoDB);
+    }
+
+    @Override
+    @Transactional
+    public String selectDefaultAvatar(String avatarKey) {
+        String reference = SCGeneralConstants.AVATAR_DEFAULT_PATH + "/" + avatarKey;
+        var availableDefaults = fileStorageService.listFiles(SCGeneralConstants.AVATAR_DEFAULT_PATH);
+        if (!availableDefaults.contains(reference)) {
+            throw new InvalidDefaultAvatarException(avatarKey);
+        }
+
+        var userRecord = checkUserAuthOrThrow();
+        var user = userRecord.user();
+
+        user.setAvatarStorageRef(reference);
+        user.setUpdatedAt(Instant.now());
+        user.setUpdatedBy(userRecord.username());
+
+        return getAvatarUriString(reference);
+    }
+
+    @Override
+    @Transactional
+    public String deleteProfileAvatar() {
+        var userRecord = checkUserAuthOrThrow();
+        var user = userRecord.user();
+
+        String currentRef = user.getAvatarStorageRef();
+        boolean isCustomUpload = currentRef != null && !currentRef.startsWith(SCGeneralConstants.AVATAR_DEFAULT_PATH);
+        if (isCustomUpload) {
+            fileStorageService.deleteFiles(currentRef);
+        }
+
+        var availableDefaults = fileStorageService.listFiles(SCGeneralConstants.AVATAR_DEFAULT_PATH);
+        if (availableDefaults.isEmpty()) {
+            throw new IllegalStateException("No default avatars configured under " + SCGeneralConstants.AVATAR_DEFAULT_PATH);
+        }
+        String randomDefault = availableDefaults.get(ThreadLocalRandom.current().nextInt(availableDefaults.size()));
+
+        user.setAvatarStorageRef(randomDefault);
+        user.setUpdatedAt(Instant.now());
+        user.setUpdatedBy(userRecord.username());
+
+        return getAvatarUriString(randomDefault);
+    }
+
+    @Override
+    public List<DefaultAvatarDto> getAllDefaultAvatars() {
+        return fileStorageService.listFiles(SCGeneralConstants.AVATAR_DEFAULT_PATH).stream()
+                .map(reference -> new DefaultAvatarDto(
+                        reference.substring(reference.lastIndexOf('/') + 1),
+                        getAvatarUriString(reference)
+                ))
+                .toList();
     }
 
     @Override

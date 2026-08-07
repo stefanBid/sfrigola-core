@@ -6,7 +6,8 @@ public enum UserErrorCode implements ISCErrorCode {
     INVALID_ROLE_FROM_STRING,
     CANNOT_CHANGE_OWN_ACTIVE_STATUS,
     CANNOT_CHANGE_ROLE_TO_ADMIN,
-    USER_NOT_FOUND;
+    USER_NOT_FOUND,
+    INVALID_DEFAULT_AVATAR;
 
 
     @Override

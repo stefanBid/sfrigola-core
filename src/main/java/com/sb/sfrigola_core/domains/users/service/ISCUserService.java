@@ -3,10 +3,12 @@ package com.sb.sfrigola_core.domains.users.service;
 import com.sb.sfrigola_core.common.dto.body.SCImageBodyDto;
 import com.sb.sfrigola_core.common.models.contracts.SCFilterQuery;
 import com.sb.sfrigola_core.common.models.contracts.SCPagedResult;
+import com.sb.sfrigola_core.domains.users.dto.DefaultAvatarDto;
 import com.sb.sfrigola_core.domains.users.dto.SCUserDto;
 import com.sb.sfrigola_core.domains.users.dto.UpdateProfileDto;
 import jakarta.annotation.Nullable;
 
+import java.util.List;
 import java.util.UUID;
 
 /**
@@ -28,7 +30,48 @@ public interface ISCUserService {
     SCUserDto updateProfile(UpdateProfileDto dto);
 
 
+    /**
+     * Uploads a custom photo as the currently authenticated user's avatar, replacing whatever
+     * was set before (custom or default).
+     *
+     * @param imageBodyDto the uploaded image, already validated by {@code @Valid}
+     * @return the new avatar as an absolute, client-loadable URL (not the raw storage reference
+     *         persisted on the entity)
+     * @throws com.sb.sfrigola_core.domains.users.exceptions.NoUserFoundException if the authenticated user is not found in the database
+     */
     String updateProfileAvatar(SCImageBodyDto imageBodyDto);
+
+    /**
+     * Sets one of the shared preset avatars as the currently authenticated user's avatar.
+     * No file is written — only the DB reference is updated to point at the shared default.
+     *
+     * @param avatarKey file name of the chosen default, as returned by {@link #getAllDefaultAvatars}'s
+     *                   {@code avatarKey} (e.g. {@code "avatar_01.png"})
+     * @return the new avatar as an absolute, client-loadable URL
+     * @throws com.sb.sfrigola_core.domains.users.exceptions.InvalidDefaultAvatarException if {@code avatarKey} doesn't match any configured default
+     * @throws com.sb.sfrigola_core.domains.users.exceptions.NoUserFoundException if the authenticated user is not found in the database
+     */
+    String selectDefaultAvatar(String avatarKey);
+
+    /**
+     * Removes the currently authenticated user's avatar and assigns a random shared default in
+     * its place. If the current avatar is a custom-uploaded photo, its file is deleted from
+     * storage; if it is already a shared default, the file is left untouched (other users may be
+     * pointing at the same file).
+     *
+     * @return the newly assigned default avatar as an absolute, client-loadable URL
+     * @throws com.sb.sfrigola_core.domains.users.exceptions.NoUserFoundException if the authenticated user is not found in the database
+     * @throws IllegalStateException if no default avatars are configured on the server
+     */
+    String deleteProfileAvatar();
+
+    /**
+     * Lists every shared preset avatar available for {@link #selectDefaultAvatar}.
+     *
+     * @return one {@link DefaultAvatarDto} per preset, each carrying its selectable key and an
+     *         absolute, client-loadable URL; empty list if none are configured
+     */
+    List<DefaultAvatarDto> getAllDefaultAvatars();
 
     /**
      * Updates the preferred language of the currently authenticated user.

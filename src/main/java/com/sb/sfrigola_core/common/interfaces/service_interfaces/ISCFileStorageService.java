@@ -2,6 +2,8 @@ package com.sb.sfrigola_core.common.interfaces.service_interfaces;
 
 import org.springframework.web.multipart.MultipartFile;
 
+import java.util.List;
+
 /**
  * Cross-cutting file storage contract for the local filesystem today, decoupled from
  * any specific storage backend so it can move to object storage later without callers
@@ -42,4 +44,16 @@ public interface ISCFileStorageService {
      *         or if the file exists but cannot be deleted
      */
     void deleteFiles(String fileName);
+
+    /**
+     * Lists every file currently stored under {@code folderPath}, as relative references in the
+     * same format {@link #upsetFile} returns — usable directly with {@link #deleteFiles} or
+     * persisted as-is on an owning entity.
+     *
+     * @param folderPath namespace/subdirectory under the storage root to list; must not be blank/{@code null}
+     * @return relative references ({@code folderPath + "/" + fileName}); empty list if the folder
+     *         doesn't exist or has no files
+     * @throws com.sb.sfrigola_core.common.exception.ex.SCFileStorageException if the folder cannot be read
+     */
+    List<String> listFiles(String folderPath);
 }

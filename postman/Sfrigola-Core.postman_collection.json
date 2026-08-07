@@ -19,7 +19,8 @@
     { "key": "ingredientId", "value": "", "type": "string" },
     { "key": "it", "value": "it", "type": "string" },
     { "key": "approved", "value": "approved", "type": "string" },
-    { "key": "feedType", "value": "quick", "type": "string" }
+    { "key": "feedType", "value": "quick", "type": "string" },
+    { "key": "avatarKey", "value": "avatar_01.png", "type": "string" }
   ],
   "item": [
     {
@@ -153,6 +154,34 @@
               ]
             },
             "url": { "raw": "{{baseUrl}}/users/profile/update-avatar", "host": ["{{baseUrl}}"], "path": ["users", "profile", "update-avatar"] }
+          },
+          "response": []
+        },
+        {
+          "name": "Get All Default Avatars",
+          "request": {
+            "method": "GET",
+            "url": { "raw": "{{baseUrl}}/users/profile/default-avatars", "host": ["{{baseUrl}}"], "path": ["users", "profile", "default-avatars"] }
+          },
+          "response": []
+        },
+        {
+          "name": "Select Default Avatar",
+          "request": {
+            "method": "PATCH",
+            "url": {
+              "raw": "{{baseUrl}}/users/profile/select-default-avatar/{{avatarKey}}",
+              "host": ["{{baseUrl}}"],
+              "path": ["users", "profile", "select-default-avatar", "{{avatarKey}}"]
+            }
+          },
+          "response": []
+        },
+        {
+          "name": "Delete Avatar",
+          "request": {
+            "method": "DELETE",
+            "url": { "raw": "{{baseUrl}}/users/profile/avatar", "host": ["{{baseUrl}}"], "path": ["users", "profile", "avatar"] }
           },
           "response": []
         },
