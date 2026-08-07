@@ -83,7 +83,7 @@ class UserControllerTest {
 
     @Test
     void updateProfile_withValidBody_returns200() throws Exception {
-        var dto = new UpdateProfileDto("John", "Doe", null, "Chef in the making");
+        var dto = new UpdateProfileDto("John", "Doe", "Chef in the making");
         var updated = sampleUser();
         when(userService.updateProfile(eq(dto))).thenReturn(updated);
 
@@ -96,7 +96,7 @@ class UserControllerTest {
 
     @Test
     void updateProfile_blankFirstName_returns400() throws Exception {
-        var invalidDto = new UpdateProfileDto("", "Doe", null, null);
+        var invalidDto = new UpdateProfileDto("", "Doe", null);
 
         mockMvc.perform(patch("/api/users/profile/update")
                         .contentType(MediaType.APPLICATION_JSON)
@@ -107,7 +107,7 @@ class UserControllerTest {
 
     @Test
     void updateProfile_blankLastName_returns400() throws Exception {
-        var invalidDto = new UpdateProfileDto("John", "", null, null);
+        var invalidDto = new UpdateProfileDto("John", "", null);
 
         mockMvc.perform(patch("/api/users/profile/update")
                         .contentType(MediaType.APPLICATION_JSON)
@@ -118,7 +118,7 @@ class UserControllerTest {
 
     @Test
     void updateProfile_bioTooLong_returns400() throws Exception {
-        var invalidDto = new UpdateProfileDto("John", "Doe", null, "a".repeat(1001));
+        var invalidDto = new UpdateProfileDto("John", "Doe", "a".repeat(1001));
 
         mockMvc.perform(patch("/api/users/profile/update")
                         .contentType(MediaType.APPLICATION_JSON)
@@ -128,19 +128,8 @@ class UserControllerTest {
     }
 
     @Test
-    void updateProfile_avatarUrlTooLong_returns400() throws Exception {
-        var invalidDto = new UpdateProfileDto("John", "Doe", "https://example.com/".repeat(30), null);
-
-        mockMvc.perform(patch("/api/users/profile/update")
-                        .contentType(MediaType.APPLICATION_JSON)
-                        .content(objectMapper.writeValueAsString(invalidDto)))
-                .andExpect(status().isBadRequest())
-                .andExpect(jsonPath("$.errorData.errorMessageMap.avatarUrl").exists());
-    }
-
-    @Test
     void updateProfile_userNotFound_returns404WithUserNotFoundCode() throws Exception {
-        var dto = new UpdateProfileDto("John", "Doe", null, null);
+        var dto = new UpdateProfileDto("John", "Doe", null);
         when(userService.updateProfile(eq(dto))).thenThrow(new NoUserFoundException(UUID.randomUUID()));
 
         mockMvc.perform(patch("/api/users/profile/update")

@@ -90,13 +90,12 @@ class SCUserServiceImplTest {
         var user = buildUser(authUser.publicId());
         when(userRepository.findByPublicId(authUser.publicId())).thenReturn(Optional.of(user));
 
-        var dto = new UpdateProfileDto("NewFirst", "OldLast", "http://avatar.example/pic.png", "New bio");
+        var dto = new UpdateProfileDto("NewFirst", "OldLast", "New bio");
 
         var result = userService.updateProfile(dto);
 
         assertThat(result.firstName()).isEqualTo("NewFirst");
         assertThat(result.lastName()).isEqualTo("OldLast");
-        assertThat(result.avatarUrl()).isEqualTo("http://avatar.example/pic.png");
         assertThat(result.bio()).isEqualTo("New bio");
         assertThat(user.getUpdatedBy()).isEqualTo("john");
     }
@@ -105,7 +104,7 @@ class SCUserServiceImplTest {
     void updateProfile_throwsWhenUserNotFound() {
         when(userRepository.findByPublicId(authUser.publicId())).thenReturn(Optional.empty());
 
-        var dto = new UpdateProfileDto("NewFirst", "OldLast", null, null);
+        var dto = new UpdateProfileDto("NewFirst", "OldLast", null);
 
         assertThatThrownBy(() -> userService.updateProfile(dto))
                 .isInstanceOf(NoUserFoundException.class);

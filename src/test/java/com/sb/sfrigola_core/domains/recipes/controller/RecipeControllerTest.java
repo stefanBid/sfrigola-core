@@ -4,7 +4,6 @@ import com.sb.sfrigola_core.common.dto.option.SCPagedOptionDto;
 import com.sb.sfrigola_core.common.models.contracts.SCPagedResult;
 import com.sb.sfrigola_core.config.web.WebConfig;
 import com.sb.sfrigola_core.domains.recipes.dto.input.AddRecipeDto;
-import com.sb.sfrigola_core.domains.recipes.dto.input.RecipeIngredientInputDto;
 import com.sb.sfrigola_core.domains.recipes.dto.input.RecipeTranslationInputDto;
 import com.sb.sfrigola_core.domains.recipes.dto.input.UpdateRecipeDto;
 import com.sb.sfrigola_core.domains.recipes.dto.view.RecipeDetailsAdminDto;
@@ -60,7 +59,7 @@ class RecipeControllerTest {
 
     private RecipeDto sampleRecipeDto() {
         return new RecipeDto(
-                UUID.randomUUID(), UUID.randomUUID(), UUID.randomUUID(),
+                UUID.randomUUID(), UUID.randomUUID(), UUID.randomUUID(), null,
                 "Carbonara", "Classic Roman pasta",
                 BigDecimal.valueOf(4.5), false, 30, BigDecimal.valueOf(2.0)
         );
@@ -68,7 +67,7 @@ class RecipeControllerTest {
 
     private RecipePreviewAdminDto sampleAdminPreviewDto(UUID publicId, boolean isPublished) {
         return new RecipePreviewAdminDto(
-                publicId, UUID.randomUUID(), UUID.randomUUID(),
+                publicId, UUID.randomUUID(), UUID.randomUUID(), null,
                 DifficultyLevel.EASY, null, SeasonType.ALL_YEAR,
                 10, 20, (short) 2, false, false, false,
                 isPublished, "Carbonara", Map.of("en", "English"),
@@ -182,7 +181,7 @@ class RecipeControllerTest {
         var publicId = UUID.randomUUID();
         var details = new RecipeDetailsDto(
                 publicId, UUID.randomUUID(), UUID.randomUUID(),
-                DifficultyLevel.EASY, null, SeasonType.ALL_YEAR,
+                DifficultyLevel.EASY, null, null, SeasonType.ALL_YEAR,
                 10, 20, (short) 2, false, false, false,
                 "Carbonara", "desc", "Boil pasta",
                 List.of(), List.of(), false, BigDecimal.ZERO, 0, 0
@@ -247,7 +246,7 @@ class RecipeControllerTest {
         var publicId = UUID.randomUUID();
         var details = new RecipeDetailsAdminDto(
                 publicId, UUID.randomUUID(), UUID.randomUUID(),
-                DifficultyLevel.EASY, null, SeasonType.ALL_YEAR,
+                DifficultyLevel.EASY, null, null, SeasonType.ALL_YEAR,
                 10, 20, (short) 2, false, false, false, false,
                 "Carbonara", "desc", "Boil pasta",
                 List.of(), List.of(), BigDecimal.ZERO, 0, 0
