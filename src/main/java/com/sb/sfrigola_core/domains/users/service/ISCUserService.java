@@ -1,5 +1,6 @@
 package com.sb.sfrigola_core.domains.users.service;
 
+import com.sb.sfrigola_core.common.dto.body.SCImageBodyDto;
 import com.sb.sfrigola_core.common.models.contracts.SCFilterQuery;
 import com.sb.sfrigola_core.common.models.contracts.SCPagedResult;
 import com.sb.sfrigola_core.domains.users.dto.SCUserDto;
@@ -25,6 +26,9 @@ public interface ISCUserService {
      * @throws com.sb.sfrigola_core.domains.users.exceptions.NoUserFoundException if the authenticated user is not found in the database
      */
     SCUserDto updateProfile(UpdateProfileDto dto);
+
+
+    String updateProfileAvatar(SCImageBodyDto imageBodyDto);
 
     /**
      * Updates the preferred language of the currently authenticated user.

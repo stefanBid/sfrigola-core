@@ -1,7 +1,9 @@
 package com.sb.sfrigola_core.domains.users.service.impl;
 
 
+import com.sb.sfrigola_core.common.dto.body.SCImageBodyDto;
 import com.sb.sfrigola_core.common.dto.option.SCPagedOptionDto;
+import com.sb.sfrigola_core.common.interfaces.service_interfaces.ISCFileStorageService;
 import com.sb.sfrigola_core.common.models.contracts.SCFilterQuery;
 import com.sb.sfrigola_core.common.models.contracts.SCPagedResult;
 import com.sb.sfrigola_core.common.exception.ex.SCNoRowsAffectedException;
@@ -32,22 +34,30 @@ public class SCUserServiceImpl implements ISCUserService {
 
     private final ISCUserRepository userRepository;
     private final ILanguageService languageService;
+    private final ISCFileStorageService fileStorageService;
 
     @Override
     @Transactional
     public SCUserDto updateProfile(UpdateProfileDto dto) {
-        var authUser = SCAuthenticationUtils.getAuthUserByContextHolder();
-        SCUser user = userRepository.findByPublicId(authUser.publicId())
-                .orElseThrow(() -> new NoUserFoundException(authUser.publicId()));
+        var userRecord = checkUserAuthOrThrow();
+        var user = userRecord.user();
 
         if (dto.firstName() != null && !dto.firstName().equals(user.getFirstName())) user.setFirstName(dto.firstName());
         if (dto.lastName()  != null && !dto.lastName().equals(user.getLastName()))   user.setLastName(dto.lastName());
         if (dto.bio()       != null && !dto.bio().equals(user.getBio()))             user.setBio(dto.bio());
 
         user.setUpdatedAt(Instant.now());
-        user.setUpdatedBy(authUser.username());
+        user.setUpdatedBy(userRecord.username());
 
         return convertToExternalDto(user);
+    }
+
+    @Override
+    @Transactional
+    public String updateProfileAvatar(SCImageBodyDto imageBodyDto) {
+        var userRecord = checkUserAuthOrThrow();
+        String avatarFileName = userRecord.username + "_" +userRecord.user.getPublicId() + "_avatar";
+        return fileStorageService.upsetFile(imageBodyDto.imageFile(), "", avatarFileName);
     }
 
     @Override
@@ -148,5 +158,15 @@ public class SCUserServiceImpl implements ISCUserService {
                 user.getAvatarUrl(),
                 user.getBio()
         );
+    }
+
+    private record AuthUserRecord(String username, SCUser user) {}
+
+    private AuthUserRecord checkUserAuthOrThrow() {
+        var authUser = SCAuthenticationUtils.getAuthUserByContextHolder();
+        var scUser = userRepository.findByPublicId(authUser.publicId())
+                .orElseThrow(() -> new NoUserFoundException(authUser.publicId()));
+
+        return new AuthUserRecord(authUser.username(), scUser);
     }
 }

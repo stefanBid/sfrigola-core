@@ -13,6 +13,7 @@ import org.springframework.web.multipart.MultipartFile;
 import java.io.IOException;
 import java.nio.file.Files;
 import java.nio.file.Path;
+import java.nio.file.StandardCopyOption;
 import java.util.Locale;
 import java.util.Optional;
 
@@ -47,9 +48,21 @@ public class SCFileSystemImageStorageService implements ISCFileStorageService {
         Path targetDir = (folderPath != null && !folderPath.isBlank()) ? resolveWithinRoot(rootDir, folderPath) : rootDir;
         Path targetFile = resolveWithinRoot(targetDir, fullFileName);
 
+        if(fileAlreadyExists(targetFile)) {
+            log.warn("File '{}' already exists under '{}', it will be overwritten", fullFileName, folderPath);
+
+        }
+
+
         try {
             Files.createDirectories(targetDir);
-            file.transferTo(targetFile);
+            Path tempFile = Files.createTempFile(targetDir,fullFileName + "_", ".tmp" );
+            try {
+                file.transferTo(tempFile);
+                Files.move(tempFile, targetFile, StandardCopyOption.REPLACE_EXISTING, StandardCopyOption.ATOMIC_MOVE);
+            } finally {
+                Files.deleteIfExists(tempFile);
+            }
         } catch (IOException e) {
             log.error("Failed to store file '{}' under '{}'", fullFileName, folderPath, e);
             throw new SCFileStorageException("store", fullFileName);
@@ -81,6 +94,10 @@ public class SCFileSystemImageStorageService implements ISCFileStorageService {
             throw new SCFileStorageException("resolve", segment);
         }
         return resolved;
+    }
+
+    private boolean fileAlreadyExists(Path targetFile) {
+        return Files.exists(targetFile);
     }
 
     private Optional<String> purifierFileName(String fileName) {
