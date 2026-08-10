@@ -1,6 +1,8 @@
 package com.sb.sfrigola_core.domains.recipes.service.impl;
 
+import com.sb.sfrigola_core.common.constant.SCGeneralConstants;
 import com.sb.sfrigola_core.common.enums.SortDirection;
+import com.sb.sfrigola_core.common.interfaces.service_interfaces.ISCFileStorageService;
 import com.sb.sfrigola_core.common.models.context.SCAuthUser;
 import com.sb.sfrigola_core.common.models.contracts.SCFilterQuery;
 import com.sb.sfrigola_core.common.models.contracts.SCPagedResult;
@@ -18,6 +20,7 @@ import com.sb.sfrigola_core.domains.recipes.dto.input.AddRecipeDto;
 import com.sb.sfrigola_core.domains.recipes.dto.input.RecipeIngredientInputDto;
 import com.sb.sfrigola_core.domains.recipes.dto.input.RecipeTranslationInputDto;
 import com.sb.sfrigola_core.domains.recipes.dto.input.UpdateRecipeDto;
+import com.sb.sfrigola_core.domains.recipes.dto.input.UpsetRecipeCoverDto;
 import com.sb.sfrigola_core.domains.recipes.dto.view.*;
 import com.sb.sfrigola_core.domains.recipes.entity.Recipe;
 import com.sb.sfrigola_core.domains.recipes.entity.RecipeIngredient;
@@ -48,9 +51,11 @@ import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
+import org.springframework.web.servlet.support.ServletUriComponentsBuilder;
 
 import java.math.BigDecimal;
 import java.math.RoundingMode;
+import java.time.Instant;
 import java.util.*;
 import java.util.stream.Collectors;
 
@@ -67,6 +72,7 @@ public class RecipeServiceImpl implements IRecipeService {
     private final ISCUserDomainBridgeService userDomainBridgeService;
     private final IFavoriteDomainBridgeService favoriteDomainBridgeService;
     private final IRecipeStatsDomainBridgeService recipeStatsDomainBridgeService;
+    private final ISCFileStorageService fileStorageService;
 
     @Override
     public Map<FeedType, RecipesFeedDto> getAllHomeFeed(@NonNull UUID categoryId, @NonNull String locale) {
@@ -458,13 +464,69 @@ public class RecipeServiceImpl implements IRecipeService {
 
         assertAuthorOrAdmin(recipeToDelete, publicId);
 
+        if (recipeToDelete.getCoverStorageRef() != null) {
+            fileStorageService.deleteFiles(recipeToDelete.getCoverStorageRef());
+        }
+
         recipeRepository.delete(recipeToDelete);
         return recipeToDelete.getPublicId();
+    }
+
+    @Override
+    @Transactional
+    public String upsetRecipeCover(UUID publicId, UpsetRecipeCoverDto upsetRecipeCoverDto) {
+        var recipe = recipeRepository.findByPublicId(publicId).orElseThrow(
+                () -> new NoRecipeFoundException(publicId)
+        );
+        assertAuthorOrAdmin(recipe, publicId);
+
+        var authUser = SCAuthenticationUtils.getAuthUserByContextHolder();
+        String coverFileName = authUser.username() + "_" + recipe.getPublicId() + "_cover";
+        String pathToSaveIntoDB = fileStorageService.upsetFile(upsetRecipeCoverDto.recipeCoverImageFile(), SCGeneralConstants.RECIPE_COVER_PATH, coverFileName);
+
+        recipe.setCoverStorageRef(pathToSaveIntoDB);
+        recipe.setUpdatedAt(Instant.now());
+        recipe.setUpdatedBy(authUser.username());
+
+        return getCoverUriString(pathToSaveIntoDB);
+    }
+
+    @Override
+    @Transactional
+    public void deleteRecipeCover(UUID publicId) {
+        var recipe = recipeRepository.findByPublicId(publicId).orElseThrow(
+                () -> new NoRecipeFoundException(publicId)
+        );
+        assertAuthorOrAdmin(recipe, publicId);
+
+        if (recipe.getCoverStorageRef() != null) {
+            fileStorageService.deleteFiles(recipe.getCoverStorageRef());
+        }
+
+        var authUser = SCAuthenticationUtils.getAuthUserByContextHolder();
+        recipe.setCoverStorageRef(null);
+        recipe.setUpdatedAt(Instant.now());
+        recipe.setUpdatedBy(authUser.username());
     }
 
     // =========================================================
     // PRIVATE
     // =========================================================
+
+    /**
+     * Resolves a recipe cover's raw storage reference (as persisted on {@code Recipe.coverStorageRef})
+     * into an absolute, client-loadable URL. Mirrors {@code SCUserServiceImpl.getAvatarUriString}
+     * — {@link ISCFileStorageService} always returns/consumes relative storage references, never
+     * URLs, so every mapper below must go through this instead of exposing the raw reference.
+     *
+     * @param recipeCoverDynamicPath the raw storage reference, or {@code null} if no cover is set
+     * @return the absolute URL, or {@code null} if {@code recipeCoverDynamicPath} is {@code null}
+     */
+    private String getCoverUriString(String recipeCoverDynamicPath) {
+        return recipeCoverDynamicPath != null
+                ? ServletUriComponentsBuilder.fromCurrentContextPath().path("/uploads/").path(recipeCoverDynamicPath).toUriString()
+                : null;
+    }
 
     /**
      * Carries a {@link Recipe} together with the per-request enrichment ({@code isFavourite},
@@ -561,7 +623,7 @@ public class RecipeServiceImpl implements IRecipeService {
                 recipe.getPublicId(),
                 recipe.getAuthor().getPublicId(),
                 recipe.getCategory() != null ? recipe.getCategory().getPublicId() : null,
-                recipe.getImageUrl() != null ? recipe.getImageUrl() : null,
+                getCoverUriString(recipe.getCoverStorageRef()),
                 translation.getTitle(),
                 translation.getDescription(),
                 decorated.ratingAverage(),
@@ -831,7 +893,7 @@ public class RecipeServiceImpl implements IRecipeService {
                 recipe.getPublicId(),
                 recipe.getAuthor().getPublicId(),
                 recipe.getCategory() != null ? recipe.getCategory().getPublicId() : null,
-                recipe.getImageUrl() != null ? recipe.getImageUrl() : null,
+                getCoverUriString(recipe.getCoverStorageRef()),
                 recipe.getDifficulty(),
                 recipe.getMealType(),
                 recipe.getSeason(),
@@ -867,7 +929,7 @@ public class RecipeServiceImpl implements IRecipeService {
                 recipe.getAuthor().getPublicId(),
                 recipe.getCategory() != null ? recipe.getCategory().getPublicId() : null,
                 recipe.getDifficulty(),
-                recipe.getImageUrl() != null ? recipe.getImageUrl() : null,
+                getCoverUriString(recipe.getCoverStorageRef()),
                 recipe.getMealType(),
                 recipe.getSeason(),
                 recipe.getPrepTimeMin(),
@@ -906,7 +968,7 @@ public class RecipeServiceImpl implements IRecipeService {
                 recipe.getAuthor().getPublicId(),
                 recipe.getCategory() != null ? recipe.getCategory().getPublicId() : null,
                 recipe.getDifficulty(),
-                recipe.getImageUrl() != null ? recipe.getImageUrl() : null,
+                getCoverUriString(recipe.getCoverStorageRef()),
                 recipe.getMealType(),
                 recipe.getSeason(),
                 recipe.getPrepTimeMin(),

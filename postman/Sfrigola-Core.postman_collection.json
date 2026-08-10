@@ -843,6 +843,28 @@
             }
           },
           "response": []
+        },
+        {
+          "name": "[Contributor(own), Admin] Upset Recipe Cover",
+          "request": {
+            "method": "POST",
+            "body": {
+              "mode": "formdata",
+              "formdata": [
+                { "key": "recipeCoverImageFile", "type": "file", "src": [] }
+              ]
+            },
+            "url": { "raw": "{{baseUrl}}/recipes/{{publicId}}/cover", "host": ["{{baseUrl}}"], "path": ["recipes", "{{publicId}}", "cover"] }
+          },
+          "response": []
+        },
+        {
+          "name": "[Contributor(own), Admin] Delete Recipe Cover",
+          "request": {
+            "method": "DELETE",
+            "url": { "raw": "{{baseUrl}}/recipes/{{publicId}}/cover", "host": ["{{baseUrl}}"], "path": ["recipes", "{{publicId}}", "cover"] }
+          },
+          "response": []
         }
       ]
     },

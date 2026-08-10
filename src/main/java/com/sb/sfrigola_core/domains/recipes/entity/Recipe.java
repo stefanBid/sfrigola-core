@@ -33,8 +33,8 @@ public class Recipe extends BaseEntity {
     @JoinColumn(name = "author_id", nullable = false)
     private SCUser author;
 
-    @Column(name = "image_url", length = 1000)
-    private String imageUrl;
+    @Column(name = "cover_storage_ref", length = 1000)
+    private String coverStorageRef;
 
     @ManyToOne(fetch = FetchType.LAZY)
     @JoinColumn(name = "category_id")

@@ -5,6 +5,7 @@ import com.sb.sfrigola_core.common.models.contracts.SCPagedResult;
 import com.sb.sfrigola_core.domains.languages.exception.LocaleNotActiveException;
 import com.sb.sfrigola_core.domains.recipes.dto.input.AddRecipeDto;
 import com.sb.sfrigola_core.domains.recipes.dto.input.UpdateRecipeDto;
+import com.sb.sfrigola_core.domains.recipes.dto.input.UpsetRecipeCoverDto;
 import com.sb.sfrigola_core.domains.recipes.dto.view.RecipeDetailsAdminDto;
 import com.sb.sfrigola_core.domains.recipes.dto.view.RecipeDetailsDto;
 import com.sb.sfrigola_core.domains.recipes.dto.view.RecipeDto;
@@ -20,7 +21,8 @@ import java.util.UUID;
 /**
  * Controller-facing contract for the recipes' domain.
  * Reads the security context internally to resolve the acting user as the recipe's author
- * on creation, and to enforce ownership (author-or-admin) on update and delete.
+ * on creation, and to enforce ownership (author-or-admin) on update, delete, and cover
+ * upload/removal.
  * All methods succeed or throw a subclass of {@link com.sb.sfrigola_core.common.exception.ex.SCGeneralException}.
  */
 public interface IRecipeService {
@@ -269,6 +271,7 @@ public interface IRecipeService {
 
     /**
      * Deletes a recipe and all of its translations, ingredient lines and tag associations (cascade).
+     * If the recipe has a cover, its file is also deleted from storage — never left orphaned.
      * Only the recipe's author or an admin may delete it — checked against the security context.
      * No preview DTO is returned — the recipe no longer exists, so only its identifier is handed back.
      *
@@ -280,5 +283,35 @@ public interface IRecipeService {
      *         if the authenticated user is neither the recipe's author nor an admin
      */
     UUID deleteRecipe(UUID publicId);
+
+    /**
+     * Uploads a custom photo as the recipe's cover, replacing whatever was set before, if any.
+     * Only the recipe's author or an admin may set it — checked against the security context,
+     * same rule as {@link #updateRecipe}.
+     *
+     * @param publicId public identifier of the recipe
+     * @param upsetRecipeCoverDto the uploaded image, already validated by {@code @Valid}
+     * @return the new cover as an absolute, client-loadable URL (not the raw storage reference
+     *         persisted on the entity)
+     * @throws com.sb.sfrigola_core.domains.recipes.exception.NoRecipeFoundException
+     *         if no recipe exists with the given public ID
+     * @throws com.sb.sfrigola_core.domains.recipes.exception.RecipeAuthorMismatchException
+     *         if the authenticated user is neither the recipe's author nor an admin
+     */
+    String upsetRecipeCover(UUID publicId, UpsetRecipeCoverDto upsetRecipeCoverDto);
+
+    /**
+     * Removes the recipe's cover. Unlike a user's avatar, no default replacement is assigned —
+     * the recipe is simply left without a cover ({@code coverStorageRef = null}). If a cover was set,
+     * its file is deleted from storage. Only the recipe's author or an admin may remove it —
+     * checked against the security context, same rule as {@link #updateRecipe}.
+     *
+     * @param publicId public identifier of the recipe
+     * @throws com.sb.sfrigola_core.domains.recipes.exception.NoRecipeFoundException
+     *         if no recipe exists with the given public ID
+     * @throws com.sb.sfrigola_core.domains.recipes.exception.RecipeAuthorMismatchException
+     *         if the authenticated user is neither the recipe's author nor an admin
+     */
+    void deleteRecipeCover(UUID publicId);
 
 }

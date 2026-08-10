@@ -124,7 +124,7 @@ public class SCUserServiceImpl implements ISCUserService {
                 .map(reference -> new DefaultAvatarDto(
                         reference.substring(reference.lastIndexOf('/') + 1),
                         getAvatarUriString(reference)
-                ))
+                )).sorted(DefaultAvatarDto::compareTo)
                 .toList();
     }
 

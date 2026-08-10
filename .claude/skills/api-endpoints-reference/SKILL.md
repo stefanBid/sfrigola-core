@@ -49,6 +49,8 @@ Base path: `/sfrigola-core`
 | PATCH | `/recipes/admin/{publicId}/publish` | ROLE_ADMIN only | sets `isPublished = true`; no author fallback, unlike `PUT` above |
 | PATCH | `/recipes/admin/{publicId}/unpublish` | ROLE_ADMIN only | sets `isPublished = false`; no author fallback |
 | DELETE | `/recipes/{publicId}` | author or ROLE_ADMIN | cascades translations/ingredients/tags |
+| POST | `/recipes/{publicId}/cover` | author or ROLE_ADMIN | `multipart/form-data`, body is `UpsetRecipeCoverDto` (`recipeCoverImageFile`); returns the new cover as an absolute, client-loadable URL (not the raw storage reference persisted on `Recipe.imageUrl`) — same pattern as avatar upload, see File Storage in root `CLAUDE.md` |
+| DELETE | `/recipes/{publicId}/cover` | author or ROLE_ADMIN | unlike avatar delete, no default replacement is assigned — the recipe is simply left without a cover |
 
 `isPublished` is never part of `AddRecipeDto`/`UpdateRecipeDto` — it is only ever set by the service, never trusted from the client (this rule also lives in the root `CLAUDE.md` since it's safety-critical):
 - **Create**: a contributor's translation requirement is exactly one, in any active language of their choosing (`locale` only picks the preview, no other role in the choice) — the recipe is created with `isPublished = false`. An admin's translations must instead cover every active language, no more no less, and the recipe is created with `isPublished = true` immediately.

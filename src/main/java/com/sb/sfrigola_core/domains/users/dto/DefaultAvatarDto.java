@@ -5,5 +5,10 @@ import java.io.Serializable;
 public record DefaultAvatarDto(
         String avatarKey,
         String url
-) implements Serializable {
+) implements Serializable, Comparable<DefaultAvatarDto> {
+
+    @Override
+    public int compareTo(DefaultAvatarDto o) {
+        return this.avatarKey.compareTo(o.avatarKey);
+    }
 }

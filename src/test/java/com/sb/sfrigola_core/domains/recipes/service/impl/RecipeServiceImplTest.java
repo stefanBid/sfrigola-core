@@ -1,7 +1,9 @@
 package com.sb.sfrigola_core.domains.recipes.service.impl;
 
+import com.sb.sfrigola_core.common.constant.SCGeneralConstants;
 import com.sb.sfrigola_core.common.enums.SCUserRole;
 import com.sb.sfrigola_core.common.enums.SortDirection;
+import com.sb.sfrigola_core.common.interfaces.service_interfaces.ISCFileStorageService;
 import com.sb.sfrigola_core.common.models.context.SCAuthUser;
 import com.sb.sfrigola_core.common.models.contracts.SCFilterQuery;
 import com.sb.sfrigola_core.domains.categories.entity.Category;
@@ -13,6 +15,7 @@ import com.sb.sfrigola_core.domains.languages.service.ILanguageDomainBridgeServi
 import com.sb.sfrigola_core.domains.recipes.dto.input.AddRecipeDto;
 import com.sb.sfrigola_core.domains.recipes.dto.input.RecipeTranslationInputDto;
 import com.sb.sfrigola_core.domains.recipes.dto.input.UpdateRecipeDto;
+import com.sb.sfrigola_core.domains.recipes.dto.input.UpsetRecipeCoverDto;
 import com.sb.sfrigola_core.domains.recipes.entity.Recipe;
 import com.sb.sfrigola_core.domains.recipes.entity.RecipeTranslation;
 import com.sb.sfrigola_core.domains.recipes.enums.DifficultyLevel;
@@ -41,8 +44,12 @@ import org.mockito.junit.jupiter.MockitoExtension;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.PageImpl;
 import org.springframework.data.domain.PageRequest;
+import org.springframework.mock.web.MockHttpServletRequest;
+import org.springframework.mock.web.MockMultipartFile;
 import org.springframework.security.authentication.UsernamePasswordAuthenticationToken;
 import org.springframework.security.core.context.SecurityContextHolder;
+import org.springframework.web.context.request.RequestContextHolder;
+import org.springframework.web.context.request.ServletRequestAttributes;
 
 import java.math.BigDecimal;
 import java.util.ArrayList;
@@ -80,6 +87,8 @@ class RecipeServiceImplTest {
     private IFavoriteDomainBridgeService favoriteDomainBridgeService;
     @Mock
     private IRecipeStatsDomainBridgeService recipeStatsDomainBridgeService;
+    @Mock
+    private ISCFileStorageService fileStorageService;
 
     private RecipeServiceImpl recipeService;
 
@@ -96,7 +105,8 @@ class RecipeServiceImplTest {
                 categoryDomainBridgeService,
                 userDomainBridgeService,
                 favoriteDomainBridgeService,
-                recipeStatsDomainBridgeService
+                recipeStatsDomainBridgeService,
+                fileStorageService
         );
 
         english = new Language();
@@ -106,11 +116,16 @@ class RecipeServiceImplTest {
         italian = new Language();
         italian.setCode("it");
         italian.setName("Italian");
+
+        // getCoverUriString(...) needs a request bound to build an absolute URL — no real
+        // HTTP request exists in a plain Mockito unit test, so fake one.
+        RequestContextHolder.setRequestAttributes(new ServletRequestAttributes(new MockHttpServletRequest()));
     }
 
     @AfterEach
     void tearDown() {
         SecurityContextHolder.clearContext();
+        RequestContextHolder.resetRequestAttributes();
     }
 
     private SCAuthUser setAuth(SCUserRole role, UUID publicId) {
@@ -498,6 +513,23 @@ class RecipeServiceImplTest {
 
         assertThat(result).isEqualTo(publicId);
         verify(recipeRepository).delete(recipe);
+        verifyNoInteractions(fileStorageService);
+    }
+
+    @Test
+    void deleteRecipe_withCover_alsoDeletesFileFromStorage() {
+        var authorPublicId = UUID.randomUUID();
+        setAuth(SCUserRole.ROLE_CONTRIBUTOR, authorPublicId);
+
+        var recipe = buildRecipe(authorPublicId, true);
+        recipe.setCoverStorageRef(SCGeneralConstants.RECIPE_COVER_PATH + "/john_ref.jpg");
+        var publicId = recipe.getPublicId();
+        when(recipeRepository.findByPublicId(publicId)).thenReturn(Optional.of(recipe));
+
+        recipeService.deleteRecipe(publicId);
+
+        verify(fileStorageService).deleteFiles(SCGeneralConstants.RECIPE_COVER_PATH + "/john_ref.jpg");
+        verify(recipeRepository).delete(recipe);
     }
 
     @Test
@@ -539,6 +571,123 @@ class RecipeServiceImplTest {
                 .isInstanceOf(NoRecipeFoundException.class);
 
         verify(recipeRepository, never()).delete(any());
+    }
+
+    // =========================================================
+    // upsetRecipeCover
+    // =========================================================
+
+    @Test
+    void upsetRecipeCover_asAuthor_storesFileAndPersistsReference() {
+        var authorPublicId = UUID.randomUUID();
+        setAuth(SCUserRole.ROLE_CONTRIBUTOR, authorPublicId);
+
+        var recipe = buildRecipe(authorPublicId, true);
+        var publicId = recipe.getPublicId();
+        when(recipeRepository.findByPublicId(publicId)).thenReturn(Optional.of(recipe));
+
+        var file = new MockMultipartFile("recipeCoverImageFile", "cover.jpg", "image/jpeg", "fake-bytes".getBytes());
+        when(fileStorageService.upsetFile(eq(file), eq(SCGeneralConstants.RECIPE_COVER_PATH), any()))
+                .thenReturn(SCGeneralConstants.RECIPE_COVER_PATH + "/john_ref.jpg");
+
+        var result = recipeService.upsetRecipeCover(publicId, new UpsetRecipeCoverDto(file));
+
+        assertThat(recipe.getCoverStorageRef()).isEqualTo(SCGeneralConstants.RECIPE_COVER_PATH + "/john_ref.jpg");
+        assertThat(result).contains("/uploads/" + SCGeneralConstants.RECIPE_COVER_PATH + "/john_ref.jpg");
+        assertThat(recipe.getUpdatedBy()).isEqualTo("john");
+    }
+
+    @Test
+    void upsetRecipeCover_nonAuthorNonAdmin_throwsRecipeAuthorMismatchException() {
+        var authorPublicId = UUID.randomUUID();
+        setAuth(SCUserRole.ROLE_CONTRIBUTOR, UUID.randomUUID());
+
+        var recipe = buildRecipe(authorPublicId, true);
+        var publicId = recipe.getPublicId();
+        when(recipeRepository.findByPublicId(publicId)).thenReturn(Optional.of(recipe));
+
+        var file = new MockMultipartFile("recipeCoverImageFile", "cover.jpg", "image/jpeg", "fake-bytes".getBytes());
+
+        assertThatThrownBy(() -> recipeService.upsetRecipeCover(publicId, new UpsetRecipeCoverDto(file)))
+                .isInstanceOf(RecipeAuthorMismatchException.class);
+
+        verifyNoInteractions(fileStorageService);
+    }
+
+    @Test
+    void upsetRecipeCover_notFound_throwsNoRecipeFoundException() {
+        var publicId = UUID.randomUUID();
+        when(recipeRepository.findByPublicId(publicId)).thenReturn(Optional.empty());
+
+        var file = new MockMultipartFile("recipeCoverImageFile", "cover.jpg", "image/jpeg", "fake-bytes".getBytes());
+
+        assertThatThrownBy(() -> recipeService.upsetRecipeCover(publicId, new UpsetRecipeCoverDto(file)))
+                .isInstanceOf(NoRecipeFoundException.class);
+
+        verifyNoInteractions(fileStorageService);
+    }
+
+    // =========================================================
+    // deleteRecipeCover
+    // =========================================================
+
+    @Test
+    void deleteRecipeCover_asAuthor_deletesFileAndClearsReference() {
+        var authorPublicId = UUID.randomUUID();
+        setAuth(SCUserRole.ROLE_CONTRIBUTOR, authorPublicId);
+
+        var recipe = buildRecipe(authorPublicId, true);
+        recipe.setCoverStorageRef(SCGeneralConstants.RECIPE_COVER_PATH + "/john_ref.jpg");
+        var publicId = recipe.getPublicId();
+        when(recipeRepository.findByPublicId(publicId)).thenReturn(Optional.of(recipe));
+
+        recipeService.deleteRecipeCover(publicId);
+
+        assertThat(recipe.getCoverStorageRef()).isNull();
+        assertThat(recipe.getUpdatedBy()).isEqualTo("john");
+        verify(fileStorageService).deleteFiles(SCGeneralConstants.RECIPE_COVER_PATH + "/john_ref.jpg");
+    }
+
+    @Test
+    void deleteRecipeCover_noCoverSet_leavesRecipeWithoutCoverAndSkipsFileDeletion() {
+        var authorPublicId = UUID.randomUUID();
+        setAuth(SCUserRole.ROLE_CONTRIBUTOR, authorPublicId);
+
+        var recipe = buildRecipe(authorPublicId, true);
+        var publicId = recipe.getPublicId();
+        when(recipeRepository.findByPublicId(publicId)).thenReturn(Optional.of(recipe));
+
+        recipeService.deleteRecipeCover(publicId);
+
+        assertThat(recipe.getCoverStorageRef()).isNull();
+        verifyNoInteractions(fileStorageService);
+    }
+
+    @Test
+    void deleteRecipeCover_nonAuthorNonAdmin_throwsRecipeAuthorMismatchException() {
+        var authorPublicId = UUID.randomUUID();
+        setAuth(SCUserRole.ROLE_CONTRIBUTOR, UUID.randomUUID());
+
+        var recipe = buildRecipe(authorPublicId, true);
+        recipe.setCoverStorageRef(SCGeneralConstants.RECIPE_COVER_PATH + "/john_ref.jpg");
+        var publicId = recipe.getPublicId();
+        when(recipeRepository.findByPublicId(publicId)).thenReturn(Optional.of(recipe));
+
+        assertThatThrownBy(() -> recipeService.deleteRecipeCover(publicId))
+                .isInstanceOf(RecipeAuthorMismatchException.class);
+
+        verifyNoInteractions(fileStorageService);
+    }
+
+    @Test
+    void deleteRecipeCover_notFound_throwsNoRecipeFoundException() {
+        var publicId = UUID.randomUUID();
+        when(recipeRepository.findByPublicId(publicId)).thenReturn(Optional.empty());
+
+        assertThatThrownBy(() -> recipeService.deleteRecipeCover(publicId))
+                .isInstanceOf(NoRecipeFoundException.class);
+
+        verifyNoInteractions(fileStorageService);
     }
 
     // =========================================================

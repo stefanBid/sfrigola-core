@@ -259,7 +259,7 @@ CREATE TABLE recipes (
      is_vegan        BOOLEAN          NOT NULL DEFAULT FALSE,
      is_gluten_free  BOOLEAN          NOT NULL DEFAULT FALSE,
      is_published    BOOLEAN          NOT NULL DEFAULT FALSE,
-     image_url       VARCHAR(1000),
+     cover_storage_ref VARCHAR(1000),
      created_at      TIMESTAMP        NOT NULL DEFAULT NOW(),
      updated_at      TIMESTAMP        NOT NULL DEFAULT NOW(),
      created_by      VARCHAR(50)      NOT NULL DEFAULT 'system',
