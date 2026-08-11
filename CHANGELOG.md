@@ -1,5 +1,12 @@
 # Changelog
 
+## [1.2.0](https://github.com/stefanBid/sfrigola-core/compare/v1.1.0...v1.2.0) (2026-08-11)
+
+
+### Features
+
+* add manager for image upload ([#21](https://github.com/stefanBid/sfrigola-core/issues/21)) ([ec2c15b](https://github.com/stefanBid/sfrigola-core/commit/ec2c15b6a3ca0ff7632d5b38f75fb748e95c7294))
+
 ## [1.1.0](https://github.com/stefanBid/sfrigola-core/compare/v1.0.2...v1.1.0) (2026-07-28)
 
 
