@@ -10,6 +10,7 @@ import com.sb.sfrigola_core.common.models.contracts.SCPagedResult;
 import com.sb.sfrigola_core.common.exception.ex.SCNoRowsAffectedException;
 import com.sb.sfrigola_core.common.util.SCAuthenticationUtils;
 import com.sb.sfrigola_core.common.util.SCPaginationUtils;
+import com.sb.sfrigola_core.common.util.SCUriGeneratorUtils;
 import com.sb.sfrigola_core.domains.languages.service.ILanguageService;
 import com.sb.sfrigola_core.domains.users.dto.DefaultAvatarDto;
 import com.sb.sfrigola_core.domains.users.dto.SCUserDto;
@@ -26,7 +27,6 @@ import jakarta.annotation.Nullable;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
-import org.springframework.web.servlet.support.ServletUriComponentsBuilder;
 
 import java.time.Instant;
 import java.util.List;
@@ -71,7 +71,7 @@ public class SCUserServiceImpl implements ISCUserService {
         user.setUpdatedAt(Instant.now());
         user.setUpdatedBy(userRecord.username());
 
-        return getAvatarUriString(pathToSaveIntoDB);
+        return SCUriGeneratorUtils.generateUriString(pathToSaveIntoDB, "uploads");
     }
 
     @Override
@@ -90,7 +90,7 @@ public class SCUserServiceImpl implements ISCUserService {
         user.setUpdatedAt(Instant.now());
         user.setUpdatedBy(userRecord.username());
 
-        return getAvatarUriString(reference);
+        return SCUriGeneratorUtils.generateUriString(reference, "uploads");
     }
 
     @Override
@@ -115,7 +115,7 @@ public class SCUserServiceImpl implements ISCUserService {
         user.setUpdatedAt(Instant.now());
         user.setUpdatedBy(userRecord.username());
 
-        return getAvatarUriString(randomDefault);
+        return SCUriGeneratorUtils.generateUriString(randomDefault, "uploads");
     }
 
     @Override
@@ -123,7 +123,7 @@ public class SCUserServiceImpl implements ISCUserService {
         return fileStorageService.listFiles(SCGeneralConstants.AVATAR_DEFAULT_PATH).stream()
                 .map(reference -> new DefaultAvatarDto(
                         reference.substring(reference.lastIndexOf('/') + 1),
-                        getAvatarUriString(reference)
+                        SCUriGeneratorUtils.generateUriString(reference, "uploads")
                 )).sorted(DefaultAvatarDto::compareTo)
                 .toList();
     }
@@ -214,12 +214,6 @@ public class SCUserServiceImpl implements ISCUserService {
     // PRIVATE
     // =========================================================
 
-    private String getAvatarUriString(String userDynamicPath) {
-        return userDynamicPath != null
-                ? ServletUriComponentsBuilder.fromCurrentContextPath().path("/uploads/").path(userDynamicPath).toUriString()
-                : null;
-    }
-
     private SCUserDto convertToExternalDto(SCUser user) {
         return new SCUserDto(
                 user.getPublicId(),
@@ -229,7 +223,7 @@ public class SCUserServiceImpl implements ISCUserService {
                 user.isActive(),
                 user.getFirstName(),
                 user.getLastName(),
-                getAvatarUriString(user.getAvatarStorageRef()),
+                SCUriGeneratorUtils.generateUriString(user.getAvatarStorageRef(), "uploads"),
                 user.getBio()
         );
     }
