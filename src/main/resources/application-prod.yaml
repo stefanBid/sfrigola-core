@@ -12,3 +12,7 @@ JWT_EXPIRATION_MS: 3600000
 # ===== CORS =====
 # ALLOWED_ORIGINS: no default here on purpose — must come from the real env var,
 # missing value is caught by SecurityBeansConfig (clean error), not by this file.
+
+# ===== FILE STORAGE =====
+# FILE_STORAGE_ROOT_DIR: no default here on purpose — must come from the real env var,
+# missing value is caught by SCImageStorageService (clean error), not by this file.

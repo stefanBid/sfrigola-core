@@ -30,7 +30,7 @@ public class SCUser extends BaseEntity {
     @Column(name = "email", nullable = false, unique = true, length = 150)
     private String email;
 
-    @Column(name = "password_hash", nullable = false, length = 255)
+    @Column(name = "password_hash", nullable = false)
     private String passwordHash;
 
     @Column(name = "preferred_lang", nullable = false, length = 10)
@@ -45,8 +45,8 @@ public class SCUser extends BaseEntity {
     @Column(name = "last_name", length = 100)
     private String lastName;
 
-    @Column(name = "avatar_url", length = 500)
-    private String avatarUrl;
+    @Column(name = "avatar_storage_ref", length = 1000)
+    private String avatarStorageRef;
 
     @Column(name = "bio", columnDefinition = "TEXT")
     private String bio;

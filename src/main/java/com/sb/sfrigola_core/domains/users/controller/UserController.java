@@ -1,10 +1,12 @@
 package com.sb.sfrigola_core.domains.users.controller;
 
 import com.sb.sfrigola_core.common.constant.SCRequestParamValidationCodeConstants;
+import com.sb.sfrigola_core.common.dto.body.SCImageBodyDto;
 import com.sb.sfrigola_core.common.dto.option.SCPagedOptionDto;
 import com.sb.sfrigola_core.common.dto.response.SCGeneralResponseDto;
 import com.sb.sfrigola_core.common.models.contracts.SCFilterQuery;
 import com.sb.sfrigola_core.common.enums.SortDirection;
+import com.sb.sfrigola_core.domains.users.dto.DefaultAvatarDto;
 import com.sb.sfrigola_core.domains.users.dto.SCUserDto;
 import com.sb.sfrigola_core.domains.users.dto.SetStatusDto;
 import com.sb.sfrigola_core.domains.users.dto.UpdateProfileDto;
@@ -13,7 +15,6 @@ import com.sb.sfrigola_core.domains.users.service.ISCUserService;
 import jakarta.validation.Valid;
 import jakarta.validation.constraints.Max;
 import jakarta.validation.constraints.Min;
-import jakarta.validation.constraints.Pattern;
 import lombok.RequiredArgsConstructor;
 import org.springframework.http.ResponseEntity;
 import org.springframework.validation.annotation.Validated;
@@ -42,6 +43,30 @@ public class UserController {
     public ResponseEntity<SCGeneralResponseDto<SCUserDto, Void>> updateProfile(@RequestBody @Valid UpdateProfileDto dto) {
         SCUserDto updated = userService.updateProfile(dto);
         return ResponseEntity.ok(SCGeneralResponseDto.success(updated));
+    }
+
+    @PostMapping(value = "/profile/update-avatar", version = "1.0")
+    public ResponseEntity<SCGeneralResponseDto<String, Void>> updateAvatar(@ModelAttribute @Valid SCImageBodyDto imageBodyDto) {
+        String avatarUrl = userService.updateProfileAvatar(imageBodyDto);
+        return ResponseEntity.ok(SCGeneralResponseDto.success(avatarUrl));
+    }
+
+    @GetMapping(value = "/profile/default-avatars", version = "1.0")
+    public ResponseEntity<SCGeneralResponseDto<List<DefaultAvatarDto>, Void>> getAllDefaultAvatars() {
+        List<DefaultAvatarDto> defaults = userService.getAllDefaultAvatars();
+        return ResponseEntity.ok(SCGeneralResponseDto.success(defaults));
+    }
+
+    @PatchMapping(value = "/profile/select-default-avatar/{avatarKey}", version = "1.0")
+    public ResponseEntity<SCGeneralResponseDto<String, Void>> selectDefaultAvatar(@PathVariable String avatarKey) {
+        String avatarUrl = userService.selectDefaultAvatar(avatarKey);
+        return ResponseEntity.ok(SCGeneralResponseDto.success(avatarUrl));
+    }
+
+    @DeleteMapping(value = "/profile/avatar", version = "1.0")
+    public ResponseEntity<SCGeneralResponseDto<String, Void>> deleteAvatar() {
+        String avatarUrl = userService.deleteProfileAvatar();
+        return ResponseEntity.ok(SCGeneralResponseDto.success(avatarUrl));
     }
 
     @PatchMapping(value= "/profile/became-contributor")

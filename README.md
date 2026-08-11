@@ -5,7 +5,7 @@
 
   # Sfrigola Core
 
-  ![Version](https://img.shields.io/badge/version-1.0.2-blue)
+  ![Version](https://img.shields.io/badge/version-1.2.0-blue)
   ![Java](https://img.shields.io/badge/java-25-ED8B00?logo=openjdk&logoColor=white)
   ![Spring Boot](https://img.shields.io/badge/spring--boot-4.1.0-6DB33F?logo=springboot&logoColor=white)
   ![PostgreSQL](https://img.shields.io/badge/postgresql-336791?logo=postgresql&logoColor=white)
@@ -92,7 +92,18 @@ DB_PASSWORD=...
 JWT_SECRET_KEY=...
 ```
 
-Non-secret, environment-specific values (`JWT_EXPIRATION_MS`, `ALLOWED_ORIGINS`) have sane defaults in `application-dev.yaml`, still overridable via the same-named env var; `application-prod.yaml` requires them explicitly with no default.
+Non-secret, environment-specific values (`JWT_EXPIRATION_MS`, `ALLOWED_ORIGINS`, `FILE_STORAGE_ROOT_DIR`) have sane defaults in `application-dev.yaml`, still overridable via the same-named env var; `application-prod.yaml` requires them explicitly with no default.
+
+### Local file storage
+
+Uploaded images (avatars, recipe covers) are persisted on the local filesystem for now — a stand-in until real object storage (S3/Cloudinary) is wired up, not the final design. `FILE_STORAGE_ROOT_DIR` (default `./uploads` in dev) is the root; `ISCFileStorageService` never returns a full URL, only a relative reference, resolved to an absolute URL by the service layer when building a response.
+
+To get a working local setup:
+
+1. Create `uploads/avatar/default/` at the project root (git-ignored — see below).
+2. Clone [`sfrigola-media`](https://github.com/stefanBid/sfrigola-media) and copy its `avatar/default` folder contents in — these are the shared preset avatars users can pick without uploading a custom photo.
+
+`uploads/` is entirely git-ignored: it holds both runtime-uploaded content (never meant to be committed) and the default avatars (whose source of truth is the `sfrigola-media` repo, not this one). Static serving of `/uploads/**` (`config/web/LocalUploadsWebConfig`) is active only on `dev`/`test` profiles — it doesn't exist in `prod`, since `prod` is expected to serve from real object storage once that's wired up.
 
 ### Running locally
 
@@ -231,7 +242,7 @@ com.sb.sfrigola_core/
     auditor/                         JPA auditing (createdBy/updatedBy resolution)
     cache/                           CacheConfig — @EnableCaching + Caffeine CacheManager
     security/                        SecurityConfig, SecurityBeansConfig, JWT filter/service
-    web/                             WebConfig (context path, CORS)
+    web/                             WebConfig (context path, versioning); LocalUploadsWebConfig (dev/test-only static serving of uploaded files)
 
   domains/                        ← one folder per feature
     auth/                            login, register, change email/password
@@ -277,7 +288,7 @@ PostgreSQL, managed entirely via `src/main/resources/sql/createSfrigolaDB.sql` �
 |---|---|
 | `languages` | active locale registry, one row flagged `is_default` |
 | `roles` | `ROLE_ADMIN` / `ROLE_USER` / `ROLE_CONTRIBUTOR` |
-| `users` | account, role, preferred language, profile fields |
+| `users` | account, role, preferred language, profile fields — `avatar_storage_ref` holds a raw storage reference (not a URL), resolved to an absolute URL only in API responses, see [Local file storage](#2-getting-started) |
 | `categories` + `category_translations` | self-referential tree (`parent_id`), 11 seeded rows |
 | `tags` + `tag_translations` | `type` / `scope` / `status` PG enums, approval workflow |
 | `ingredients` + `ingredient_translations` | allergens (`TEXT[]`, GIN-indexed), dietary flags |
@@ -370,7 +381,7 @@ This split is a deliberate design choice, not incidental: it means a client only
 ### Error code legend
 
 **500 — server fault, global bucket** (`errorCode` not meant to be shown to the user):
-`SERVER_ERROR` (generic fallback) · `NO_ROWS_AFFECTED` · `DATA_CORRUPTED` · `SECURITY_SYSTEM_ERROR` · `INVALID_ROLE_FROM_STRING`
+`SERVER_ERROR` (generic fallback) · `NO_ROWS_AFFECTED` · `DATA_CORRUPTED` · `SECURITY_SYSTEM_ERROR` · `INVALID_ROLE_FROM_STRING` · `FILE_STORAGE_ERROR` (local filesystem I/O failure storing/deleting an uploaded file)
 
 **401 — session/token invalid, global bucket:**
 `ENV_NOT_AVAILABLE` / `JWT_EXPIRED` / `JWT_VALIDATION_FAILED` (JWT filter) · `NOT_AUTHORIZED` (no auth on protected route) · `NO_USER_AUTH` (token valid, user gone)
@@ -414,6 +425,7 @@ Base path for every route below: `/sfrigola-core/api`.
 |---|---|---|---|
 | PATCH | `/users/settings/change-preferred-lang/{code}` | authenticated | |
 | PATCH | `/users/profile/update` | authenticated | |
+| POST | `/users/profile/update-avatar` | authenticated | `multipart/form-data`, returns an absolute image URL (not the raw storage reference persisted on the entity) — see [Local file storage](#2-getting-started) |
 | PATCH | `/users/profile/became-contributor` | authenticated | promotes to `ROLE_CONTRIBUTOR` |
 | GET | `/users/admin` | `ROLE_ADMIN` | paginated, sort/search/isActive filters |
 | PATCH | `/users/admin/{publicId}/status` | `ROLE_ADMIN` | activate/deactivate user |

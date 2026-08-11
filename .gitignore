@@ -32,6 +32,9 @@ build/
 ### VS Code ###
 .vscode/
 
+### macOS ###
+.DS_Store
+
 
 ### Enviroement ###
 .env
@@ -39,3 +42,10 @@ build/
 
 ### Logs file ###
 logs/
+
+### Local file storage (FILE_STORAGE_ROOT_DIR) ###
+# Runtime-uploaded content (avatars, recipe covers) - never committed here.
+# Default/seed avatars are NOT stored in this repo: copy them from
+# https://github.com/stefanBid/sfrigola-media into ./uploads/avatar/default
+# to reproduce a working local dev environment.
+/uploads/

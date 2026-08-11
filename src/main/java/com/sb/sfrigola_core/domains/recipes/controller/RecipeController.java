@@ -7,6 +7,7 @@ import com.sb.sfrigola_core.common.enums.SortDirection;
 import com.sb.sfrigola_core.common.models.contracts.SCFilterQuery;
 import com.sb.sfrigola_core.domains.recipes.dto.input.AddRecipeDto;
 import com.sb.sfrigola_core.domains.recipes.dto.input.UpdateRecipeDto;
+import com.sb.sfrigola_core.domains.recipes.dto.input.UpsetRecipeCoverDto;
 import com.sb.sfrigola_core.domains.recipes.dto.view.RecipeDetailsAdminDto;
 import com.sb.sfrigola_core.domains.recipes.dto.view.RecipeDetailsDto;
 import com.sb.sfrigola_core.domains.recipes.dto.view.RecipeDto;
@@ -205,5 +206,24 @@ public class RecipeController {
     ) {
         var deleted = recipeService.deleteRecipe(publicId);
         return ResponseEntity.ok(SCGeneralResponseDto.success(deleted));
+    }
+
+    // [Contributor(own), Admin]
+    @PostMapping(value = "/{publicId}/cover", version = "1.0")
+    public ResponseEntity<SCGeneralResponseDto<String, Void>> upsetRecipeCover(
+            @PathVariable("publicId") UUID publicId,
+            @ModelAttribute @Valid UpsetRecipeCoverDto upsetRecipeCoverDto
+    ) {
+        String coverUrl = recipeService.upsetRecipeCover(publicId, upsetRecipeCoverDto);
+        return ResponseEntity.ok(SCGeneralResponseDto.success(coverUrl));
+    }
+
+    // [Contributor(own), Admin]
+    @DeleteMapping(value = "/{publicId}/cover", version = "1.0")
+    public ResponseEntity<SCGeneralResponseDto<String, Void>> deleteRecipeCover(
+            @PathVariable("publicId") UUID publicId
+    ) {
+        recipeService.deleteRecipeCover(publicId);
+        return ResponseEntity.ok(SCGeneralResponseDto.successMutation("Recipe cover deleted"));
     }
 }

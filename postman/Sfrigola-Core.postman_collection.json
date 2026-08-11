@@ -19,7 +19,8 @@
     { "key": "ingredientId", "value": "", "type": "string" },
     { "key": "it", "value": "it", "type": "string" },
     { "key": "approved", "value": "approved", "type": "string" },
-    { "key": "feedType", "value": "quick", "type": "string" }
+    { "key": "feedType", "value": "quick", "type": "string" },
+    { "key": "avatarKey", "value": "avatar_01.png", "type": "string" }
   ],
   "item": [
     {
@@ -136,9 +137,51 @@
             "header": [{ "key": "Content-Type", "value": "application/json" }],
             "body": {
               "mode": "raw",
-              "raw": "{\n  \"firstName\": \"Mario\",\n  \"lastName\": \"Rossi\",\n  \"avatarUrl\": \"https://example.com/avatar.png\",\n  \"bio\": \"Home cook, pasta enthusiast.\"\n}"
+              "raw": "{\n  \"firstName\": \"Mario\",\n  \"lastName\": \"Rossi\",\n  \"bio\": \"Home cook, pasta enthusiast.\"\n}"
             },
             "url": { "raw": "{{baseUrl}}/users/profile/update", "host": ["{{baseUrl}}"], "path": ["users", "profile", "update"] }
+          },
+          "response": []
+        },
+        {
+          "name": "Update Avatar",
+          "request": {
+            "method": "POST",
+            "body": {
+              "mode": "formdata",
+              "formdata": [
+                { "key": "imageFile", "type": "file", "src": [] }
+              ]
+            },
+            "url": { "raw": "{{baseUrl}}/users/profile/update-avatar", "host": ["{{baseUrl}}"], "path": ["users", "profile", "update-avatar"] }
+          },
+          "response": []
+        },
+        {
+          "name": "Get All Default Avatars",
+          "request": {
+            "method": "GET",
+            "url": { "raw": "{{baseUrl}}/users/profile/default-avatars", "host": ["{{baseUrl}}"], "path": ["users", "profile", "default-avatars"] }
+          },
+          "response": []
+        },
+        {
+          "name": "Select Default Avatar",
+          "request": {
+            "method": "PATCH",
+            "url": {
+              "raw": "{{baseUrl}}/users/profile/select-default-avatar/{{avatarKey}}",
+              "host": ["{{baseUrl}}"],
+              "path": ["users", "profile", "select-default-avatar", "{{avatarKey}}"]
+            }
+          },
+          "response": []
+        },
+        {
+          "name": "Delete Avatar",
+          "request": {
+            "method": "DELETE",
+            "url": { "raw": "{{baseUrl}}/users/profile/avatar", "host": ["{{baseUrl}}"], "path": ["users", "profile", "avatar"] }
           },
           "response": []
         },
@@ -735,7 +778,7 @@
             "header": [{ "key": "Content-Type", "value": "application/json" }],
             "body": {
               "mode": "raw",
-              "raw": "{\n  \"categoryPublicId\": \"{{categoryId}}\",\n  \"difficulty\": \"easy\",\n  \"mealType\": \"lunch\",\n  \"season\": \"all_year\",\n  \"prepTimeMin\": 10,\n  \"cookTimeMin\": 15,\n  \"servings\": 4,\n  \"isVegetarian\": true,\n  \"isVegan\": false,\n  \"isGlutenFree\": false,\n  \"recipeTagsIds\": [\"{{tagId}}\"],\n  \"ingredients\": [\n    {\n      \"ingredientPublicId\": \"{{ingredientId}}\",\n      \"quantity\": 100.0,\n      \"unit\": \"g\",\n      \"preparationNote\": \"chopped\",\n      \"sortOrder\": 0\n    }\n  ],\n  \"translations\": [\n    { \"langCode\": \"en\", \"title\": \"Test Recipe\", \"description\": \"Test description\", \"instructions\": [\"Boil water\", \"Add pasta\", \"Drain and serve\"] },\n    { \"langCode\": \"it\", \"title\": \"Ricetta di prova\", \"description\": \"Descrizione di prova\", \"instructions\": [\"Bolli l'acqua\", \"Aggiungi la pasta\", \"Scola e servi\"] }\n  ]\n}"
+              "raw": "{\n  \"categoryPublicId\": \"{{categoryId}}\",\n  \"imageUrl\": \"https://example.com/images/recipe.jpg\",\n  \"difficulty\": \"easy\",\n  \"mealType\": \"lunch\",\n  \"season\": \"all_year\",\n  \"prepTimeMin\": 10,\n  \"cookTimeMin\": 15,\n  \"servings\": 4,\n  \"isVegetarian\": true,\n  \"isVegan\": false,\n  \"isGlutenFree\": false,\n  \"recipeTagsIds\": [\"{{tagId}}\"],\n  \"ingredients\": [\n    {\n      \"ingredientPublicId\": \"{{ingredientId}}\",\n      \"quantity\": 100.0,\n      \"unit\": \"g\",\n      \"preparationNote\": \"chopped\",\n      \"sortOrder\": 0\n    }\n  ],\n  \"translations\": [\n    { \"langCode\": \"en\", \"title\": \"Test Recipe\", \"description\": \"Test description\", \"instructions\": [\"Boil water\", \"Add pasta\", \"Drain and serve\"] },\n    { \"langCode\": \"it\", \"title\": \"Ricetta di prova\", \"description\": \"Descrizione di prova\", \"instructions\": [\"Bolli l'acqua\", \"Aggiungi la pasta\", \"Scola e servi\"] }\n  ]\n}"
             },
             "url": {
               "raw": "{{baseUrl}}/recipes?locale=en",
@@ -753,7 +796,7 @@
             "header": [{ "key": "Content-Type", "value": "application/json" }],
             "body": {
               "mode": "raw",
-              "raw": "{\n  \"categoryPublicId\": \"{{categoryId}}\",\n  \"difficulty\": \"medium\",\n  \"mealType\": \"dinner\",\n  \"season\": \"all_year\",\n  \"prepTimeMin\": 15,\n  \"cookTimeMin\": 20,\n  \"servings\": 4,\n  \"isVegetarian\": true,\n  \"isVegan\": false,\n  \"isGlutenFree\": false,\n  \"recipeTagsIds\": [\"{{tagId}}\"],\n  \"ingredients\": [\n    {\n      \"ingredientPublicId\": \"{{ingredientId}}\",\n      \"quantity\": 150.0,\n      \"unit\": \"g\",\n      \"preparationNote\": \"chopped\",\n      \"sortOrder\": 0\n    }\n  ],\n  \"specificTranslation\": { \"langCode\": \"en\", \"title\": \"Test Recipe Updated\", \"description\": \"Updated description\", \"instructions\": [\"Boil water\", \"Add pasta\", \"Toss with sauce\", \"Serve hot\"] }\n}"
+              "raw": "{\n  \"categoryPublicId\": \"{{categoryId}}\",\n  \"imageUrl\": \"https://example.com/images/recipe-updated.jpg\",\n  \"difficulty\": \"medium\",\n  \"mealType\": \"dinner\",\n  \"season\": \"all_year\",\n  \"prepTimeMin\": 15,\n  \"cookTimeMin\": 20,\n  \"servings\": 4,\n  \"isVegetarian\": true,\n  \"isVegan\": false,\n  \"isGlutenFree\": false,\n  \"recipeTagsIds\": [\"{{tagId}}\"],\n  \"ingredients\": [\n    {\n      \"ingredientPublicId\": \"{{ingredientId}}\",\n      \"quantity\": 150.0,\n      \"unit\": \"g\",\n      \"preparationNote\": \"chopped\",\n      \"sortOrder\": 0\n    }\n  ],\n  \"specificTranslation\": { \"langCode\": \"en\", \"title\": \"Test Recipe Updated\", \"description\": \"Updated description\", \"instructions\": [\"Boil water\", \"Add pasta\", \"Toss with sauce\", \"Serve hot\"] }\n}"
             },
             "url": {
               "raw": "{{baseUrl}}/recipes/{{publicId}}",
@@ -798,6 +841,28 @@
               "host": ["{{baseUrl}}"],
               "path": ["recipes", "{{publicId}}"]
             }
+          },
+          "response": []
+        },
+        {
+          "name": "[Contributor(own), Admin] Upset Recipe Cover",
+          "request": {
+            "method": "POST",
+            "body": {
+              "mode": "formdata",
+              "formdata": [
+                { "key": "recipeCoverImageFile", "type": "file", "src": [] }
+              ]
+            },
+            "url": { "raw": "{{baseUrl}}/recipes/{{publicId}}/cover", "host": ["{{baseUrl}}"], "path": ["recipes", "{{publicId}}", "cover"] }
+          },
+          "response": []
+        },
+        {
+          "name": "[Contributor(own), Admin] Delete Recipe Cover",
+          "request": {
+            "method": "DELETE",
+            "url": { "raw": "{{baseUrl}}/recipes/{{publicId}}/cover", "host": ["{{baseUrl}}"], "path": ["recipes", "{{publicId}}", "cover"] }
           },
           "response": []
         }

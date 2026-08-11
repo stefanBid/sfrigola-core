@@ -98,7 +98,7 @@ CREATE TABLE users (
    is_active       BOOLEAN         NOT NULL DEFAULT TRUE,
    first_name      VARCHAR(100),
    last_name       VARCHAR(100),
-   avatar_url      VARCHAR(500),
+   avatar_storage_ref VARCHAR(1000),
    bio             TEXT,
    created_at      TIMESTAMP       NOT NULL DEFAULT NOW(),
    updated_at      TIMESTAMP       NOT NULL DEFAULT NOW(),
@@ -259,6 +259,7 @@ CREATE TABLE recipes (
      is_vegan        BOOLEAN          NOT NULL DEFAULT FALSE,
      is_gluten_free  BOOLEAN          NOT NULL DEFAULT FALSE,
      is_published    BOOLEAN          NOT NULL DEFAULT FALSE,
+     cover_storage_ref VARCHAR(1000),
      created_at      TIMESTAMP        NOT NULL DEFAULT NOW(),
      updated_at      TIMESTAMP        NOT NULL DEFAULT NOW(),
      created_by      VARCHAR(50)      NOT NULL DEFAULT 'system',
@@ -594,6 +595,7 @@ INSERT INTO users (
     is_active,
     first_name,
     last_name,
+    avatar_storage_ref,
     created_by,
     updated_by
 )
@@ -606,6 +608,7 @@ VALUES (
     TRUE,
     'Admin',
     'Sfrigola',
+    'avatar/default/avatar_01.png',
     'system',
     'system'
 );
@@ -620,6 +623,7 @@ INSERT INTO users (
     is_active,
     first_name,
     last_name,
+    avatar_storage_ref,
     created_by,
     updated_by
 )
@@ -632,6 +636,7 @@ VALUES (
     TRUE,
     'Contributor',
     'Sfrigola',
+    'avatar/default/avatar_02.png',
     'system',
     'system'
 );
@@ -646,6 +651,7 @@ INSERT INTO users (
     is_active,
     first_name,
     last_name,
+    avatar_storage_ref,
     created_by,
     updated_by
 )
@@ -658,6 +664,7 @@ VALUES (
     TRUE,
     'User',
     'Sfrigola',
+    'avatar/default/avatar_03.png',
     'system',
     'system'
 );

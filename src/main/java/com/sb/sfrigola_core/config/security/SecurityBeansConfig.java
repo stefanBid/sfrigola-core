@@ -51,7 +51,8 @@ public class SecurityBeansConfig {
                 "/api/categories",
                 "/error",
                 "/api/v3/api-docs/**",
-                "/swagger-ui/**"
+                "/swagger-ui/**",
+                "/uploads/**"
         );
     }
 

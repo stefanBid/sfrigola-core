@@ -6,6 +6,9 @@ public class RecipeValidationCodeConstants {
         throw new AssertionError("Cannot instantiate RecipeValidationCodeConstants");
     }
 
+    // --- RECIPE IMAGE ---
+    public static final String IMAGE_URL_TOO_LONG           = "IMAGE_URL_TOO_LONG";
+
     // --- TIME / SERVINGS ---
     public static final String PREP_TIME_MUST_BE_POSITIVE   = "PREP_TIME_MUST_BE_POSITIVE";
     public static final String COOK_TIME_MUST_BE_POSITIVE   = "COOK_TIME_MUST_BE_POSITIVE";

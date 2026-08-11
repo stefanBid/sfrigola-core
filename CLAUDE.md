@@ -16,113 +16,6 @@
 
 ---
 
-## Tech Stack
-
-- **Framework:** Spring Boot 4.1.0
-- **Language:** Java 25
-- **Build tool:** Maven
-- **Database:** PostgreSQL (driver `org.postgresql`)
-- **ORM:** Spring Data JPA (Hibernate) — `ddl-auto=none` (schema managed manually via SQL)
-- **Security:** Spring Security + JWT stateless (jjwt 0.13.0)
-- **Validation:** Spring Validation (Jakarta)
-- **Web:** Spring MVC (`spring-boot-starter-webmvc`)
-- **Utilities:** Lombok
-- **Docker:** Spring Boot Docker Compose (auto-starts containers in dev)
-- **Dev tools:** Spring Boot DevTools (hot reload)
-- **Auditing:** Spring Data JPA Auditing (`@EnableJpaAuditing`)
-
-### Test Dependencies
-
-- `spring-boot-starter-data-jpa-test`
-- `spring-boot-starter-security-test`
-- `spring-boot-starter-validation-test`
-- `spring-boot-starter-webmvc-test`
-
----
-
-## Actual Project Structure
-
-```
-com.sb.sfrigola_core/
-├── SfrigolaCoreApplication.java
-│
-├── common/                          # Cross-cutting reusable code
-│   ├── constant/
-│   │   ├── SCGeneralConstants.java
-│   │   └── SCRequestParamValidationCodeConstants.java   # messages for @Min/@Max/@Pattern
-│   ├── dto/
-│   │   ├── option/
-│   │   │   ├── SCPagedOptionDto.java        # currentPage, pageSize, totalElements, totalPages, hasMore
-│   │   │   └── SCCounterOptionDto.java
-│   │   └── response/
-│   │       ├── SCGeneralResponseDto.java    # universal API envelope: data + option + errorData
-│   │       └── SCErrorDataDto.java
-│   ├── entity/
-│   │   └── BaseEntity.java                 # @MappedSuperclass: createdAt, updatedAt, createdBy, updatedBy
-│   ├── enums/
-│   │   ├── GeneralErrorCode.java            # ENTITY_NOT_FOUND, ILLEGAL_ARGUMENT, MALFORMED_JSON, SERVER_ERROR
-│   │   ├── SCUserRole.java                  # ROLE_ADMIN, ROLE_USER, ROLE_CONTRIBUTOR
-│   │   └── SortDirection.java
-│   ├── exception/
-│   │   ├── ISCErrorCode.java                # interface: String code()
-│   │   ├── SCExceptionHandler.java          # global @RestControllerAdvice
-│   │   └── ex/
-│   │       ├── SCGeneralException.java      # abstract base: status + errorCode + message → toErrorMap()
-│   │       ├── SCDataCorruptionException.java
-│   │       └── SCNoRowsAffectedException.java
-│   ├── models/
-│   │   ├── context/
-│   │   │   └── SCAuthUser.java              # principal in the security context
-│   │   └── contracts/
-│   │       ├── SCFilterQuery.java           # searchKey, sortBy, sort, take, page, other (generic)
-│   │       └── SCPagedResult.java           # content (List<T>) + pagedOptionDto
-│   └── util/
-│       ├── SCAuthenticationUtils.java
-│       ├── SCErrorDataBuilderUtils.java      # builds ResponseEntity<SCGeneralResponseDto<Void,Void>>
-│       └── SCPaginationUtils.java
-│
-├── config/                                  # Spring configuration (not a domain)
-│   ├── auditor/
-│   │   ├── AuditorAwareConfig.java
-│   │   └── AuditorAwareImpl.java
-│   ├── security/
-│   │   ├── SecurityConfig.java              # SecurityFilterChain, CORS, path-based authorization
-│   │   ├── SecurityBeansConfig.java         # beans: publicPath, authPath, adminPath, userPath, contributorPath, allowedOriginsPaths, scHierarchy
-│   │   ├── authprovider/
-│   │   │   └── UsernamePwAuthenticationProvider.java
-│   │   ├── exception/
-│   │   │   ├── CustomAccessDeniedHandler.java
-│   │   │   ├── CustomAuthenticationEntryPoint.java
-│   │   │   ├── SecurityErrorCode.java
-│   │   │   └── ex/
-│   │   │       ├── SCAuthenticatedUserNotFoundException.java
-│   │   │       ├── SCBadCredentialException.java
-│   │   │       └── SCUserInactiveException.java
-│   │   └── jwt/
-│   │       ├── JwtValidationFilter.java     # OncePerRequestFilter before BasicAuthenticationFilter
-│   │       └── jwtservice/
-│   │           ├── IJWTService.java
-│   │           └── JwtService.java
-│   └── web/
-│       └── WebConfig.java
-│
-└── domains/                                 # Features organized by domain
-    ├── auth/
-    ├── languages/
-    ├── users/
-    ├── categories/                          # entity + CategoryTranslation; no repo/service/controller yet
-    └── tags/
-        ├── entity/
-        │   ├── Tag.java
-        │   └── TagTranslation.java
-        └── enums/                           # domain enums + JPA converters co-located
-            ├── TagType.java + TagTypeConverter.java
-            ├── TagScope.java + TagScopeConverter.java
-            └── TagStatus.java + TagStatusConverter.java
-```
-
----
-
 ## Internal Structure of Each Domain
 
 ```
@@ -148,253 +41,7 @@ domains/<feature>/
 
 ## Database Schema
 
-PostgreSQL schema managed manually via `src/main/resources/sql/createSfrigolaDB.sql`.
-Hibernate does not generate or alter tables (`ddl-auto=none`).
-
-**Source of truth:** always read the SQL file directly. This section is a faithful transcription — if they diverge, the SQL file wins.
-
-### Column conventions (applies to all standard tables)
-
-Every standard table (non-bridge) has:
-- `id BIGSERIAL PRIMARY KEY` — internal, never exposed in APIs
-- `public_id UUID NOT NULL UNIQUE DEFAULT gen_random_uuid()` — exposed in APIs
-- audit: `created_at TIMESTAMP NOT NULL DEFAULT NOW()`, `updated_at TIMESTAMP NOT NULL DEFAULT NOW()`, `created_by VARCHAR(50) NOT NULL DEFAULT 'system'`, `updated_by VARCHAR(50) NOT NULL DEFAULT 'system'`
-
-**Exceptions:**
-- Bridge tables (`ingredient_tags`, `recipe_tags`): no `id`, no `public_id`, no `updated_*` — only `created_at` + `created_by`
-- `recipe_stats`: no `public_id`, no audit columns — only stats columns
-
-### PostgreSQL ENUMs
-
-```
-difficulty_level  → easy | medium | hard
-meal_type         → breakfast | lunch | dinner | snack | dessert | appetizer
-season_type       → spring | summer | autumn | winter | all_year
-tag_type          → recipe | flavor | texture | season | dietary
-tag_scope         → recipe | ingredient | both
-tag_status        → approved | pending | rejected
-```
-
-### Tables
-
-#### `languages`
-- `id` BIGSERIAL PK
-- `public_id` UUID NOT NULL UNIQUE
-- `code` VARCHAR(10) NOT NULL UNIQUE — BCP-47: 'en', 'it'
-- `name` VARCHAR(50) NOT NULL — native name
-- `is_default` BOOLEAN NOT NULL DEFAULT FALSE — max 1 TRUE (unique partial index)
-- `is_active` BOOLEAN NOT NULL DEFAULT TRUE
-- audit columns
-
-#### `roles`
-- `id` BIGSERIAL PK
-- `public_id` UUID NOT NULL UNIQUE
-- `name` VARCHAR(50) NOT NULL UNIQUE — ROLE_ADMIN / ROLE_USER / ROLE_CONTRIBUTOR
-- `description` VARCHAR(200) nullable
-- audit columns
-
-#### `users`
-- `id` BIGSERIAL PK
-- `public_id` UUID NOT NULL UNIQUE
-- `role_id` BIGINT NOT NULL FK → roles(id)
-- `username` VARCHAR(50) NOT NULL UNIQUE
-- `email` VARCHAR(150) NOT NULL UNIQUE
-- `password_hash` VARCHAR(255) NOT NULL — BCrypt
-- `preferred_lang` VARCHAR(10) NOT NULL DEFAULT 'en' FK → languages(code)
-- `is_active` BOOLEAN NOT NULL DEFAULT TRUE
-- `first_name` VARCHAR(100) nullable
-- `last_name` VARCHAR(100) nullable
-- `avatar_url` VARCHAR(500) nullable
-- `bio` TEXT nullable
-- audit columns
-
-#### `tags`
-- `id` BIGSERIAL PK
-- `public_id` UUID NOT NULL UNIQUE
-- `slug` VARCHAR(100) NOT NULL UNIQUE — universal English key
-- `type` tag_type NOT NULL
-- `scope` tag_scope NOT NULL DEFAULT 'both'
-- `status` tag_status NOT NULL DEFAULT 'approved'
-- audit columns
-
-#### `tag_translations`
-- `id` BIGSERIAL PK
-- `public_id` UUID NOT NULL UNIQUE
-- `tag_id` BIGINT NOT NULL FK → tags(id) ON DELETE CASCADE
-- `locale` VARCHAR(10) NOT NULL FK → languages(code) ON DELETE CASCADE
-- `label` VARCHAR(100) NOT NULL
-- UNIQUE (tag_id, locale)
-- audit columns
-
-#### `categories`
-- `id` BIGSERIAL PK
-- `public_id` UUID NOT NULL UNIQUE
-- `slug` VARCHAR(100) NOT NULL UNIQUE — URL-safe English key
-- `parent_id` BIGINT nullable FK → categories(id) ON DELETE SET NULL — self-referential
-- `sort_order` SMALLINT NOT NULL DEFAULT 0
-- `is_active` BOOLEAN NOT NULL DEFAULT TRUE
-- audit columns
-
-Seed hierarchy (11 categories):
-- Root: appetizers, first-courses, main-courses, side-dishes, desserts, beverages
-- Children of first-courses: pasta, risotto, soups
-- Children of main-courses: fish, meat
-
-#### `category_translations`
-- `id` BIGSERIAL PK
-- `public_id` UUID NOT NULL UNIQUE
-- `category_id` BIGINT NOT NULL FK → categories(id) ON DELETE CASCADE
-- `locale` VARCHAR(10) NOT NULL FK → languages(code) ON DELETE CASCADE
-- `name` VARCHAR(100) NOT NULL
-- `description` TEXT nullable
-- UNIQUE (category_id, locale)
-- audit columns
-
-#### `ingredients`
-- `id` BIGSERIAL PK
-- `public_id` UUID NOT NULL UNIQUE
-- `slug` VARCHAR(150) NOT NULL UNIQUE
-- `category` VARCHAR(100) nullable — free text: 'vegetable'/'dairy'/'protein'/'grain'
-- `calories_per_100g` NUMERIC(7,2) nullable
-- `allergens` TEXT[] nullable — GIN index
-- `is_vegetarian` BOOLEAN NOT NULL DEFAULT FALSE
-- `is_vegan` BOOLEAN NOT NULL DEFAULT FALSE
-- `is_gluten_free` BOOLEAN NOT NULL DEFAULT FALSE
-- audit columns
-
-#### `ingredient_translations`
-- `id` BIGSERIAL PK
-- `public_id` UUID NOT NULL UNIQUE
-- `ingredient_id` BIGINT NOT NULL FK → ingredients(id) ON DELETE CASCADE
-- `locale` VARCHAR(10) NOT NULL FK → languages(code) ON DELETE CASCADE
-- `name` VARCHAR(150) NOT NULL
-- UNIQUE (ingredient_id, locale)
-- audit columns
-
-#### `ingredient_tags`
-Bridge ingredient ↔ tag (scope='ingredient' or 'both' only).
-- `ingredient_id` BIGINT NOT NULL FK → ingredients(id) ON DELETE CASCADE
-- `tag_id` BIGINT NOT NULL FK → tags(id) ON DELETE CASCADE
-- PRIMARY KEY (ingredient_id, tag_id)
-- `created_at` TIMESTAMP NOT NULL DEFAULT NOW()
-- `created_by` VARCHAR(50) NOT NULL DEFAULT 'system'
-- **No** `id`, `public_id`, `updated_at`, `updated_by`
-
-#### `recipes`
-- `id` BIGSERIAL PK
-- `public_id` UUID NOT NULL UNIQUE
-- `author_id` BIGINT NOT NULL FK → users(id)
-- `category_id` BIGINT nullable FK → categories(id) ON DELETE SET NULL
-- `difficulty` difficulty_level NOT NULL DEFAULT 'medium'
-- `meal_type` meal_type nullable
-- `season` season_type NOT NULL DEFAULT 'all_year'
-- `prep_time_min` INT nullable CHECK (>= 0)
-- `cook_time_min` INT nullable CHECK (>= 0)
-- `servings` SMALLINT nullable CHECK (> 0)
-- `is_vegetarian` BOOLEAN NOT NULL DEFAULT FALSE
-- `is_vegan` BOOLEAN NOT NULL DEFAULT FALSE
-- `is_gluten_free` BOOLEAN NOT NULL DEFAULT FALSE
-- `is_published` BOOLEAN NOT NULL DEFAULT FALSE
-- audit columns
-
-#### `recipe_translations`
-- `id` BIGSERIAL PK
-- `public_id` UUID NOT NULL UNIQUE
-- `recipe_id` BIGINT NOT NULL FK → recipes(id) ON DELETE CASCADE
-- `locale` VARCHAR(10) NOT NULL FK → languages(code) ON DELETE CASCADE
-- `title` VARCHAR(200) NOT NULL
-- `description` TEXT nullable
-- `instructions` TEXT NOT NULL
-- UNIQUE (recipe_id, locale)
-- audit columns
-
-#### `recipe_tags`
-Bridge recipe ↔ tag (scope='recipe' or 'both' only).
-- `recipe_id` BIGINT NOT NULL FK → recipes(id) ON DELETE CASCADE
-- `tag_id` BIGINT NOT NULL FK → tags(id) ON DELETE CASCADE
-- PRIMARY KEY (recipe_id, tag_id)
-- `created_at` TIMESTAMP NOT NULL DEFAULT NOW()
-- `created_by` VARCHAR(50) NOT NULL DEFAULT 'system'
-- **No** `id`, `public_id`, `updated_at`, `updated_by`
-
-#### `recipe_ingredients`
-- `id` BIGSERIAL PK
-- `public_id` UUID NOT NULL UNIQUE
-- `recipe_id` BIGINT NOT NULL FK → recipes(id) ON DELETE CASCADE
-- `ingredient_id` BIGINT NOT NULL FK → ingredients(id)
-- `quantity` NUMERIC(8,2) nullable
-- `unit` VARCHAR(50) nullable — 'g', 'ml', 'tbsp', 'cup', 'to taste'
-- `preparation_note` VARCHAR(200) nullable — 'finely chopped'
-- `sort_order` SMALLINT NOT NULL DEFAULT 0
-- UNIQUE (recipe_id, ingredient_id)
-- audit columns
-
-#### `favorites`
-- `id` BIGSERIAL PK
-- `public_id` UUID NOT NULL UNIQUE
-- `user_id` BIGINT NOT NULL FK → users(id) ON DELETE CASCADE
-- `recipe_id` BIGINT NOT NULL FK → recipes(id) ON DELETE CASCADE
-- UNIQUE (user_id, recipe_id)
-- audit columns
-- Updates `recipe_stats` via service layer (no DB trigger)
-
-#### `ratings`
-- `id` BIGSERIAL PK
-- `public_id` UUID NOT NULL UNIQUE
-- `user_id` BIGINT NOT NULL FK → users(id) ON DELETE CASCADE
-- `recipe_id` BIGINT NOT NULL FK → recipes(id) ON DELETE CASCADE
-- `score` SMALLINT NOT NULL CHECK (score BETWEEN 1 AND 5)
-- `comment` TEXT nullable
-- UNIQUE (user_id, recipe_id)
-- audit columns
-- Updates `recipe_stats` via service layer (no DB trigger)
-
-#### `recipe_stats`
-1:1 with recipes. `recipe_id` is both PK and FK.
-- `recipe_id` BIGINT PK FK → recipes(id) ON DELETE CASCADE
-- `avg_rating` NUMERIC(3,2) NOT NULL DEFAULT 0.00
-- `ratings_count` INT NOT NULL DEFAULT 0
-- `favorites_count` INT NOT NULL DEFAULT 0
-- `views_count` INT NOT NULL DEFAULT 0
-- `last_computed` TIMESTAMP NOT NULL DEFAULT NOW()
-- **No** `public_id`, **no** audit columns
-- No REST controller — internal service called by `ratings` and `favorites`
-
-### Indexes
-
-```sql
--- Users
-idx_users_role               ON users (role_id)
-
--- Categories
-idx_categories_parent        ON categories (parent_id)
-
--- Ingredients
-idx_ingredients_allergens    ON ingredients USING GIN (allergens)
-
--- Tags
-idx_tags_type_scope_status   ON tags (type, scope, status)
-
--- Bridge reverse lookups
-idx_recipe_tags_tag          ON recipe_tags (tag_id)
-idx_ingredient_tags_tag      ON ingredient_tags (tag_id)
-
--- Recipes
-idx_recipes_author           ON recipes (author_id)
-idx_recipes_category         ON recipes (category_id)
-idx_recipes_published        ON recipes (id) WHERE is_published = TRUE
-idx_recipes_season           ON recipes (season)
-idx_recipes_meal_type        ON recipes (meal_type)
-idx_recipes_dietary          ON recipes (is_vegetarian, is_vegan, is_gluten_free)
-
--- Stats
-idx_recipe_stats_rating      ON recipe_stats (avg_rating DESC)
-idx_recipe_stats_favs        ON recipe_stats (favorites_count DESC)
-
--- Ratings / Favorites
-idx_ratings_recipe           ON ratings (recipe_id)
-idx_favorites_user           ON favorites (user_id)
-```
+Database schema lives in `src/main/resources/sql/createSfrigolaDB.sql` — read it directly, it's the source of truth (`ddl-auto=none`, Hibernate never generates or alters tables). One non-obvious point not visible from a quick skim: `users.avatar_storage_ref` is nullable and unset at signup — no default placeholder is assigned at registration; it stays `null` until the user uploads a photo via `POST /users/profile/update-avatar`. The column name is deliberately not `avatar_url`: it stores a **raw storage reference** (e.g. `avatars/<name>.jpg`, whatever `ISCFileStorageService.upsetFile` returns), never a full URL. `SCUser.avatarStorageRef` mirrors that naming (Java field ≠ `SCUserDto.avatarUrl`, on purpose — see below). `SCUserServiceImpl` resolves the reference into an absolute, browser/app-loadable URL (via `ServletUriComponentsBuilder`, shared helper `getAvatarUriString`) only when building `SCUserDto` for a response — never read `user.getAvatarStorageRef()` and hand it to a client as-is.
 
 ---
 
@@ -404,7 +51,7 @@ idx_favorites_user           ON favorites (user_id)
 |-------------|--------|------------|---------|------------|-------|
 | `auth`      | SCUser/SCRole (in users) | — | done | done | login, register, change-email, change-password |
 | `languages` | done | done | done | done | GET paginated |
-| `users`     | done | done | done | done | update-profile, change-lang, become-contributor, admin CRUD |
+| `users`     | done | done | done | done | update-profile, update-avatar (local filesystem storage, see File Storage below), change-lang, become-contributor, admin CRUD |
 | `categories`| done | done | done | done | Category + CategoryTranslation; self-referential parent; has domain bridge |
 | `tags`      | done | done | done | done | Tag + TagTranslation + enums + converters; has domain bridge |
 | `ingredients` | done | done | done | done | Ingredient + IngredientTranslation + IngredientTag bridge table; has domain bridge |
@@ -417,75 +64,12 @@ idx_favorites_user           ON favorites (user_id)
 
 ## Implemented API Endpoints
 
-Base path: `/sfrigola-core`
-
-### Auth — `/auth`
-
-| Method | Path | Access | Notes |
-|--------|------|--------|-------|
-| POST | `/auth/login` | public | returns JWT |
-| POST | `/auth/register` | public | |
-| PATCH | `/auth/change-email` | authenticated | |
-| PATCH | `/auth/change-password` | authenticated | |
-
-### Languages — `/languages`
-
-| Method | Path | Access | Notes |
-|--------|------|--------|-------|
-| GET | `/languages` | authenticated | paginated, isActive filter |
-
-### Users — `/users`
-
-| Method | Path | Access | Notes |
-|--------|------|--------|-------|
-| PATCH | `/users/settings/change-preferred-lang/{code}` | authenticated | |
-| PATCH | `/users/profile/update` | authenticated | |
-| PATCH | `/users/profile/became-contributor` | authenticated | promotes to ROLE_CONTRIBUTOR |
-| GET | `/users/admin` | ROLE_ADMIN | paginated, sort/search/isActive filters |
-| PATCH | `/users/admin/{publicId}/status` | ROLE_ADMIN | activate/deactivate user |
-
-### Recipes — `/recipes`
-
-| Method | Path | Access | Notes |
-|--------|------|--------|-------|
-| GET | `/recipes/home/category/{categoryId}` | public | fixed short rows per `FeedType` (QUICK, LIKE_A_CHEF, ECONOMICAL; VIRAL not yet implemented) |
-| GET | `/recipes/feed/{feedType}` | public | paginated recipe feed-group; `feedType` is any `FeedType` (QUICK, LIKE_A_CHEF, ECONOMICAL, VIRAL — VIRAL routed through `IRecipeStatsDomainBridgeService` instead of the filter repository) |
-| GET | `/recipes/search`, `/recipes/search/category/{categoryId}` | public | paginated, `searchKey` matches title/description |
-| GET | `/recipes/favorites` | authenticated | the authenticated user's favorited recipes — see Favorites section below for why this lives here |
-| GET | `/recipes/details/{publicId}` | public | draft recipes 404 exactly like non-existent ones |
-| GET | `/recipes/admin`, `/recipes/admin/category/{categoryId}` | ROLE_ADMIN | paginated, includes draft recipes, dietary/status filters |
-| GET | `/recipes/admin/details/{publicId}` | ROLE_ADMIN | includes draft recipes, ingredient/tag lists |
-| POST | `/recipes` | ROLE_CONTRIBUTOR, ROLE_ADMIN | author resolved from security context, never trusted from payload; see draft/publish flow below |
-| PUT | `/recipes/{publicId}` | author or ROLE_ADMIN | one translation upserted per call; no `isPublished` in the payload — see draft/publish flow below |
-| PATCH | `/recipes/admin/{publicId}/publish` | ROLE_ADMIN only | sets `isPublished = true`; no author fallback, unlike `PUT` above |
-| PATCH | `/recipes/admin/{publicId}/unpublish` | ROLE_ADMIN only | sets `isPublished = false`; no author fallback |
-| DELETE | `/recipes/{publicId}` | author or ROLE_ADMIN | cascades translations/ingredients/tags |
+Base path: `/sfrigola-core`. Full method/path/access table for every endpoint, plus Postman collection sync rules: see the `api-endpoints-reference` skill.
 
 `isPublished` is never part of `AddRecipeDto`/`UpdateRecipeDto` — it is only ever set by the service, never trusted from the client:
-- **Create**: a contributor's translation requirement is exactly one, in any active language of their choosing (`locale` only picks the preview, no other role in the choice) — the recipe is created with `isPublished = false`. An admin's translations must instead cover every active language, no more no less, and the recipe is created with `isPublished = true` immediately.
-- **Update**: if the actor is not an admin (i.e. the recipe's own contributor-author, since `assertAuthorOrAdmin` already excludes everyone else), the recipe is unconditionally reverted to `isPublished = false` — any content change needs re-approval. An admin's edit never touches `isPublished`.
-- **Publish/unpublish**: the only way to set `isPublished` back to `true` — admin-only, separate from `PUT`.
-
-Intended draft/publish flow: a contributor creates a recipe in one language, `isPublished = false`; an admin adds the missing active-language translations via `PUT` (one locale per call — each such admin edit leaves `isPublished` alone) and only then calls `PATCH .../publish`. If the contributor later edits their own (by-then-published) recipe, it silently reverts to draft and needs `PATCH .../publish` again.
-
-`RecipeDto` (public list/search/favorites/home-feed results), `RecipeDetailsDto` (public single-recipe details), `RecipePreviewAdminDto` and `RecipeDetailsAdminDto` (admin) all carry `avgRating`/`ratingsCount`/`favoritesCount` (public DTOs also carry `isFavourite`), sourced from `IRecipeStatsDomainBridgeService` — batched per page (`getStatsBatch`), single lookup for single-recipe endpoints (`getStats`). See Favorites/Ratings/Stats section below for the bridge.
-
-### Favorites — `/favorites`
-
-| Method | Path | Access | Notes |
-|--------|------|--------|-------|
-| POST | `/favorites/{recipePublicId}` | authenticated | |
-| DELETE | `/favorites/{recipePublicId}` | authenticated | |
-
-Listing the authenticated user's favorited recipes is `GET /recipes/favorites` (see Recipes section below) — it is fundamentally a recipe query filtered by favorites, so it lives in the recipes domain and returns `RecipeDto`; the favorites domain only owns add/remove and the cross-domain bridge checks.
-
-### Ratings — `/ratings`
-
-| Method | Path | Access | Notes |
-|--------|------|--------|-------|
-| GET | `/ratings/recipe/{recipePublicId}/stats` | authenticated | average rating + total rating count |
-| POST | `/ratings` | authenticated | one rating per user per recipe |
-| PUT | `/ratings/recipe/{recipePublicId}` | authenticated | edits the authenticated user's own rating |
+- **Create**: a contributor's translation requirement is exactly one, in any active language of their choosing — the recipe is created with `isPublished = false`. An admin's translations must cover every active language, no more no less, and the recipe is created with `isPublished = true` immediately.
+- **Update**: if the actor is not an admin, the recipe is unconditionally reverted to `isPublished = false` — any content change needs re-approval. An admin's edit never touches `isPublished`.
+- **Publish/unpublish**: `PATCH /recipes/admin/{publicId}/publish|unpublish`, admin-only — the only way to set `isPublished` back to `true`.
 
 ---
 
@@ -590,6 +174,15 @@ Applies to every entity with a `*_translations` child table (`categories`, `tags
 - Delete the parent row; translations cascade via `CascadeType.ALL` on the JPA relation (and DB `ON DELETE CASCADE`) — never touch/query translations explicitly in the delete method.
 - Return only the deleted entity's `publicId` (`UUID`), not a DTO.
 
+### File Storage
+
+`ISCFileStorageService` (`common/interfaces/service_interfaces/`) is the only cross-domain contract for persisting an uploaded file (avatar, recipe cover, ...). Current implementation, `SCFileSystemImageStorageService`, is a **local-filesystem stand-in** for a real object storage backend (S3/Cloudinary) — not yet wired because no third-party storage account exists yet. Callers must not assume filesystem-specific behavior; everything goes through the interface so swapping the implementation later requires no caller changes.
+
+- `upsetFile(file, folderPath, fileName)` writes atomically (temp file in the same target directory + `Files.move(..., ATOMIC_MOVE, REPLACE_EXISTING)`) and returns a **relative storage reference** (`folderPath/sanitizedName.ext`) — never a URL.
+- That reference is what gets persisted on the owning entity (e.g. `SCUser.avatarUrl` — see Database Schema note above). Resolving it into an absolute, client-loadable URL is the caller domain's job, done only when building the response DTO.
+- Root directory comes from `FILE_STORAGE_ROOT_DIR` (see Configuration below).
+- **Static serving is dev/test-only.** `config/web/LocalUploadsWebConfig` (`@Profile({"dev", "test"})`) exposes `/uploads/**` → `FILE_STORAGE_ROOT_DIR` over HTTP, registered as `publicPath` in `SecurityBeansConfig` (images in an `<img>`/`Image.network` can't carry an `Authorization` header, so serving must be unauthenticated). This bean does not exist in prod — once real object storage is wired, prod URLs will point at that provider directly and this config becomes dev/test-only permanently, not a temporary gap to close.
+
 ### BaseEntity
 
 `@MappedSuperclass` with automatic auditing via Spring Data JPA Auditing:
@@ -670,76 +263,7 @@ Every status code the API returns falls into exactly one of two client-handling 
   - `5xx` → unexpected server-side fault, not caused by client input → interceptor shows a generic "Something went wrong, try again" toast. Client never parses `errorCode` for these.
 - **Case-by-case bucket** (`400`, `403`, `404`, `409`) — never intercepted. The calling component always reads `errorData`'s `errorCode` key and reacts specifically (inline field error, "not found" state, "already exists" message, disabled-action message, etc).
 
-### Legend — every exception in the codebase, grouped by code
-
-**500 `INTERNAL_SERVER_ERROR`** — server bug, not caused by client input, global bucket:
-| Exception | Error code | Cause |
-|---|---|---|
-| `Exception.class` (generic fallback) | `SERVER_ERROR` | anything uncaught |
-| `SCNoRowsAffectedException` | `NO_ROWS_AFFECTED` | expected update/delete affected 0 rows |
-| `SCDataCorruptionException` | `DATA_CORRUPTED` | unmappable value read from DB |
-| `SCAuthSecuritySystemException` | `SECURITY_SYSTEM_ERROR` | JWT generation/validation infra failure |
-| `NoValidRoleFromExternalException` | `INVALID_ROLE_FROM_STRING` | corrupted role value in DB |
-
-**401 `UNAUTHORIZED`** — session/token invalid, global bucket:
-| Exception / handler | Error code | Cause |
-|---|---|---|
-| `JwtValidationFilter` | `ENV_NOT_AVAILABLE`, `JWT_EXPIRED`, `JWT_VALIDATION_FAILED` | missing/expired/invalid JWT on a protected route |
-| `CustomAuthenticationEntryPoint` | `NOT_AUTHORIZED` | protected endpoint hit with no auth at all |
-| `SCAuthenticatedUserNotFoundException` | `NO_USER_AUTH` | JWT valid but principal no longer exists in DB |
-
-**403 `FORBIDDEN`** — authenticated but not allowed, case-by-case:
-| Exception / handler | Error code | Cause |
-|---|---|---|
-| `CustomAccessDeniedHandler` | `NOT_AUTHORIZED` | Spring Security role/path authorization failure |
-| `SCUserInactiveException` | `USER_NOT_ACTIVE` | account deactivated |
-| `RecipeAuthorMismatchException` | `NOT_RECIPE_OWNER` | contributor editing/deleting a recipe they don't own |
-| `NoChangeRoleToAdminException` | `CANNOT_CHANGE_ROLE_TO_ADMIN` | admin tried to promote a user straight to `ROLE_ADMIN` via the user-management endpoint |
-| `SCCanNotActiveOrDeactivateYourselfException` | `CANNOT_CHANGE_OWN_ACTIVE_STATUS` | admin tried to activate/deactivate their own account |
-
-**404 `NOT_FOUND`** — resource doesn't exist, case-by-case:
-| Exception | Error code |
-|---|---|
-| `EntityNotFoundException` (jakarta, generic fallback) | `ENTITY_NOT_FOUND` |
-| `NoCategoryFoundException` | `SELECTED_CATEGORY_NOT_FOUND` |
-| `NoTagFoundException` | `TAG_NOT_FOUND` |
-| `NoRecipeFoundException` | `RECIPE_NOT_FOUND` |
-| `NoIngredientFoundException` | `INGREDIENT_NOT_FOUND` |
-| `NoUserFoundException` | `USER_NOT_FOUND` |
-| `NoFavoriteFoundException` | `FAVORITE_NOT_FOUND` |
-| `NoRatingFoundException` | `RATING_NOT_FOUND` |
-
-**409 `CONFLICT`** — resource already exists, case-by-case:
-| Exception | Error code |
-|---|---|
-| `SCUserAlreadyExistsException` | `USER_ALREADY_EXISTS` |
-| `CategorySlugAlreadyExistsException` | `CATEGORY_SLUG_ALREADY_EXISTS` |
-| `TagSlugAlreadyExistsException` | `TAG_SLUG_ALREADY_EXISTS` |
-| `TagLabelAlreadyExistsException` | `TAG_LABEL_ALREADY_EXISTS` |
-| `IngredientSlugAlreadyExistsException` | `INGREDIENT_SLUG_ALREADY_EXISTS` |
-| `FavoriteAlreadyExistsException` | `FAVORITE_ALREADY_EXISTS` |
-| `RatingAlreadyExistsException` | `RATING_ALREADY_EXISTS` |
-
-**400 `BAD_REQUEST`** — validation + business-rule violations, case-by-case:
-| Exception | Error code |
-|---|---|
-| `MethodArgumentNotValidException`, `HandlerMethodValidationException`, `ConstraintViolationException`, `MissingServletRequestParameterException` | per-field messages (Jakarta Validation) |
-| `HttpMessageNotReadableException` | `MALFORMED_JSON` |
-| `IllegalArgumentException` | `ILLEGAL_ARGUMENT` |
-| `SCEnumValidationException` | `INVALID_ENUM_CODE` |
-| `SCBadCredentialException` | `BAD_CREDENTIALS` — wrong email/password on `/auth/login`; deliberately **not** `401` (see policy above) |
-| `SCNewPasswordSameAsOldPasswordException` | `NEW_PASSWORD_SAME_AS_OLD_PASSWORD` |
-| `SCPasswordAndConfirmationPasswordDoesntMatchException` | `PASSWORD_DOES_NOT_MATCH_CONFIRMATION_PASSWORD` |
-| `SCCompromisedPasswordException` | `COMPROMISED_PASSWORD` |
-| `SCOldPasswordNotMatchException` | `OLD_PASSWORD_NOT_MATCH` |
-| `LocaleNotActiveException` | `LOCALE_NOT_ACTIVE` |
-| `NoValidLangCodeToChangeException` | `INVALID_LANG_CODE` |
-| `Missing{Category,Tag,Recipe,Ingredient}LocalesException` | `MISSING_*_LOCALES` — translation list doesn't cover every active language on create |
-| `Duplicate{Category,Tag,Recipe,Ingredient}LocaleException` | `DUPLICATE_*_LOCALE` — same locale listed twice on create |
-| `CategoryHasChildrenException` | `CATEGORY_HAS_CHILDREN` |
-| `CategoryReorderMismatchException` | `CATEGORY_REORDER_MISMATCH` |
-| `TagScopeNotAllowedException` | `TAG_SCOPE_NOT_ALLOWED` |
-| `ContributorTranslationLimitExceededException` | `CONTRIBUTOR_TRANSLATION_LIMIT_EXCEEDED` |
+Full exception → status → error-code table (every custom exception in the codebase): see the `error-code-reference` skill.
 
 Rule for every **new** exception: decide client-handling bucket first (does the client just need to know "retry" / "log in again", or does it need the specific `errorCode` to react?), then pick `401`/`5xx` for the former, `400`/`403`/`404`/`409` for the latter — never introduce a new global-bucket code.
 
@@ -796,11 +320,16 @@ Jakarta Validation on DTOs. Message constants in `SCRequestParamValidationCodeCo
 
 - Config is YAML, split by profile: `application.yaml` (common — context path, datasource wiring, JPA, aspect thresholds), `application-dev.yaml`, `application-prod.yaml`. No single `application.properties` anymore. `spring.profiles.default: dev` in the base file — no `SPRING_PROFILES_ACTIVE` set at all falls back to `dev`.
 - Secrets always via env vars (`${DB_URL}`, `${DB_USERNAME}`, `${DB_PASSWORD}`, `${SERVER_PORT}`, `${JWT_SECRET_KEY}`). No YAML file, in any profile, ever contains a literal secret value.
-- **App code never hardcodes a fallback default for an externally-configured value — that's a config-layer concern only.** Every `Environment.getProperty(KEY)` call in Java either uses the resolved value or throws; it never supplies a Java-side default (no `env.getProperty(KEY, someHardcodedDefault)`). Convenience defaults for non-secret, environment-specific values (`JWT_EXPIRATION_MS`, `ALLOWED_ORIGINS`, and — dev only — `JWT_SECRET_KEY`) live exclusively in `application-dev.yaml`/`application-prod.yaml` as `${VAR:default}`; `application-prod.yaml` omits the default (and omits the key entirely if it has no default — a self-referencing `KEY: ${KEY}` with nothing backing it resolves as a circular-placeholder boot failure instead of the intended clean error) so a missing value fails the same way in every deploy method (bare `java -jar`, systemd, Docker).
+- **App code never hardcodes a fallback default for an externally-configured value — that's a config-layer concern only.** Every `Environment.getProperty(KEY)` call in Java either uses the resolved value or throws; it never supplies a Java-side default (no `env.getProperty(KEY, someHardcodedDefault)`). Convenience defaults for non-secret, environment-specific values (`JWT_EXPIRATION_MS`, `ALLOWED_ORIGINS`, `FILE_STORAGE_ROOT_DIR`, and — dev only — `JWT_SECRET_KEY`) live exclusively in `application-dev.yaml`/`application-prod.yaml` as `${VAR:default}`; `application-prod.yaml` omits the default (and omits the key entirely if it has no default — a self-referencing `KEY: ${KEY}` with nothing backing it resolves as a circular-placeholder boot failure instead of the intended clean error) so a missing value fails the same way in every deploy method (bare `java -jar`, systemd, Docker).
   - Missing `JWT_SECRET_KEY`/`JWT_EXPIRATION_MS` at token-generation/validation time → `SCAuthSecuritySystemException` (500) from `JwtService`, or `ENV_NOT_AVAILABLE` (401) from `JwtValidationFilter` — never a silently-reused hardcoded secret.
   - Missing `ALLOWED_ORIGINS` → `SecurityBeansConfig.allowedOriginsPaths()` throws `IllegalStateException` at boot — application context fails to start, never a silent empty-CORS fallback.
+  - Missing `FILE_STORAGE_ROOT_DIR` → `SCFileSystemImageStorageService.init()` (`@PostConstruct`) throws `IllegalStateException` at boot — same pattern, no silently-reused hardcoded path. `src/test/resources/application-test.yaml` (loaded via the `test` Spring profile — see Testing below) sets its own value, self-contained like `JWT_SECRET_KEY`/`ALLOWED_ORIGINS` there.
   - Applies to every future externally-configured value, not just JWT/CORS — same standard project-wide.
 - DB schema managed via `src/main/resources/sql/createSfrigolaDB.sql`, not by Hibernate.
+
+### Testing
+
+`mvn test`/`./mvnw test` always run with Spring profile `test` active — forced via `systemPropertyVariables` on the `maven-surefire-plugin` in `pom.xml` (`spring.profiles.active=test`), not something individual test classes opt into. This activates `src/test/resources/application-test.yaml`, which layers on top of (not replaces) the base `application.yaml` — only real overrides live there (test datasource credentials, `spring.docker.compose.enabled: false`, `JWT_SECRET_KEY`/`JWT_EXPIRATION_MS`/`ALLOWED_ORIGINS`/`FILE_STORAGE_ROOT_DIR` test values); anything identical to the base config (context-path, `ddl-auto`, aspect thresholds, ...) is inherited, not duplicated. Test config is deliberately self-contained — it must not depend on `application-dev.yaml`'s values even though that file is also on the test classpath.
 
 ### Logging
 
@@ -817,49 +346,11 @@ Jakarta Validation on DTOs. Message constants in `SCRequestParamValidationCodeCo
 
 ---
 
-## Postman Collection
-
-`postman/Sfrigola-Core.postman_collection.json` must stay in sync with every new/changed endpoint.
-
-- **Every path variable in a request's URL must be a collection variable** (`{{name}}`), both in `url.raw` and in the `url.path` array — never a hardcoded literal segment (e.g. `"QUICK"`, `"en"` typed straight into the path). Follow the existing pattern: `{{publicId}}`, `{{categoryId}}`, `{{it}}`, `{{approved}}`.
-- Declare new path variables in the collection-level `variable` array (top of the file) with a sensible default value, the same way `feedType`, `approved`, `it` are declared — don't invent a one-off local variable scoped to a single request.
-- Query params always go in the `query` array (mirroring `url.raw`), `disabled: true` for optional ones with no default worth pre-filling — same pattern as `searchKey`, `isActive`, etc.
-- Public (`noauth`) endpoints get `"auth": { "type": "noauth" }` on the request, matching the controller's `[Public]` marker.
-- New requests go in the folder matching their domain, in the same order as the controller's methods.
-
----
-
 ## Code Conventions
 
-- Classes: `PascalCase`
-- Methods/variables: `camelCase`
-- Constants: `UPPER_SNAKE_CASE`
-- Packages: `lowercase`
 - Cross-domain class prefix: `SC` (e.g. `SCUser`, `SCRole`, `SCGeneralException`)
 - Commits: conventional commits in English (`feat:`, `fix:`, `refactor:`, etc.)
 - Every PR must have at least one associated test
-
----
-
-## Useful Commands
-
-```bash
-# Run locally (dev profile, default)
-./mvnw spring-boot:run
-
-# Build
-./mvnw clean package -DskipTests
-
-# Run the built jar with an explicit profile
-java -jar target/sfrigola-core-<version>.jar --spring.profiles.active=dev
-java -jar target/sfrigola-core-<version>.jar --spring.profiles.active=prod
-
-# Compile only (check for errors)
-./mvnw compile
-
-# Run tests
-./mvnw test
-```
 
 ---
 

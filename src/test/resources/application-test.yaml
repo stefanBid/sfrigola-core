@@ -1,7 +1,4 @@
 spring:
-  application:
-    name: sfrigola-core
-
   # Tests connect to an already-running Postgres (local docker-compose, or CI service
   # container) - no Docker Compose lifecycle management needed here.
   docker:
@@ -15,32 +12,9 @@ spring:
     username: berau
     password: admin
     driver-class-name: org.postgresql.Driver
-  sql:
-    init:
-      mode: never
-
-  # ===== JPA / Hibernate =====
-  jpa:
-    show-sql: false
-    properties:
-      hibernate:
-        format_sql: true
-    hibernate:
-      ddl-auto: none
-    open-in-view: false
-    database-platform: org.hibernate.dialect.PostgreSQLDialect
 
 server:
-  servlet:
-    context-path: /sfrigola-core
   port: 8080
-
-# ===== Aspects =====
-sc:
-  aspect:
-    execution-time:
-      fast-threshold-ms: 100
-      slow-threshold-ms: 500
 
 # ===== JWT =====
 # Self-contained: not inherited from application-dev.yaml (even though it's also on
@@ -50,3 +24,7 @@ JWT_EXPIRATION_MS: 3600000
 
 # ===== CORS =====
 ALLOWED_ORIGINS: http://localhost:3000
+
+# ===== FILE STORAGE =====
+# Self-contained, same reasoning as JWT/CORS above - not inherited from application-dev.yaml.
+FILE_STORAGE_ROOT_DIR: ./uploads-test

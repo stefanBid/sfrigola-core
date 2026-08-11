@@ -15,6 +15,7 @@ public record RecipeDetailsDto(
         UUID authorPublicId,
         UUID categoryPublicId,
         DifficultyLevel difficulty,
+        String imageUrl,
         MealType mealType,
         SeasonType season,
         Integer prepTimeMin,
